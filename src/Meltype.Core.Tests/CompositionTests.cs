@@ -2224,9 +2224,10 @@ internal static class CompositionTests
         var k = new Keyboard();
         k.Type("( ");
         Assert.True(k.Host.View!.Candidates.Contains("("), "（ の候補に ( がある: " + string.Join(",", k.Host.View.Candidates));
-        // # は最初から半角 (Discord のチャンネル名・ハッシュタグ)。Space で全角の ＃ にできる。
+        // # は最初から半角。明示的な変換キーでは全角の ＃ も選べる。
         k = new Keyboard();
-        k.Type("# ");
+        k.Type("#");
+        k.Press(VirtualKeys.Convert);
         Assert.Equal("#", k.Host.View!.Candidates[0]);
         Assert.True(k.Host.View.Candidates.Contains("＃"), "# の候補に ＃ がある: " + string.Join(",", k.Host.View.Candidates));
     }

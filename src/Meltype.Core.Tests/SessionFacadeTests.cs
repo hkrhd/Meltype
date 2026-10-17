@@ -91,6 +91,32 @@ internal static class SessionFacadeTests
     }
 
     [Test]
+    public static void MarkdownMarkers_SpaceCommitsAsciiWithoutConversion()
+    {
+        foreach (var marker in new[] { "#", "##", "###", "####", "#####", "######", "-", "--", "---" })
+        foreach (var live in new[] { false, true })
+        foreach (var separate in new[] { false, true })
+        foreach (var shift in new[] { false, true })
+        {
+            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live, SeparateKeyRoles = () => separate,
+                    AutomaticEnglishSpacing = () => true, SpaceAroundEnglish = () => true }, () => new Settings());
+            Type(session, marker);
+            var space = session.HandleKey(VirtualKeys.Space, null, shift, false, false, false);
+            Assert.True(space.Consumed, "Space を半角空白の確定に使う");
+            Assert.Equal(marker + " ", string.Concat(space.Commits.Select(edit => edit.Text)), marker);
+            Assert.True(space.View is null, "候補を開かずに確定する");
+            Assert.Equal(live ? "今日は" : "きょうは", Type(session, "kyouha")[^1].View?.Text,
+                "続けて日本語を入力できる");
+        }
+
+        var japanese = Create();
+        Type(japanese, "ko-hi- ");
+        Assert.Equal("こーひー", Type(japanese, "\n")[0].Commits.Single().Text,
+            "単語中の長音は日本語の変換・確定に使う");
+    }
+
+    [Test]
     public static void TsfDirectMode_RomajiDetectionSwitchesToJapaneseWithoutReplayingLastKey()
     {
         var settings = new Settings { DirectModeAutoDetect = true };

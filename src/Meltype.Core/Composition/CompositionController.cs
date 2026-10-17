@@ -647,6 +647,12 @@ public sealed class CompositionController
                 _text.FixTypos();
                 Commit();
                 return;
+            case VirtualKeys.Space when _text.Raw is { Length: > 0 } marker &&
+                (marker.All(c => c == '#') || marker.All(c => c == '-')):
+                // Markdown の見出し・箇条書きは、Shift やキー役割の設定によらず半角のまま確定する。
+                _correctable.Clear();
+                CommitText(marker + " ", english: false, preserveText: true);
+                return;
             case VirtualKeys.Space when _swallowedShift.Count > 0 || _host.IsShiftDown():
                 // Shift+Space: 英語と判定した語でも、ローマ字として読んで変換する (go → 語、camera → かめら)。
                 _text.FixTypos();
