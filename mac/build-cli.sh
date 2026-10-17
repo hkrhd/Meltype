@@ -88,6 +88,12 @@ ensure_dotnet_path
 if [[ $test_core -eq 1 ]]; then
     need dotnet
     dotnet run --project "$root/src/Meltype.Core.Tests"
+    # XCTest は単体の Command Line Tools に含まれない。インストール済みの
+    # Xcode をこのプロセスだけで選択し、システム全体の xcode-select は変更しない。
+    if [[ -z "${DEVELOPER_DIR:-}" && "$(xcode-select -p)" == */CommandLineTools ]]; then
+        xcode_app=$(osascript -e 'POSIX path of (path to application "Xcode")')
+        export DEVELOPER_DIR="${xcode_app}Contents/Developer"
+    fi
     need swift
     swift test --package-path "$here"
 fi

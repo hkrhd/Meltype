@@ -90,6 +90,10 @@ done < <(otool -L "$APP/Contents/MacOS/Meltype" | awk '/@rpath\//{print $1}')
 cp "$BUILD/native/MeltypeNative.dylib" "$APP/Contents/Frameworks/libMeltypeNative.dylib"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
+if [[ -n "${MELTYPE_BUILD_NUMBER:-}" ]]; then
+    [[ "$MELTYPE_BUILD_NUMBER" =~ ^[0-9]+$ ]] || { echo 'ビルド番号は数字で指定してください。' >&2; exit 1; }
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $MELTYPE_BUILD_NUMBER" "$APP/Contents/Info.plist"
+fi
 cp Resources/icon.tiff "$APP/Contents/Resources/icon.tiff"
 # システム設定の入力ソースの一覧に出す名前
 cp -R Resources/ja.lproj Resources/en.lproj "$APP/Contents/Resources/"

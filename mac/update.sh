@@ -2,11 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 hrmcngs
 
-# Run from any directory:
-#   bash "$HOME/Documents/github/other/Meltype/mac/update.sh"
-# Show help without starting the input method:
-#   bash "$HOME/Documents/github/other/Meltype/mac/update.sh" --help
-# This updates and starts Meltype. Avoid running while investigating crashes.
+# テストと実エンジンの検証に成功したビルドだけをインストールする。
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -23,19 +19,19 @@ esac
 [[ $# -le 1 ]] || { echo "Too many arguments" >&2; exit 1; }
 [[ "$(uname)" == Darwin ]] || { echo "This updater requires macOS." >&2; exit 1; }
 
-# Native checks exit the input-method process; restore it even if a check fails.
-restore_input() {
-    local result=$?
-    trap - EXIT
-    if ! bash "$here/start-input-method.sh" "$app" ||
-       ! "$app/Contents/MacOS/Meltype" --register-input-source ||
-       ! swift "$here/select-input-source.swift"; then
-        echo "Could not select Meltype. Choose it from the input menu." >&2
-        [[ $result -ne 0 ]] || result=1
-    fi
-    exit "$result"
-}
-trap restore_input EXIT
-MELTYPE_SKIP_START=1 bash "$here/build-cli.sh" --test --install
-"$app/Contents/MacOS/Meltype" --check-inputs "$here/Resources/InputChecks.tsv"
+export MELTYPE_VERSION="${MELTYPE_VERSION:-$(bash "$here/fork-version.sh")}"
+export MELTYPE_BUILD_NUMBER="${MELTYPE_BUILD_NUMBER:-$(git -C "$here/.." rev-list --count HEAD)}"
+bash "$here/build-cli.sh" --test --build
+bash "$here/test-user-dictionary.sh"
+temporary=$(mktemp -d)
+trap 'rm -rf "$temporary"' EXIT
+MELTYPE_DATA_DIR="$temporary" "$here/build/Meltype.app/Contents/MacOS/Meltype" --check-inputs "$here/Resources/InputChecks.tsv"
+bash "$here/install-app.sh" "$here/build/Meltype.app" "$app"
+"$app/Contents/MacOS/Meltype" --register-input-source
+"$app/Contents/MacOS/MeltypeRegisterInputSource" "$app"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$here/build/Meltype.app"
+bash "$here/start-input-method.sh" "$app"
+swift "$here/select-input-source.swift"
+"$app/Contents/MacOS/Meltype" --version
 echo "Meltype update and input checks completed."
