@@ -99,8 +99,8 @@ public sealed class CandidateDictionary
     /// 文節の読みに対する候補。文節は助詞などを含む (はしを) ので、辞書にある最長の先頭部分を置き換え、
     /// 残りはかなのまま付ける (箸を / 端を)。
     /// </summary>
-    // 語の後ろに付いていてよい助詞・「だ」など
-    private static readonly HashSet<string> Endings =
+    // 語の後ろに付いていてよい助詞・「だ」など。ユーザー辞書の語を文節内で区切る判定にも使う。
+    internal static readonly HashSet<string> Endings =
         ["", "を", "が", "は", "に", "で", "と", "も", "へ", "の", "や", "な", "だ", "です", "から", "まで", "より", "って", "とか", "さ", "ね", "よ"];
 
     /// <summary>候補 (同音異義語などの後ろに絵文字・顔文字)。</summary>

@@ -1476,7 +1476,7 @@ public sealed class CompositionController
     /// ユーザーが登録した語の終わりが変換エンジンの文節の途中になるなら、その語でも区切らない。
     /// かん → 燗 を登録すると、かんきせん (換気|扇 と区切る) の頭の かん で区切って 燗|汽船 になっていた
     /// (残りの きせん を単独で変換するので崩れる。#374 の 始まりが文節の途中 と同じ失敗)。
-    /// 語の終わりが文節の境目、または文節末のかなの手前に合う語 (しのがきた の しの、ふろのかん の かん) は、今までどおり語で区切る。
+    /// 語の終わりが文節の境目、または文節末の助詞などの手前に合う語 (しのがきた の しの、ふろのかん の かん) は、今までどおり語で区切る。
     /// 同梱の語句 (phrases.txt) は、変換エンジンの区切りを直すためのものなので、終わりが文節の途中でも使う (甲斐性ない)。
     /// </summary>
     private List<(string Reading, string? Word, IReadOnlyList<ConversionClause>? Engine)> AlignUserWords(string kana, List<(string Reading, string? Word)> pieces)
@@ -1529,7 +1529,8 @@ public sealed class CompositionController
         return aligned;
 
         // Mac の変換器は助詞・助動詞を前の語にまとめる (しのが → 篠が)。
-        // 語の後ろが読みのまま残るなら、そのかなを切り離しても漢字の語を分断しない。
+        // 語の後ろが助詞などで始まり、読みのまま残るときだけ切り離す。
+        // 任意のかなを許すと「感じ」の「じ」も切り離され、かん → 燗 が割り込んで「燗事」になる。
         bool CanEndUserWord(int end)
         {
             if (end == kana.Length || starts.Contains(end)) return true;
@@ -1537,7 +1538,11 @@ public sealed class CompositionController
             {
                 var stop = offset + engine[i].Reading.Length;
                 if (offset < end && end < stop)
-                    return engine[i].Text.EndsWith(kana[end..stop], StringComparison.Ordinal);
+                {
+                    var suffix = kana[end..stop];
+                    return CandidateDictionary.Endings.Any(ending => ending.Length > 0 && suffix.StartsWith(ending, StringComparison.Ordinal))
+                        && engine[i].Text.EndsWith(suffix, StringComparison.Ordinal);
+                }
             }
             return false;
         }

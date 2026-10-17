@@ -2540,7 +2540,14 @@ internal static class CompositionTests
             "ふろのかん" => [new("ふろの", "風呂の"), new("かん", "関")],
             "ふろの" => [new("ふろの", "風呂の")],
             "かんをする" => [new("かんを", "勘を"), new("する", "する")],
+            "かんをしています" => [new("かんをしています", "勘をしています")],
+            "をしています" => [new("をしています", "をしています")],
             "をする" => [new("をする", "をする")],
+            "かんじ" => [new("かんじ", "感じ")],
+            "かんじはある" => [new("かんじは", "感じは"), new("ある", "ある")],
+            "もたつくかんじはある" => [new("もたつく", "もたつく"), new("かんじは", "感じは"), new("ある", "ある")],
+            "じ" => [new("じ", "事")],
+            "じはある" => [new("じは", "事は"), new("ある", "ある")],
             "かん" => [new("かん", "関")],
             _ => null,
         };
@@ -2575,6 +2582,31 @@ internal static class CompositionTests
         k = new Keyboard(converter: new KansenConverter(), userDictionary: dictionary);
         k.Type("kanwosuru ");
         Assert.Equal("燗をする", string.Concat(k.Host.View!.Clauses!));
+    }
+
+    [Test]
+    public static void UserDictionary_DoesNotSplitOkuriganaFromAWord()
+    {
+        var dictionary = new UserDictionary(null, builtIn: false);
+        dictionary.Add("かん", "燗");
+        foreach (var live in new[] { false, true })
+        foreach (var (input, expected) in new[] {
+            ("kanji", "感じ"),
+            ("kanjihaaru", "感じはある"),
+            ("motatsukukanjihaaru", "もたつく感じはある"),
+            ("kanwoshiteimasu", "燗をしています"),
+        })
+        {
+            var k = new Keyboard(live: live, converter: new KansenConverter(), userDictionary: dictionary);
+            k.Type(input + " ");
+            Assert.Equal(expected, k.Showing, input);
+            k.Press(VirtualKeys.Return);
+            Assert.Equal(expected, k.Host.Document, "表示どおり確定する: " + input);
+        }
+
+        var liveInput = new Keyboard(live: true, converter: new KansenConverter(), userDictionary: dictionary);
+        liveInput.Type("motatsukukanjihaaru");
+        Assert.Equal("もたつく感じはある", liveInput.Showing, "ライブ変換でも送り仮名を分断しない");
     }
 
     private sealed class AgeashiConverter : IKanjiConverter
