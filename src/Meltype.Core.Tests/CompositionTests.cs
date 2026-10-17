@@ -2448,6 +2448,55 @@ internal static class CompositionTests
         Assert.True(!k.Showing!.Contains("紫乃"), "ライブ変換でも割り込まない: " + k.Showing);
     }
 
+    private sealed class KansenConverter : IKanjiConverter
+    {
+        public string? Convert(string hiragana) => ConvertClauses(hiragana) is { } clauses ? string.Concat(clauses.Select(c => c.Text)) : null;
+        public IReadOnlyList<ConversionClause>? ConvertClauses(string hiragana, string? context = null) => hiragana switch
+        {
+            "かんきせん" => [new("かんき", "換気"), new("せん", "扇")],
+            "かんき" => [new("かんき", "換気")],
+            "かんきせ" => [new("かんきせ", "換気せ")],
+            "きせん" => [new("きせん", "汽船")],
+            "ふろのかん" => [new("ふろの", "風呂の"), new("かん", "関")],
+            "ふろの" => [new("ふろの", "風呂の")],
+            "かんをする" => [new("かんを", "勘を"), new("する", "する")],
+            "をする" => [new("をする", "をする")],
+            "かん" => [new("かん", "関")],
+            _ => null,
+        };
+    }
+
+    [Test]
+    public static void UserDictionary_WordCuttingAnEngineClause_IsNotSplitOut()
+    {
+        // かん → 燗 を登録すると、かんきせん (換気|扇 と区切る) の頭の かん で区切って 燗|汽船 になっていた。
+        // #374 の 始まりが文節の途中の語 と同じで、終わりが文節の途中の語でも区切らない。
+        var dictionary = new UserDictionary(null, builtIn: false);
+        dictionary.Add("かん", "燗");
+        var k = new Keyboard(converter: new KansenConverter(), userDictionary: dictionary);
+        k.Type("kankisen ");
+        Assert.Equal("換気扇", string.Concat(k.Host.View!.Clauses!));
+
+        k = new Keyboard(live: true, converter: new KansenConverter(), userDictionary: dictionary);
+        k.Type("kankisen");
+        Assert.True(!k.Showing!.Contains("燗"), "ライブ変換でも割り込まない: " + k.Showing);
+
+        // 終わりが文節の境目に合う語は、今までどおり語で区切る (ふろの|かん の かん → 燗)
+        k = new Keyboard(converter: new KansenConverter(), userDictionary: dictionary);
+        k.Type("furonokan ");
+        Assert.Equal("風呂の燗", string.Concat(k.Host.View!.Clauses!));
+
+        // 読みだけで終わる語も、今までどおり登録した単語 (かん → 燗)
+        k = new Keyboard(converter: new KansenConverter(), userDictionary: dictionary);
+        k.Type("kan ");
+        Assert.Equal("燗", k.Host.View!.Clauses!.Single());
+
+        // Mac は助詞を前の語と同じ文節にする。登録語 + 助詞は引き続き使える。
+        k = new Keyboard(converter: new KansenConverter(), userDictionary: dictionary);
+        k.Type("kanwosuru ");
+        Assert.Equal("燗をする", string.Concat(k.Host.View!.Clauses!));
+    }
+
     private sealed class AgeashiConverter : IKanjiConverter
     {
         public string? Convert(string hiragana) => ConvertClauses(hiragana) is { } clauses ? string.Concat(clauses.Select(c => c.Text)) : null;

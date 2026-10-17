@@ -1457,6 +1457,12 @@ public sealed class CompositionController
     /// 語で区切ると、残りのかなを単独で変換することになり崩れる (あげあしとら → 揚げ足取ら で区切ると、ないで が 内で になる)。
     /// 語より前は今までどおり別に変換する (文全体の変換エンジンの結果にすると、これほんあか が コレ本垢 になる)。
     /// 始まりが文節の途中の語は、どの文字が語の読みに当たるか分からないので、今までどおり語で区切る。
+    ///
+    /// ユーザーが登録した語の終わりが変換エンジンの文節の途中になるなら、その語でも区切らない。
+    /// かん → 燗 を登録すると、かんきせん (換気|扇 と区切る) の頭の かん で区切って 燗|汽船 になっていた
+    /// (残りの きせん を単独で変換するので崩れる。#374 の 始まりが文節の途中 と同じ失敗)。
+    /// 語の終わりが文節の境目、または文節末のかなの手前に合う語 (しのがきた の しの、ふろのかん の かん) は、今までどおり語で区切る。
+    /// 同梱の語句 (phrases.txt) は、変換エンジンの区切りを直すためのものなので、終わりが文節の途中でも使う (甲斐性ない)。
     /// </summary>
     private List<(string Reading, string? Word, IReadOnlyList<ConversionClause>? Engine)> AlignUserWords(string kana, List<(string Reading, string? Word)> pieces)
     {
@@ -1473,6 +1479,11 @@ public sealed class CompositionController
             var (reading, word) = pieces[p];
             var midStart = word is not null && dictionary.IsUserReading(reading) && !starts.Contains(position);
             if (midStart) Diagnostics.Log.Info($"ユーザー辞書の語は、変換エンジンの文節の途中から始まるので使いません: {Diagnostics.Log.Text(reading)}");
+            // 終わりが文節の途中の語 (かんきせん の かん) も、変換エンジンの文節を途中で切って崩れるので使わない。
+            // 文末までの語 (ふろのかん の かん) は、その終わりが最後の文節の終わりでもあるので使う。
+            var cut = word is not null && dictionary.IsUserReading(reading) && starts.Contains(position)
+                && !CanEndUserWord(position + reading.Length);
+            if (cut) Diagnostics.Log.Info($"ユーザー辞書の語は、変換エンジンの文節を途中で切るので使いません: {Diagnostics.Log.Text(reading)}");
             if (word is not null && !midStart && starts.Contains(position) && EngineStartsWith(position, word))
             {
                 // 次に文節の境目から始まる語の手前までを、変換エンジンの文節にする
@@ -1492,7 +1503,7 @@ public sealed class CompositionController
                 }
             }
             // 使わない語の読みは、前後の変換エンジンに渡す部分とつなげる
-            if (word is null || midStart)
+            if (word is null || midStart || cut)
             {
                 if (aligned.Count > 0 && aligned[^1] is { Word: null, Engine: null } last) aligned[^1] = (last.Reading + reading, null, null);
                 else aligned.Add((reading, null, null));
@@ -1501,6 +1512,20 @@ public sealed class CompositionController
             position += reading.Length;
         }
         return aligned;
+
+        // Mac の変換器は助詞・助動詞を前の語にまとめる (しのが → 篠が)。
+        // 語の後ろが読みのまま残るなら、そのかなを切り離しても漢字の語を分断しない。
+        bool CanEndUserWord(int end)
+        {
+            if (end == kana.Length || starts.Contains(end)) return true;
+            for (int i = 0, offset = 0; i < engine.Count; offset += engine[i].Reading.Length, i++)
+            {
+                var stop = offset + engine[i].Reading.Length;
+                if (offset < end && end < stop)
+                    return engine[i].Text.EndsWith(kana[end..stop], StringComparison.Ordinal);
+            }
+            return false;
+        }
 
         // start から始まる変換エンジンの文節の文字が、語で始まるか
         bool EngineStartsWith(int start, string word)
