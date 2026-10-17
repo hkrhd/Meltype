@@ -1547,15 +1547,94 @@ internal static class CompositionTests
     }
 
     [Test]
+    public static void Period_UsesOnlyTheCharacterImmediatelyBeforeTheCaret()
+    {
+        foreach (var (before, expected) in new (string?, string)[]
+        {
+            (null, "."), ("", "."), ("かな", "。"), ("漢字", "。"), ("カナ", "。"), ("コーヒー", "。"),
+            ("ｶﾅ", "。"), ("𠮷", "。"), ("時々", "。"), ("Google", "."), ("123", "."),
+            ("日本語 ", "."), ("日本語　", "."), ("日本語\n", "."), ("日本語」", "."),
+            ("日本語。", "."), ("日本語、", "."), ("日本語・", "."), ("日本語🙂", "."),
+        })
+        {
+            var k = new Keyboard();
+            k.Host.SurroundingTextIsCurrent = true;
+            k.Host.PrecedingText = before;
+            k.Type(".");
+            Assert.Equal(expected, k.Showing, $"直前: {before}");
+            k.Type("\n");
+            Assert.Equal(expected, k.Host.Document, $"確定後も維持: {before}");
+        }
+    }
+
+    [Test]
+    public static void Period_PreservesTheChosenWidthWhileTypingAndDeleting()
+    {
+        foreach (var live in new[] { false, true })
+        {
+            var japanese = live ? "日本語" : "にほんご";
+            foreach (var (input, expected) in new[]
+            {
+                ("...", "..."), ("nihongo.", japanese + "。"), ("nihongo...", japanese + "。.."),
+                ("nihongo,Google.", "にほんご、Google."), ("Google.", "Google."),
+                ("3.14", "3.14"), ("README.md", "README.md"), ("https://example.com", "https://example.com"),
+            })
+            {
+                var k = new Keyboard(live: live);
+                k.Type(input);
+                Assert.Equal(expected, k.Showing, $"live={live}: {input}");
+                k.Type("\n");
+                Assert.Equal(expected, k.Host.Document, $"確定後: {input}");
+            }
+            var deleting = new Keyboard(live: live);
+            deleting.Host.PrecedingText = "漢字";
+            deleting.Type(".https://example.com\b\b\b");
+            Assert.Equal("。https://example.", deleting.Showing, "URL内を削除しても先頭の句点は維持");
+            deleting.Type("\n");
+            Assert.Equal("。https://example.", deleting.Host.Document);
+
+            var empty = new Keyboard(live: live);
+            empty.Type("nihongo\b\b\b\b.");
+            Assert.Equal(".", empty.Showing, "すべて削除した後の単独ピリオド");
+        }
+    }
+
+    [Test]
+    public static void Period_UsesTheSelectedConversionAndCurrentCaretPosition()
+    {
+        foreach (var continueAfterConversion in new[] { false, true })
+        {
+            var k = new Keyboard { ContinueAfterConversion = continueAfterConversion };
+            k.Type("nihongo ");
+            Assert.Equal("日本語", k.Showing);
+            k.Type(".");
+            if (continueAfterConversion) k.Type(" ");
+            k.Type("\n");
+            Assert.Equal("日本語。", k.Host.Document, $"選択中の候補の後ろ: 続けて変換={continueAfterConversion}");
+        }
+        var moved = new Keyboard();
+        moved.Host.SurroundingTextIsCurrent = true;
+        moved.Type("nihongo\n");
+        moved.Host.PrecedingText = "English";
+        moved.Type(".");
+        Assert.Equal(".", moved.Showing, "確定直後でも移動先の文字を使う");
+
+        var committed = new Keyboard();
+        committed.Host.SurroundingTextIsCurrent = true;
+        committed.Type("nihongo\n.\n");
+        Assert.Equal("にほんご。", committed.Host.Document, "確定済み日本語の直後");
+    }
+
+    [Test]
     public static void Punctuation_FollowsSetting()
     {
-        // 句読点の設定 (Microsoft IME と同じ 4 通り)。数字の間の . , (1.5、1,000) は半角のまま。
+        // 読点は設定に従う。ローマ字入力の . は直前の文字で決め、小数点は半角のまま。
         foreach (var (style, expected) in new[]
         {
             (Meltype.Config.PunctuationStyle.Japanese, "はい、そうです。1.5と1,000"),
-            (Meltype.Config.PunctuationStyle.FullWidthCommaPeriod, "はい，そうです．1.5と1,000"),
+            (Meltype.Config.PunctuationStyle.FullWidthCommaPeriod, "はい，そうです。1.5と1,000"),
             (Meltype.Config.PunctuationStyle.FullWidthCommaKuten, "はい，そうです。1.5と1,000"),
-            (Meltype.Config.PunctuationStyle.ToutenFullWidthPeriod, "はい、そうです．1.5と1,000"),
+            (Meltype.Config.PunctuationStyle.ToutenFullWidthPeriod, "はい、そうです。1.5と1,000"),
         })
         {
             var k = new Keyboard { Punctuation = style };
@@ -1576,7 +1655,7 @@ internal static class CompositionTests
     [Test]
     public static void Punctuation_AfterEnglish_FollowsSetting()
     {
-        // #416: 英字のすぐ後ろの , . も句読点にする設定。OFF なら今までどおり半角
+        // 英字後の読点は設定に従うが、ピリオドは設定によらず半角。
         string Type(string keys, bool on, bool scored = false, string? before = null, Meltype.Config.PunctuationStyle style = default)
         {
             Detector.UseJapanesePunctuationAfterEnglish = () => on;
@@ -1595,14 +1674,14 @@ internal static class CompositionTests
             }
         }
         // 略語 (IME) は区切りを点数で選ぶ (α版) では い + ME になる (別の問題) ので、通常の判定だけで確かめる
-        Assert.Equal("IME。", Type("IME.\n", on: true), "略語の後ろも句点");
+        Assert.Equal("IME.", Type("IME.\n", on: true), "略語の後ろも半角");
         foreach (var scored in new[] { false, true })
         {
             var mode = scored ? " (点数で選ぶ)" : "";
             Assert.Equal("Google.", Type("Google.\n", on: false, scored), "OFF は半角のまま" + mode);
-            Assert.Equal("Google。", Type("Google.\n", on: true, scored), "ON は句点" + mode);
+            Assert.Equal("Google.", Type("Google.\n", on: true, scored), "ON でもピリオドは半角" + mode);
             Assert.Equal("Google、", Type("Google,\n", on: true, scored), "ON は読点" + mode);
-            Assert.Equal("Google．", Type("Google.\n", on: true, scored, style: Meltype.Config.PunctuationStyle.FullWidthCommaPeriod), "設定「句読点」の形" + mode);
+            Assert.Equal("Google.", Type("Google.\n", on: true, scored, style: Meltype.Config.PunctuationStyle.FullWidthCommaPeriod), "句読点の形を変えても半角" + mode);
             Assert.Equal("world.", Type("world.\n", on: true, scored, before: "Hello "), "キャレットの前が英語 (Hello ) なら英文の続き" + mode);
             Assert.Equal("tetr.io", Type("tetr.io\n", on: true, scored), "英単語の中の . は半角" + mode);
         }

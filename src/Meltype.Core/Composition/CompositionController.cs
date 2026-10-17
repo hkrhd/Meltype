@@ -749,8 +749,9 @@ public sealed class CompositionController
 
         if (_host.CharFromKey(e, _swallowedShift.Count > 0) is { } ch && !char.IsControl(ch) && ch != ' ')
         {
+            var textBeforePeriod = ch == '.' ? TextBeforePeriod() : null;
             CommitBeforeTyping();
-            _text.Append(ch);
+            _text.Append(ch, textBeforePeriod);
             return;
         }
 
@@ -808,10 +809,18 @@ public sealed class CompositionController
         if (letter || (c is { } symbol && StartsWithSymbol(symbol) && !_options.DirectMode()))
         {
             BeginComposition();
-            _text.Append(c!.Value);
+            _text.Append(c!.Value, c == '.' ? TextBeforePeriod() : null);
             return;
         }
         ReplayDown(e);
+    }
+
+    private string TextBeforePeriod()
+    {
+        if (_converting) return string.Concat(_clauses.Select(c => c.Text));
+        if (!_text.IsEmpty) return CurrentDisplay(final: true);
+        // 現在位置を読めるホストでは、直前の確定記録より実際のキャレット位置を優先する。
+        return (_host.SurroundingTextIsCurrent ? _caretBefore : _precedingText) ?? "";
     }
 
     /// <summary>
@@ -1390,11 +1399,11 @@ public sealed class CompositionController
     /// </summary>
     private List<Clause> ConvertJapanese(string kana)
     {
-        // ローマ字として読めずに残った英字 (こほぃc の c) と半角の記号 (... @) は、変換エンジンに渡すと別の記号 (© ．．． ＠) にされるので、
+        // ローマ字として読めずに残った英字 (こほぃc の c) と半角の記号 (... @)、入力時に選んだ句点は、変換エンジンに渡すと別の記号 (© ．．． ＠) にされるので、
         // そのままの文節にする。数字は、記号・英字とつながっていればそのまま (3.0 の 3 を 1 文字だけ渡すと ❸ にされる)、
         // それ以外は変換エンジンに渡す (2026ねん → 2026年)。
         var keep = new bool[kana.Length];
-        for (var i = 0; i < kana.Length; i++) keep[i] = kana[i] is >= '!' and <= '~' && !char.IsAsciiDigit(kana[i]);
+        for (var i = 0; i < kana.Length; i++) keep[i] = kana[i] == '。' || kana[i] is >= '!' and <= '~' && !char.IsAsciiDigit(kana[i]);
         for (var i = 0; i < kana.Length; i++)
         {
             if (!char.IsAsciiDigit(kana[i])) continue;

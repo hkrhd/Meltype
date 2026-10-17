@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:6.1
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Yukishiro
 //
@@ -10,10 +10,10 @@ import PackageDescription
 
 let package = Package(
     name: "MeltypeIME",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS("13.3")],
     dependencies: [
         // main は API がよく変わるので、確かめたコミットに固定する (更新するときは Converter.swift も合わせて直す)。
-        .package(url: "https://github.com/azooKey/AzooKeyKanaKanjiConverter", revision: "d59a28e4c7ca049aef04f29a91eae9677a7753f2"),
+        .package(url: "https://github.com/azooKey/AzooKeyKanaKanjiConverter", revision: "d59a28e4c7ca049aef04f29a91eae9677a7753f2", traits: ["Zenzai"]),
     ],
     targets: [
         .executableTarget(
@@ -22,6 +22,7 @@ let package = Package(
                 .product(name: "KanaKanjiConverterModuleWithDefaultDictionary", package: "AzooKeyKanaKanjiConverter"),
             ],
             path: "Sources/MeltypeIME",
+            swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: [
                 .linkedFramework("InputMethodKit"),
                 .linkedFramework("Carbon"),
@@ -39,8 +40,9 @@ let package = Package(
         .testTarget(
             name: "MeltypeIMETests",
             dependencies: ["MeltypeIME"],
-            path: "Tests/MeltypeIMETests"
+            path: "Tests/MeltypeIMETests",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
     ],
-    swiftLanguageVersions: [.v5]
+    swiftLanguageModes: [.v5]
 )

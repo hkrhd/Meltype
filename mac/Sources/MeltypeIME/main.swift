@@ -22,6 +22,17 @@ var candidatesWindow: IMKCandidates?
 // 本体 (libMeltypeNative.dylib) を読み込み、漢字変換・英単語の判定の関数を登録しておく。
 NativeCore.shared.initialize()
 
+if let index = CommandLine.arguments.firstIndex(of: "--convert") {
+    guard index + 1 < CommandLine.arguments.count else { exit(2) }
+    print(MeltypeConverter.shared.clauses(for: CommandLine.arguments[index + 1], context: nil).map(\.text).joined())
+    exit(0)
+}
+
+if CommandLine.arguments.contains("--benchmark-conversion") {
+    ConversionBenchmark.run()
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contains("--check-inputs") {
     var failures = 0
     func check(_ name: String, _ condition: Bool) {
@@ -157,6 +168,8 @@ if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contai
     print("1000 native input/candidate/commit/mode cycles in \(Date().timeIntervalSince(stressStart))s")
     exit(failures == 0 ? 0 : 1)
 }
+
+MeltypeConverter.shared.warmUp()
 
 let connectionName = Bundle.main.object(forInfoDictionaryKey: "InputMethodConnectionName") as? String ?? "Meltype_Connection"
 guard let bundleIdentifier = Bundle.main.bundleIdentifier,

@@ -483,6 +483,28 @@ internal static class SessionFacadeTests
     }
 
     [Test]
+    public static void Period_DirectAndCodeInputStayAscii()
+    {
+        var direct = Create();
+        direct.Direct = true;
+        var result = Type(direct, ".", "日本語")[0];
+        Assert.True(!result.Consumed && result.Commits.Count == 0 && result.View is null, "英数直接入力はそのまま通す");
+
+        var code = Create();
+        code.CodeInput = true;
+        result = Type(code, ".", "const value = 日本語")[0];
+        Assert.True(!result.Consumed && result.Commits.Count == 0 && result.View is null, "コードのピリオドはそのまま通す");
+
+        var comment = Create();
+        comment.CodeInput = true;
+        Assert.Equal("。", Type(comment, ".", "// 日本語")[0].View?.Text, "日本語コメント内は直前の文字で判定");
+
+        var unreadable = Create();
+        Type(unreadable, "nihongo\n");
+        Assert.Equal(".", Type(unreadable, ".")[0].View?.Text, "現在位置が読めない場合は古い確定記録を使わず半角");
+    }
+
+    [Test]
     public static void CodeInput_PassesCodeButComposesCommentsAndStrings()
     {
         var session = Create();

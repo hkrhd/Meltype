@@ -56,7 +56,7 @@ public sealed class CompositionText
     /// <summary>かな入力 (JIS) か。かな入力では <see cref="AppendKana"/> で 1 キー 1 文字ずつ入れる。</summary>
     public bool KanaInput { get; set; }
 
-    /// <summary>句読点の組み合わせ (設定)。, と . (かな入力の 、 。 のキー) で入れる文字。</summary>
+    /// <summary>句読点の組み合わせ (設定)。読点と、かな入力の明示的な句点に使う。</summary>
     public PunctuationStyle Punctuation { get; set; } = PunctuationStyle.Japanese;
 
     /// <summary>読点 (、 か ，)。</summary>
@@ -87,7 +87,8 @@ public sealed class CompositionText
     /// <summary>打った文字そのもの。</summary>
     public string Raw => string.Concat(_units.Select(u => u.Raw)) + _pending;
 
-    public void Append(char c)
+    /// <param name="textBeforePeriod">句点キーを押す直前の表示文字列。省略時はこの未確定入力の表示を使う。</param>
+    public void Append(char c, string? textBeforePeriod = null)
     {
         // 英数字の間に打った . / - はドメイン名や略語の区切り。入力直後は後続文字が分からないため、
         // 次の英数字が来た時点で句点・長音として読んだ記号を半角に戻す (tetr.io、J-core)。
@@ -210,11 +211,11 @@ public sealed class CompositionText
             _units.Add(new CompositionUnit(c.ToString(), c.ToString()));
             return;
         }
-        // 、 や 。 を 3 つ続けたら ... にする (、、、 → ...)。
-        if (c is ',' or '.')
+        // 読点を 3 つ続けたら ... にする (、、、 → ...)。句点キーの入力済みの幅は変えない。
+        if (c == ',')
         {
             var run = 0;
-            while (run < _units.Count && _units[^(run + 1)].Raw is "," or ".") run++;
+            while (run < _units.Count && _units[^(run + 1)].Raw is "," or "." && _units[^(run + 1)].Kana != "。") run++;
             if (run >= 2)
             {
                 for (var k = _units.Count - run; k < _units.Count; k++) _units[k] = _units[k] with { Kana = "." };
@@ -229,7 +230,7 @@ public sealed class CompositionText
             _units.Add(new CompositionUnit("・", "/"));
             return;
         }
-        _units.Add(new CompositionUnit(Symbol(c).ToString(), c.ToString()));
+        _units.Add(new CompositionUnit(Symbol(c, textBeforePeriod).ToString(), c.ToString()));
     }
 
     /// <summary>かなのすぐ後ろの / を中黒 (・) にするか (設定)。</summary>
@@ -424,10 +425,14 @@ public sealed class CompositionText
             var raw = Raw;
             if (raw.Length > 0)
             {
-                var truncated = raw[..^1];
-                _units.Clear();
-                _pending.Clear();
-                foreach (var c in truncated) Append(c);
+                // 残る単位を読み直すと、入力時に選んだ句点の幅まで失われる。
+                if (_pending.Length > 0) _pending.Length--;
+                else
+                {
+                    var last = _units[^1];
+                    _units.RemoveAt(_units.Count - 1);
+                    foreach (var c in last.Raw[..^1]) Append(c);
+                }
                 if (IsEmpty)
                 {
                     Mode = DisplayMode.Auto;
@@ -1211,12 +1216,12 @@ public sealed class CompositionText
     }
 
     /// <summary>日本語の中で打った記号 (Microsoft IME と同じく全角)。英語の区間では打ったままの半角で出す。数字と括弧は半角のまま。</summary>
-    private char Symbol(char c) => c switch
+    private char Symbol(char c, string? textBeforePeriod) => c switch
     {
         '-' => 'ー',
-        // 句読点は設定の組み合わせ (、。 / ，． / ，。 / 、．)。
+        // 読点は設定どおり。句点キーは表示上の直前が日本語の文字のときだけ「。」にする。
         ',' => Comma,
-        '.' => Period,
+        '.' => EndsWithJapaneseLetter(textBeforePeriod ?? Display(final: true)) ? '。' : '.',
         '[' => '「',
         ']' => '」',
         // ASCII の括弧はチャット本文でもそのまま使われるため、入力した幅を保つ。
@@ -1240,6 +1245,16 @@ public sealed class CompositionText
         _ when c is >= '!' and <= '~' && !char.IsAsciiLetterOrDigit(c) => (char)(c + 0xFEE0),
         _ => c,
     };
+
+    private static bool EndsWithJapaneseLetter(string text)
+    {
+        var last = text.EnumerateRunes().LastOrDefault();
+        return last.Value is '々' or '〆' or '〇' || Rune.IsLetter(last) && last.Value is
+            (>= 0x3040 and <= 0x30FF) or (>= 0x31F0 and <= 0x31FF) or
+            (>= 0xFF66 and <= 0xFF9F) or (>= 0x3400 and <= 0x4DBF) or
+            (>= 0x4E00 and <= 0x9FFF) or (>= 0xF900 and <= 0xFAFF) or
+            (>= 0x20000 and <= 0x2FA1F) or (>= 0x30000 and <= 0x323AF);
+    }
 
     /// <summary>全角の記号 (＃ （ ％ ’ ￥) を半角に戻す。かな・漢字・句読点 (、。「」ー) はそのまま。</summary>
     public static string SymbolsToHalfWidth(string text)

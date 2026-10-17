@@ -8,6 +8,16 @@ import KanaKanjiConverterModuleWithDefaultDictionary
 /// azooKey の API が変わったときは、このファイルだけ直せばよいようにしてある。
 final class MeltypeConverter {
     static let shared = MeltypeConverter()
+    // 通常入力は2回まで。CLIでの比較計測に限り明示した上限を使える。
+    static let inferenceLimit: Int = {
+        let arguments = CommandLine.arguments
+        guard arguments.contains("--benchmark-conversion") || arguments.contains("--convert"),
+              let index = arguments.firstIndex(of: "--inference-limit") else { return 2 }
+        guard index + 1 < arguments.count, let limit = Int(arguments[index + 1]), (1...5).contains(limit) else {
+            fatalError("--inference-limit must be between 1 and 5")
+        }
+        return limit
+    }()
 
     // 同梱の辞書 (KanaKanjiConverterModuleWithDefaultDictionary) を使う変換エンジン。
     // azooKey の withDefaultDictionary() は辞書を Bundle.module で探すが、Bundle.module は Meltype.app の直下か
@@ -15,8 +25,10 @@ final class MeltypeConverter {
     // (Meltype.app の直下には置けない: 署名が通らない)。なので、辞書の場所をこちらで渡す。
     private let converter = KanaKanjiConverter(dicdataStore: DicdataStore(dictionaryURL: MeltypeConverter.resource("Dictionary")))
     private let options: ConvertRequestOptions
+    private var expectedZenzaiStatus: String?
     private var resultCache: [String: [Candidate]] = [:]
     private var cacheOrder: [String] = []
+    private(set) var candidateRequestCount = 0
 
     /// 同梱の辞書のバンドル (Contents/Resources に入れている) の中のフォルダー。
     private static func resource(_ name: String) -> URL {
@@ -34,6 +46,14 @@ final class MeltypeConverter {
     }
 
     private init() {
+        let model = (Bundle.main.resourceURL ?? Bundle.main.bundleURL)
+            .appendingPathComponent("zenz-v3.1-small-Q5_K_M.gguf")
+        // 従来方式は計測時の比較用だけ。モデル不在を黙って従来変換に戻さない。
+        let classicBenchmark = CommandLine.arguments.contains("--benchmark-conversion")
+            && CommandLine.arguments.contains("--classic")
+        precondition(classicBenchmark || FileManager.default.isReadableFile(atPath: model.path),
+            "Zenzai small model is missing: rebuild Meltype.app")
+        expectedZenzaiStatus = classicBenchmark ? nil : "load \(model.absoluteString)"
         // azooKey の学習データ・ユーザー辞書の置き場所 (Meltype では学習しない設定にしているので、ほぼ使わない)。
         let directory = (NativeCore.shared.dataDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) }
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -49,8 +69,22 @@ final class MeltypeConverter {
             sharedContainerURL: directory,
             textReplacer: TextReplacer(emojiDataProvider: { MeltypeConverter.emojiDictionary() }),
             specialCandidateProviders: KanaKanjiConverter.defaultSpecialCandidateProviders,
+            zenzaiMode: classicBenchmark ? .off : .on(
+                weight: model,
+                inferenceLimit: Self.inferenceLimit,
+                requestRichCandidates: false,
+                personalizationMode: nil,
+                versionDependentMode: .v3(.init())
+            ),
+            experimentalZenzaiPredictiveInput: false,
             metadata: .init(versionString: "Meltype \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown")")
         )
+    }
+
+    /// モデルの読み込み・Metal初期化を最初のキー入力から起動時へ移す。
+    func warmUp() {
+        autoreleasepool { _ = results(for: "あ") }
+        converter.stopComposition()
     }
 
     /// ひらがな全体に対する変換結果 (入力をすべて使ったものだけ、よい順)。
@@ -59,6 +93,11 @@ final class MeltypeConverter {
         var composing = ComposingText()
         composing.insertAtCursorPosition(hiragana, inputStyle: .direct)
         let results = converter.requestCandidates(composing, options: options)
+        candidateRequestCount += 1
+        if let expectedZenzaiStatus {
+            precondition(converter.zenzStatus == expectedZenzaiStatus,
+                "Zenzai model could not be loaded: \(converter.zenzStatus)")
+        }
         let count = hiragana.count
         // 入力 (ひらがな) をすべて使った候補だけ (.direct で入れたので、入力の文字数 = ひらがなの文字数)
         let candidates = results.mainResults.filter { $0.composingCount == .inputCount(count) || $0.composingCount == .surfaceCount(count) }

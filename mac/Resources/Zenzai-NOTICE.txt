@@ -1,0 +1,15 @@
+Zenzai model: zenz-v3.1-small-gguf / ggml-model-Q5_K_M.gguf
+Author / publisher: Miwa-Keita
+Source: https://huggingface.co/Miwa-Keita/zenz-v3.1-small-gguf
+Revision: ddf6e44b2e05ab7ea9a3e31559c5e7948761365c
+SHA-256: 4de930c06bef8c263aa1aa40684af206db4ce1b96375b3b8ed0ea508e0b14f6c
+License: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+License declaration: https://huggingface.co/Miwa-Keita/zenz-v3.1-small-gguf/blob/ddf6e44b2e05ab7ea9a3e31559c5e7948761365c/README.md
+The downloaded model is included without changes.
+
+Inference uses azooKey/AzooKeyKanaKanjiConverter (MIT) and
+azooKey/llama.cpp (MIT), obtained through mac/Package.resolved.
+The llama.cpp runtime is rebuilt from b4846, revision
+10131b23ee0dbd9d03dfc618cec9fe3402919277, with Metal enabled and
+unused BF16 kernels disabled. See llama-LICENSE.txt and azooKey-LICENSE.txt.

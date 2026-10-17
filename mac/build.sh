@@ -5,7 +5,7 @@
 # Meltype の Mac 版をビルドして ~/Library/Input Methods にインストールする。
 #   ./build.sh            ビルドしてインストール
 #   ./build.sh --no-install  ビルドだけ (build/Meltype.app)
-# 必要なもの: macOS 13 以降、Xcode (またはコマンドライン ツール: xcode-select --install)、.NET 10 SDK
+# 必要なもの: macOS 13.3 以降、Xcode、.NET 10 SDK、CMake
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -35,6 +35,8 @@ case "$(uname -m)" in
 esac
 
 BUILD=build
+MODEL="$(bash fetch-zenzai-model.sh)"
+LLAMA_METAL="$(bash build-llama-metal.sh)"
 VERSION="${MELTYPE_VERSION:-$(dotnet msbuild ../src/Meltype.Core/Meltype.Core.csproj -nologo -getProperty:Version)}"
 if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"; fi
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || { echo "版番号が不正です: $VERSION" >&2; exit 1; }
@@ -62,6 +64,7 @@ cp "$BIN/RegisterInputSource" "$APP/Contents/MacOS/MeltypeRegisterInputSource"
 for framework in "$BIN"/*.framework; do
     [[ -e "$framework" ]] && cp -R "$framework" "$APP/Contents/Frameworks/"
 done
+cp "$LLAMA_METAL" "$APP/Contents/Frameworks/llama.framework/Versions/A/llama"
 # Swift 6.2 以降は、古い macOS 向けの互換ライブラリ (libswiftCompatibilitySpan.dylib など) を @rpath で読む。
 # macOS 26 は OS に入っているが、13〜15 では無いので、ツールチェーンから同梱する (#20)。
 TOOLCHAIN_SWIFT_LIBS="$(dirname "$(xcrun --find swift)")/../lib"
@@ -95,6 +98,10 @@ if [[ -n "${MELTYPE_BUILD_NUMBER:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $MELTYPE_BUILD_NUMBER" "$APP/Contents/Info.plist"
 fi
 cp Resources/icon.tiff "$APP/Contents/Resources/icon.tiff"
+cp "$MODEL" "$APP/Contents/Resources/zenz-v3.1-small-Q5_K_M.gguf"
+cp Resources/Zenzai-NOTICE.txt "$APP/Contents/Resources/Zenzai-NOTICE.txt"
+cp "$(dirname "$LLAMA_METAL")/llama-LICENSE.txt" "$APP/Contents/Resources/llama-LICENSE.txt"
+cp .build/checkouts/AzooKeyKanaKanjiConverter/LICENSE "$APP/Contents/Resources/azooKey-LICENSE.txt"
 # システム設定の入力ソースの一覧に出す名前
 cp -R Resources/ja.lproj Resources/en.lproj "$APP/Contents/Resources/"
 # azooKey の辞書などのリソース (Swift Package のリソースバンドル)
