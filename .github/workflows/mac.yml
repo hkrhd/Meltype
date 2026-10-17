@@ -10,6 +10,7 @@ on:
     paths:
       - 'mac/**'
       - 'src/Meltype.Core/**'
+      - 'src/Meltype.Core.Tests/**'
       - 'src/Meltype.Mac.Native/**'
       - 'dictionaries/**'
       - 'tools/test-native-boundaries.py'

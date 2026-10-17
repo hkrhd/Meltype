@@ -30,7 +30,8 @@ bash "$here/install-app.sh" "$here/build/Meltype.app" "$app"
 "$app/Contents/MacOS/Meltype" --register-input-source
 "$app/Contents/MacOS/MeltypeRegisterInputSource" "$app"
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$here/build/Meltype.app"
+# 未登録のビルド用コピーを解除すると -10814 になる。導入済みIMEの起動は妨げない。
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$here/build/Meltype.app" 2>/dev/null || true
 bash "$here/start-input-method.sh" "$app"
 swift "$here/select-input-source.swift"
 "$app/Contents/MacOS/Meltype" --version
