@@ -41,8 +41,9 @@ Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Melty
 フォーク独自の追加テストは `tests/fork/` にまとめています。Core の追加テストは
 既存テストと一緒に実行し、Mac の実入力ケースは upstream 由来の入力例と分けて検証します。
 Swift の既存テストには Xcode (XCTest) が必要です。単体の Command Line Tools が
-選択されている場合は、インストール済みの Xcode をプロセス内で選びます。
-別の Xcode を使う場合は `DEVELOPER_DIR` で指定します。
+選択されている場合は、`/Applications/Xcode.app/Contents/Developer` をプロセス内で選びます。
+Xcode本体は起動しないため、場所の検出で追加コンポーネントのインストール画面は開きません。
+別の場所の Xcode を使う場合は `DEVELOPER_DIR` で指定します。
 
 ## バージョン
 
