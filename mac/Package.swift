@@ -43,6 +43,12 @@ let package = Package(
             path: "Tests/MeltypeIMETests",
             swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
+        .testTarget(
+            name: "ForkMacTests",
+            dependencies: ["MeltypeIME"],
+            path: "Tests/ForkMacTests",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
+        ),
     ],
     swiftLanguageModes: [.v5]
 )

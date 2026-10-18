@@ -1,11 +1,12 @@
 # フォーク独自の回帰テスト
 
-このフォークで追加したテストを、upstream 由来のテストと分けて管理します。
+このフォークで追加したテストを、upstream 由来のテストと分けて管理します。Swift テストは Swift Package 内に置く必要があるため、`mac/Tests/ForkMacTests` にまとめます。
 
 - `Core/`: 句点の入力、ユーザー辞書による単語の分断防止、記号の半角入力。
   `Meltype.Core.Tests.csproj` から同じアセンブリに取り込み、既存の入力用ヘルパーを共有します。
   実行結果はメソッド名の `Fork_` で識別できます。
 - `mac/check-inputs.sh`: 一時辞書・設定を使った実エンジンの回帰テスト。
+- `mac/Tests/ForkMacTests/DictionarySyncTests.swift` (リポジトリ直下からのパス): 一時 SQLite DB を使い、自動同期、WAL・DB 入れ替えの監視、スリープ時の再読込を検証。
 - `mac/InputChecks.tsv`: Zenzai の変換例と記号入力の期待値。upstream の
   `mac/Resources/InputChecks.tsv` と別に実行します。
 - `mac/CandidateChecks.tsv`: 入力キー列と選択・確定する候補。`--check-candidates` が

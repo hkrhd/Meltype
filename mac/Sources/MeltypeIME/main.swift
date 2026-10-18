@@ -234,4 +234,7 @@ guard let bundleIdentifier = Bundle.main.bundleIdentifier,
 }
 candidatesWindow = IMKCandidates(server: server, panelType: kIMKSingleColumnScrollingCandidatePanel)
 NSRegisterServicesProvider(ModeServices.shared, ModeServices.portName)
+// CLI の変換・検証では個人の辞書に触れず、通常の IME 起動時だけ同期する。
+let dictionarySync = NativeCore.shared.dataDirectory.map { MacUserDictionarySync(directory: $0) }
+dictionarySync?.start()
 NSApplication.shared.run()

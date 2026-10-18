@@ -38,7 +38,7 @@ Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Melty
 既存の入力チェックを通してからアプリを入れ替え、起動して入力ソースを選びます。
 回帰テストは一時ディレクトリの辞書・設定・学習データを使用します。
 既存のユーザー辞書や学習データを編集しません。
-フォーク独自の追加テストは `tests/fork/` にまとめています。Core の追加テストは
+フォーク独自の追加テストは `tests/fork/` と Swift Package 内の `mac/Tests/ForkMacTests/` にまとめています。Core の追加テストは
 既存テストと一緒に実行し、Mac の実入力ケースは upstream 由来の入力例と分けて検証します。
 Swift の既存テストには Xcode (XCTest) が必要です。単体の Command Line Tools が
 選択されている場合は、`/Applications/Xcode.app/Contents/Developer` をプロセス内で選びます。
