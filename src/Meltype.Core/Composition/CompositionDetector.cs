@@ -20,6 +20,7 @@ public sealed partial class CompositionDetector
     private readonly RomajiDetector _romaji;
     private readonly DictionaryDetector _japanese;
     private readonly EnglishDetector _english;
+    private readonly WordList _userEnglish = new();
     private readonly TypoDetector _typo;
     private readonly ProperNouns _proper;
     private readonly KanaDetector? _kana;
@@ -51,8 +52,11 @@ public sealed partial class CompositionDetector
         var japaneseWords = DictionarySource.Load("japanese.txt", userDictionaryDirectory).ToList();
         var japanese = new DictionaryDetector(japaneseWords, romaji);
         var proper = ProperNouns.Load(userDictionaryDirectory);
-        var english = new EnglishDetector(DictionarySource.Load("english.txt", userDictionaryDirectory).Concat(proper.LowercaseWords));
-        return new CompositionDetector(romaji, japanese, english, new TypoDetector(japanese.Words), proper, new KanaDetector(japaneseWords, romaji));
+        var userEnglish = DictionarySource.LoadUser("english.txt", userDictionaryDirectory).ToList();
+        var english = new EnglishDetector(WordList.ParseWords(DictionarySource.ReadEmbedded("english.txt")).Concat(userEnglish).Concat(proper.LowercaseWords));
+        var detector = new CompositionDetector(romaji, japanese, english, new TypoDetector(japanese.Words), proper, new KanaDetector(japaneseWords, romaji));
+        foreach (var word in userEnglish) detector._userEnglish.Add(word);
+        return detector;
     }
 
     private static readonly Lazy<WordList> ReadableEnglish = new(() =>
@@ -695,6 +699,9 @@ public sealed partial class CompositionDetector
         // 続けて日本語を打っても同じ判定にする (main|no|yousuwomite → mainのようすをみて)。
         if (Memory?.Get(lower) is { } learned && !(learned && lower.Length <= 3 && Fragment() is { IsValid: true, Partial: "" } &&
             (before < 0 || !startOfInput && before == 1 && lower.Length <= 2 && after != true && TrailingParticles.Contains(lower)))) return learned;
+        // ユーザーが追加した単独の語は、ローマ字として読み切れても英字にする (sudo → すど を防ぐ)。
+        // 単語の途中は対象にしない (no の登録で nihongo・nekono などを分断しない)。
+        if (startOfInput && (atEnd || endsWord) && _userEnglish.ContainsWord(lower)) return true;
         // 5 文字以上の英単語で、ローマ字としても読めるもの:
         // - c 行の綴り (camera、coffee、class) は英語。日本語を打つときは k を使う (カメラ は kamera)。
         // - ローマ字として読むと ぢ・づ になる綴り (radio = らぢお、studio、audio) で、ふつうの日本語の語にならないなら英語。

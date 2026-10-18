@@ -8,6 +8,8 @@ temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 for live in false true; do
     mkdir "$temporary/$live"
+    mkdir "$temporary/$live/dictionaries"
+    printf 'sudo\nrepo\nno\ne\nc\n' > "$temporary/$live/dictionaries/english.txt"
     printf 'かん\t燗\nしの\t紫乃\n' > "$temporary/$live/userdict.txt"
     printf '{"LiveConversion":%s}\n' "$live" > "$temporary/$live/config.json"
     printf '{"main":{"English":true,"Used":"2026-10-18T00:00:00Z","Count":1},"no":{"English":true,"Used":"2026-10-18T00:00:00Z","Count":1,"Explicit":true}}\n' > "$temporary/$live/languages.json"
@@ -16,6 +18,7 @@ for live in false true; do
     printf 'shijisuru \t支持する\n' >> "$temporary/checks.tsv"
     printf 'mainno\tmainの\nmainno \tmainの\nmainde\tmainで\nmainde \tmainで\nmainwo\tmainを\nmainwo \tmainを\n' >> "$temporary/checks.tsv"
     printf 'mainnoyousuwomite \tmainの様子を見て\n' >> "$temporary/checks.tsv"
+    printf 'sudo\tsudo\nsudo apt\tsudo apt\nrepo\trepo\n' >> "$temporary/checks.tsv"
     if [[ "$live" == true ]]; then
         printf 'kankisen\t換気扇\nmotatsukukanjihaaru\tもたつく感じはある\n' >> "$temporary/checks.tsv"
         printf 'mainnoyousuwomite\tmainの様子を見て\n' >> "$temporary/checks.tsv"
