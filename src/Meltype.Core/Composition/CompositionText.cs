@@ -469,6 +469,7 @@ public sealed class CompositionText
         _pending.Clear();
         _protectedCache = null;
         _protectedCacheRaw = null;
+        PrecedingCharacter = null;
         Mode = DisplayMode.Auto;
         Case = LetterCase.AsTyped;
         LevelOverride = null;
@@ -642,6 +643,7 @@ public sealed class CompositionText
             .Append(FollowingEnglish switch { true => 'E', false => 'J', null => '-' })
             .Append(PrecedingEnglishSentence ? 'S' : '-').Append(KanaInput ? 'K' : '-').Append(final ? 'F' : '-')
             .Append(PrecedingEnglishName ? 'N' : '-')
+            .Append(PrecedingCharacter)
             .Append((int)EffectiveLevel).Append(':').Append(_detector.Memory?.Version ?? -1);
         return key.ToString();
     }
@@ -733,7 +735,8 @@ public sealed class CompositionText
     /// </summary>
     private List<CompositionUnit>? HalfWidthOpeners(IReadOnlyList<CompositionSegment> segments)
     {
-        if (KanaInput || !_units.Any(u => Openers.ContainsKey(u.Raw) &&
+        var hasCommittedOpener = PrecedingCharacter is '"' or '`';
+        if (KanaInput || !hasCommittedOpener && !_units.Any(u => Openers.ContainsKey(u.Raw) &&
             (u.Kana != u.Raw || IsLiteralSymbol(u.Raw[0])))) return null;
         // 打った英字の 1 文字ずつが英語の区間か
         var english = new List<bool>();
@@ -743,9 +746,11 @@ public sealed class CompositionText
         bool IsHalf(int i) => _units[i].Kana == _units[i].Raw || (offsets[i] < english.Count && english[offsets[i]]);
 
         List<CompositionUnit>? adjusted = null;
-        for (var i = 0; i < _units.Count; i++)
+        // 即確定した引用符は、未確定文字列の外にある開き記号 (i = -1) として扱う。
+        for (var i = hasCommittedOpener ? -1 : 0; i < _units.Count; i++)
         {
-            if (!Openers.TryGetValue(_units[i].Raw, out var closer) ||
+            var opener = i < 0 ? PrecedingCharacter!.Value.ToString() : _units[i].Raw;
+            if (!Openers.TryGetValue(opener, out var closer) || i >= 0 &&
                 _units[i].Kana == _units[i].Raw && !IsLiteralSymbol(_units[i].Raw[0])) continue;
             var nextIsEnglish = i + 1 < _units.Count ? offsets[i + 1] < english.Count && english[offsets[i + 1]] && char.IsAsciiLetter(_units[i + 1].Raw[0])
                 : Pending.Length > 0 && segments.Count > 0 && segments[^1].IsEnglish;
@@ -763,7 +768,7 @@ public sealed class CompositionText
                 .Any(k => offsets[k] < english.Count && english[offsets[k]] && char.IsAsciiLetter(_units[k].Raw[0]));
             if (!nextIsEnglish && !(closing >= 0 && IsHalf(closing)) && afterEnglish < 0 && !unclosedBeforeEnglish) continue;
             adjusted ??= [.. _units];
-            adjusted[i] = _units[i] with { Kana = _units[i].Raw };
+            if (i >= 0) adjusted[i] = _units[i] with { Kana = _units[i].Raw };
             for (var k = afterEnglish + 1; afterEnglish >= 0 && k <= closing; k++) adjusted[k] = _units[k] with { Kana = _units[k].Raw };
         }
         return adjusted;
@@ -783,6 +788,9 @@ public sealed class CompositionText
     /// 英語とも日本語とも読める語 (sushi など) の扱いを、後ろ (<see cref="FollowingEnglish"/>) と合わせて決める。
     /// </summary>
     public bool? PrecedingEnglish { get; set; }
+
+    /// <summary>直前の確定済みの文字。即確定した / や引用符も次の入力の文脈に使う。</summary>
+    public char? PrecedingCharacter { get; set; }
 
     /// <summary>キャレットの前が英文の途中 ("I want ") か。日本語の文の中の英単語 (GitHub の) より強い英語の根拠。</summary>
     public bool PrecedingEnglishSentence { get; set; }
@@ -888,10 +896,17 @@ public sealed class CompositionText
     {
         // かな入力では "@" は濁点などのキーで、ローマ字の原文とは意味が違う。保護判定はローマ字入力だけにする。
         if (KanaInput) return [];
-        var raw = Raw;
-        if (_protectedCache is not null && _protectedCacheRaw == raw) return _protectedCache;
+        // 先に即確定した / もパスの判定に含め、保護位置は未確定文字列の範囲に戻す。
+        var offset = PrecedingCharacter == '/' ? 1 : 0;
+        var raw = offset == 0 ? Raw : "/" + Raw;
+        var cacheKey = offset.ToString() + raw;
+        if (_protectedCache is not null && _protectedCacheRaw == cacheKey) return _protectedCache;
         _protectedCache = ProtectedSpanScanner.Scan(raw);
-        _protectedCacheRaw = raw;
+        if (offset > 0)
+            _protectedCache = _protectedCache.Where(span => span.End > offset)
+                .Select(span => new ProtectedSpan(Math.Max(0, span.Start - offset),
+                    span.End - Math.Max(offset, span.Start), span.Kind)).ToArray();
+        _protectedCacheRaw = cacheKey;
         return _protectedCache;
     }
 

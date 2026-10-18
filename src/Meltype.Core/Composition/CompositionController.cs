@@ -274,6 +274,8 @@ public sealed class CompositionController
     private int _selectedClause;
     private bool _converting;
     private bool? _lastCommitEnglish;
+    // 単独で即確定した記号。次の未確定入力が始まるまで、パスや引用文の文脈として保持する。
+    private char? _lastImmediateSymbol;
     private string? _lastCommitText;
     private string? _precedingText;
     private string? _followingText;
@@ -483,6 +485,7 @@ public sealed class CompositionController
     /// <summary>フォーカスが変わったときなど。前の入力欄の文脈を持ち越さない。</summary>
     public void ResetContext()
     {
+        _lastImmediateSymbol = null;
         _lastCommitEnglish = null;
         _lastCommitText = null;
         _caretBefore = null;
@@ -798,6 +801,14 @@ public sealed class CompositionController
             return;
         }
         var c = _host.CharFromKey(e, _swallowedShift.Count > 0);
+        if (c is { } literal && CompositionText.IsLiteralSymbol(literal) && !_options.DirectMode())
+        {
+            // 未確定の語がないときの記号は、Enter を待たず半角のまま確定する。
+            _correctable.Clear();
+            CommitText(literal.ToString(), english: false, preserveText: true);
+            _lastImmediateSymbol = literal;
+            return;
+        }
         var letter = VirtualKeys.IsLetter(e.Vk) && c is { } l && char.IsAsciiLetter(l);
         if (letter && _options.DirectMode())
         {
@@ -946,6 +957,7 @@ public sealed class CompositionController
         _followingText = null;
         _caretBefore = null; // 読み直せなければ (返ってこなければ) キャレットの位置は確かめない = 今までどおり直す
         _text.PrecedingEnglish = _lastCommitEnglish;
+        _text.PrecedingCharacter = _lastImmediateSymbol;
         _text.PrecedingEnglishSentence = _lastCommitEnglish == true && IsEnglishSentence(_lastCommitText);
         _text.PrecedingEnglishName = _lastCommitEnglish == true && IsEnglishNameContext(_lastCommitText);
         _text.FollowingEnglish = null;
@@ -958,6 +970,7 @@ public sealed class CompositionController
             if (!recentOwnCommit && before is not null)
             {
                 _precedingText = before;
+                _text.PrecedingCharacter = before.Length > 0 ? before[^1] : null;
                 if (LanguageOf(before) is { } english) _text.PrecedingEnglish = english;
                 _text.PrecedingEnglishSentence = IsEnglishSentence(before);
                 _text.PrecedingEnglishName = IsEnglishNameContext(before);
@@ -2264,7 +2277,11 @@ public sealed class CompositionController
     private bool _tabStartedConversion;
 
     /// <summary>キャレットが動いたかもしれないとき (Meltype を通らなかったキー・クリック)。直前の語は確定し直さない。</summary>
-    public void ForgetLastCommit() => _correctable.Clear();
+    public void ForgetLastCommit()
+    {
+        _correctable.Clear();
+        _lastImmediateSymbol = null;
+    }
 
     /// <summary>
     /// 今確定しようとしている語 (raw) で文脈がはっきりしたら、直前に確定した英語とも日本語とも読める語を確定し直す。
@@ -2400,6 +2417,7 @@ public sealed class CompositionController
     /// <summary>確定して入力する。英語だったか日本語だったか・確定した文字列を、次の入力の文脈として覚えておく。</summary>
     private void CommitText(string text, bool english, string raw = "", bool chosen = false, bool preserveText = false)
     {
+        _lastImmediateSymbol = null;
         var formatEnglish = _options.AutomaticEnglishSpacing() && _text.Mode == DisplayMode.Auto;
         var spaceIntended = _spaceStartedConversion;
         var afterEnglish = _text.PrecedingEnglish == true;
@@ -2489,6 +2507,7 @@ public sealed class CompositionController
 
     private void ReplayDown(KeyEvent e)
     {
+        if (!VirtualKeys.IsModifier(e.Vk)) _lastImmediateSymbol = null;
         // Meltype を通らないキーを送る = キャレットが動くかもしれないので、直前の語はもう確定し直さない。
         _correctable.Clear();
         // 握りつぶしていた Shift を先に送る (Shift+矢印 の範囲選択、Ctrl+Shift+Z など)。

@@ -55,7 +55,12 @@ internal static partial class SessionFacadeTests
             var text = string.Concat(result.Commits.Select(edit => edit.Text)) + result.View?.Text;
             if (!result.Consumed) text += symbol;
             Assert.Equal(expectedPrefix + symbol, text, $"{prefix}{symbol}");
-            if (result.Consumed)
+            if (prefix.Length == 0)
+            {
+                Assert.True(result.View is null && !session.IsComposing, "単独の記号はその場で確定する");
+                Assert.Equal(symbol.ToString(), string.Concat(result.Commits.Select(edit => edit.Text)), "Enter を押さずに半角入力する");
+            }
+            else if (result.Consumed)
             {
                 for (var i = 0; i < 4; i++)
                 {
@@ -64,15 +69,34 @@ internal static partial class SessionFacadeTests
                     Assert.True(converted.View!.Candidates.All(c => !c.Contains((char)(symbol + 0xFEE0)) && !c.Contains('”')),
                         "全角や曲がった引用符を候補に出さない");
                 }
-                if (prefix.Length == 0)
-                {
-                    var fullWidth = session.HandleKey(VirtualKeys.F9, null, false, false, false, false);
-                    Assert.Equal(symbol.ToString(), fullWidth.View?.Text, "全角英数の操作でも指定記号は半角のまま");
-                }
             }
             var committed = Type(session, "\n")[0];
             Assert.True(!committed.Consumed || committed.Commits.Last().Text.EndsWith(symbol), "確定しても半角のまま");
             Assert.Equal(live ? "今日は" : "きょうは", Type(session, "kyouha")[^1].View?.Text, "続けて日本語を入力できる");
+        }
+    }
+
+    [Test]
+    public static void Fork_LiteralSymbols_WhenIdleCommitImmediately()
+    {
+        foreach (var symbols in new[] { "$", "\"", "`", "_", "/", "$$", "\"\"", "```", "__", "//" })
+        foreach (var live in new[] { false, true })
+        foreach (var sigil in new[] { false, true })
+        {
+            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live, SpaceAroundEnglish = () => true,
+                    AutomaticEnglishSpacing = () => true }, () => new Settings { SigilWordsDirect = sigil });
+            var output = "";
+            foreach (var symbol in symbols)
+            {
+                var result = Type(session, symbol.ToString())[0];
+                output += string.Concat(result.Commits.Select(edit => edit.Text));
+                if (!result.Consumed) output += symbol;
+                Assert.True(result.View is null && !session.IsComposing, "キーを押すたびに確定する: " + symbols);
+            }
+            Assert.Equal(symbols, output, "Enter を押さずに入力欄へ届く");
+            var space = Type(session, " ")[0];
+            Assert.True(!space.Consumed, "記号の後の通常の空白はアプリへ渡す");
         }
     }
 

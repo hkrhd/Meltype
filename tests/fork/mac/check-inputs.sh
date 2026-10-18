@@ -21,4 +21,5 @@ done
 
 echo "フォーク独自の入力チェック"
 mkdir "$temporary/inputs"
+printf '{"SigilWordsDirect":false}\n' > "$temporary/inputs/config.json"
 MELTYPE_DATA_DIR="$temporary/inputs" "$app/Contents/MacOS/Meltype" --check-inputs "$here/InputChecks.tsv"

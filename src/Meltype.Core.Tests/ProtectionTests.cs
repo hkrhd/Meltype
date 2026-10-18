@@ -135,9 +135,13 @@ internal static class ProtectionTests
         return session.HandleKey(vk, c is ' ' or '\n' ? null : c, char.IsAsciiLetterUpper(c), false, false, false);
     }
 
-    private static void TypeText(MeltypeSession session, string text)
+    private static string TypeText(MeltypeSession session, string text)
     {
-        foreach (var c in text) TypeOne(session, c);
+        var output = "";
+        foreach (var c in text)
+        foreach (var edit in TypeOne(session, c).Commits)
+            output = output[..Math.Max(0, output.Length - edit.DeleteBefore)] + edit.Text;
+        return output;
     }
 
     [Test]
@@ -196,10 +200,10 @@ internal static class ProtectionTests
         foreach (var raw in new[] { "./shumire-shon", "/tmp/buresureddo", "https://example.com/shumire-shon" })
         {
             var session = Create();
-            TypeText(session, raw);
+            var typed = TypeText(session, raw);
             var tab = session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
             Assert.True(!tab.Consumed, $"保護原文の Tab は誤字補正に使わずアプリへ通す: {raw}");
-            Assert.Equal(raw, tab.Commits.Single().Text);
+            Assert.Equal(raw, typed + tab.Commits.Single().Text);
             Assert.True(tab.View is null, "確定後は変換ボックスを閉じる");
         }
     }
@@ -228,9 +232,9 @@ internal static class ProtectionTests
     public static void Protected_FocusCommitsRaw()
     {
         var session = Create();
-        TypeText(session, "/home/taro/project");
+        var typed = TypeText(session, "/home/taro/project");
         var focus = session.CommitPending();
-        Assert.Equal("/home/taro/project", focus.Commits.Single().Text);
+        Assert.Equal("/home/taro/project", typed + focus.Commits.Single().Text);
     }
 
     [Test]

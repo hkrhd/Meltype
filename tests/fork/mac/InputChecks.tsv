@@ -9,6 +9,7 @@ kyouhanihongonohenkanseidowokakuninshimasu	今日は日本語の変換精度を�
 && hello	&& hello
 "kyouha"	"今日は"
 `kyouha`	`今日は`
-"$"	"$"
+"$"hello	"$"hello
 _kyouha_	_kyouha_
-"/"	"/"
+"/"hello	"/"hello
+/home/taro/project	/home/taro/project

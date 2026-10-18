@@ -274,13 +274,13 @@ internal static class FeedbackTests
     }
 
     [Test]
-    public static void TripleSlash_IsEllipsis()
+    public static void TripleSlash_StaysAsciiWhenIdle()
     {
         // 報告 (Discord のリスト #4): /// を … にできるようにする。URL (file:///) はそのまま。
-        // 入力欄の先頭の /// は /command と同じくそのままアプリへ渡す (#193)。設定で OFF にすれば … にできる。
+        // 入力欄の先頭の / は即確定するため、設定によらず /// のまま。
         var k = new CompositionTests.Keyboard { SigilWords = false };
         k.Type("///");
-        Assert.Equal("…", k.Showing);
+        Assert.Equal("///", k.Host.Document);
         Assert.Equal("それで…", Showing("sorede///"));
         Assert.Equal("file:///", Showing("file:///"));
     }

@@ -2059,7 +2059,7 @@ internal static partial class CompositionTests
             // 先頭の / $ @ の語 (#193) は SigilWord_* で確かめる。ここは変換ボックスに入れたときの記号。
             var k = new Keyboard { SigilWords = false };
             k.Type(typed);
-            Assert.Equal(expected, k.Showing, $"「{typed}」");
+            Assert.Equal(expected, k.Host.Document + k.Showing, $"「{typed}」");
         }
         var ramen = new Keyboard();
         ramen.Type("ra-men\n");
@@ -3353,7 +3353,7 @@ internal static partial class CompositionTests
         // 日本語を確定した直後 (空白なし) の / も対象外。
         k = new Keyboard();
         k.Type("kyouha\n/");
-        Assert.True(k.Gate.IsCaptured, "今日は/ の / は変換ボックスに入れる");
+        Assert.True(!k.Gate.IsCaptured && k.Host.Document.EndsWith('/'), "今日は/ の / はその場で確定する");
         // ホストが前の文字を教えてくれれば、それで決める (打ち始めでも前が英字なら対象外)。
         k = new Keyboard();
         k.Host.PrecedingText = "taro";
@@ -3373,7 +3373,7 @@ internal static partial class CompositionTests
         var k = new Keyboard();
         k.Press(VirtualKeys.Left);
         k.Type("/");
-        Assert.True(k.Gate.IsCaptured, "前の文字が分からなければ / は変換ボックスに入れる");
+        Assert.True(!k.Gate.IsCaptured && k.Host.Document == "/", "前の文字が分からなくても / はその場で確定する");
         // 記号まで消したら、記号の前 (先頭) に戻る。
         k = new Keyboard();
         k.Type("/re\b\b\b");
