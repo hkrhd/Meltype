@@ -293,7 +293,7 @@ internal static class FeedbackTests
             Assert.Equal(expected, Showing(typed, before: "GitHub"), $"GitHub + {typed}");
             Assert.Equal(expected, Showing(typed, before: "今日は GitHub "), $"今日は GitHub + {typed}");
         }
-        Assert.Equal("no", Showing("no", before: "GitHub", level: DetectionLevel.Aggressive), "積極的なら英語");
+        Assert.Equal("の", Showing("no", before: "GitHub", level: DetectionLevel.Aggressive), "積極的でも空白を入れるまでは日本語");
     }
 
     [Test]

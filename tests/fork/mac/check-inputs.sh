@@ -19,6 +19,7 @@ for live in false true; do
     printf 'mainno\tmainの\nmainno \tmainの\nmainde\tmainで\nmainde \tmainで\nmainwo\tmainを\nmainwo \tmainを\n' >> "$temporary/checks.tsv"
     printf 'mainnoyousuwomite \tmainの様子を見て\n' >> "$temporary/checks.tsv"
     printf 'sudo\tsudo\nsudo apt\tsudo apt\nrepo\trepo\n' >> "$temporary/checks.tsv"
+    printf 'no\tの\nno no\tno の\nno problem\tno problem\nI have no problem\tI have no problem\n' >> "$temporary/checks.tsv"
     if [[ "$live" == true ]]; then
         printf 'kankisen\t換気扇\nmotatsukukanjihaaru\tもたつく感じはある\n' >> "$temporary/checks.tsv"
         printf 'mainnoyousuwomite\tmainの様子を見て\n' >> "$temporary/checks.tsv"

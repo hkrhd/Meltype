@@ -11,6 +11,54 @@ namespace Meltype.Tests;
 internal static partial class CompositionTests
 {
     [Test]
+    public static void Fork_No_UsesSpaceToChooseEnglish()
+    {
+        foreach (var learned in new bool?[] { null, false, true })
+        {
+            var memory = new LanguageMemory(null);
+            if (learned is { } english) memory.Remember("no", english, explicitChoice: true);
+            Detector.Memory = memory;
+            try
+            {
+                foreach (var live in new[] { false, true })
+                foreach (var before in new[] { "", "English ", "I have ", "日本語" })
+                {
+                    var k = new Keyboard(live: live, languages: memory);
+                    k.Host.PrecedingText = before;
+                    k.Type("no");
+                    Assert.Equal("の", k.Showing, $"空白なし: learned={learned}, before={before}");
+                    k.Type("\n");
+                    Assert.Equal("の", k.Host.Document, "空白なしなら日本語で確定する");
+
+                    k = new Keyboard(live: live, languages: memory);
+                    k.Host.PrecedingText = before;
+                    k.Type("no ");
+                    Assert.Equal("no ", k.Host.Document, "空白を押した時点で英語と空白を確定する");
+                    k.Type("no");
+                    Assert.Equal("の", k.Showing, "英語として学習した直後も空白を待つ");
+                    k.Type("nihongo\n");
+                    Assert.Equal("no のにほんご", k.Host.Document, "空白なしで日本語を続けられる");
+                }
+
+                foreach (var (input, expected) in new[]
+                {
+                    ("no problem", "no problem"), ("I have no problem", "I have no problem"),
+                    ("north", "north"), ("No", "No"), ("NO", "NO"),
+                })
+                {
+                    var k = new Keyboard(languages: memory);
+                    k.Type(input + "\n");
+                    Assert.Equal(expected, k.Host.Document, "英単語全体と大文字は維持する: " + input);
+                }
+            }
+            finally
+            {
+                Detector.Memory = null;
+            }
+        }
+    }
+
+    [Test]
     public static void Fork_LearnedEnglishEndingInN_KeepsTheFollowingParticle()
     {
         var memory = new LanguageMemory(null);

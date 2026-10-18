@@ -633,6 +633,9 @@ public sealed partial class CompositionDetector
         var growing = atEnd && !final;
         if (IsContraction(span)) return level != DetectionLevel.Manual || char.IsAsciiLetterUpper(span[0]);
         if (span.Length == 0 || !span.All(char.IsAsciiLetter)) return false;
+        // 小文字の no は、空白で語を区切るまでは助詞「の」。英語としての学習や辞書より優先する。
+        // Space による英字への確定は CompositionController で行う。
+        if (span == "no" && !endsWord && (next is not { Length: > 0 } || char.IsAsciiLetter(next[0]))) return false;
         var lower = span.ToLowerInvariant();
         // 小文字の語の末尾が大文字 1 文字 (holoX → ほぉX になっていた: issue #469)。
         // 略語 (PC、SNS) や途中の大文字 (GitHub) は下の規則のまま。小文字側がふつうの日本語 (kore) なら分けたまま。

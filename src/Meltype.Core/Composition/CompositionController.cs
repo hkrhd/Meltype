@@ -682,6 +682,12 @@ public sealed class CompositionController
             case VirtualKeys.Space:
                 // 保護区間 (メンション・URL・パス) の末尾は、自動変換せず原文のまま + 半角空白で確定する。
                 if (IsProtectedInput) { CommitProtected(" "); return; }
+                // no は入力中には「の」と見せ、空白で区切ったときに英単語として確定する。
+                if (_text.Mode == DisplayMode.Auto && !_text.KanaInput && _options.Level() != DetectionLevel.Manual && _text.Raw == "no")
+                {
+                    CommitText("no ", english: true, _text.Raw);
+                    return;
+                }
                 if (_text.PrecedingEnglish != true && PreviewCandidates() is not null)
                 {
                     SelectCandidate(0);
@@ -2437,7 +2443,8 @@ public sealed class CompositionController
         var corrected = CorrectPreviousCommit(raw, english);
         if (!preserveText && _options.SpaceAroundEnglish()) text = AddSpacesAroundEnglish(text, corrected ?? _precedingText, _followingText);
         // 英語とも日本語とも読める語を、文脈を決めずに (選び直さずに) 確定したときだけ、後で確定し直せるようにしておく。
-        if (!chosen && _detector.IsAmbiguousWord(raw))
+        // no は空白の有無で言語が決まっているので、後続の文脈で確定し直さない。
+        if (!chosen && raw != "no" && _detector.IsAmbiguousWord(raw))
         {
             // 前の語の後に Space で区切って続けたときだけつなげる (それ以外は新しい並び)。
             if (_correctable.Count > 0 && !_correctable[^1].SpaceIntended) _correctable.Clear();

@@ -28,9 +28,10 @@ internal static partial class SessionFacadeTests
                 foreach (var ending in new[] { "\n", " \n" })
                 {
                     var session = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
-                    Assert.Equal(word, Type(session, word)[^1].View?.Text, "登録語の表示: " + word);
+                    var shown = word == "no" ? "の" : word;
+                    Assert.Equal(shown, Type(session, word)[^1].View?.Text, "登録語の表示: " + word);
                     var results = Type(session, ending);
-                    Assert.Equal(word + (ending.StartsWith(' ') ? " " : ""),
+                    Assert.Equal(ending.StartsWith(' ') ? word + " " : shown,
                         string.Concat(results.SelectMany(r => r.Commits).Select(e => e.Text)), "登録語の確定: " + word);
                 }
             }

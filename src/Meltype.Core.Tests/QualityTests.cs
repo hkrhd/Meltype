@@ -161,7 +161,7 @@ internal static class Quality
         new("混在", "microsoftnokaisha", "microsoftのかいしゃ"),
         new("混在", "kyouhaclaudetohanashita", "きょうはclaudeとはなした"),
         new("混在", "pythonnobug", "pythonのbug"),
-        new("混在", "GitHub no repo", "GitHub のれぽ"),
+        new("混在", "GitHub no repo", "GitHub no repo"),
         new("混在", "Google to Apple", "Google とApple"),
         // 助詞「や」+ 英単語 / 英単語 + 助詞「や」(Particles / TrailingParticles に ya)
         new("混在", "yagithub", "やgithub"),
