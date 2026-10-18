@@ -12,6 +12,6 @@
 - Mac の変換に Zenzai small（Metal、ニューラル評価上限2回）を使用。
 - Mac の候補一覧では通常入力と別の変換状態でモデル評価・辞書探索の候補を併記し、「しじする → 指示する・支持する・師事する」などの同音異義語を選べるよう改善。
 - フォーク独自の追加テストは [tests/fork](tests/fork/) に集約し、upstream のテストと区別。
-- upstream の取り込みは Codex が独自の挙動・方針との整合を確認して調整する（[運用手順](docs/FORK.md)）。
+- 独自変更は `fork_by_hkrhd` で管理。Actions が upstream の更新を `main` からの PR で通知し、ユーザーの依頼で Codex が取り込みを調整する（[運用手順](docs/FORK.md)）。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。

@@ -1,7 +1,7 @@
 # このフォークの運用
 
 `main` は `upstream/main` の追従用です。独自の変換改善と運用スクリプトは
-`fix/userdict-head-contamination` に置きます。履歴操作には jj を使います。
+`fork_by_hkrhd` に置きます。履歴操作には jj を使います。
 
 ## 更新
 
@@ -16,9 +16,15 @@ upstream の更新は Codex に取り込みを依頼します。Codex は upstre
 bash mac/build-cli.sh --test --build
 ```
 
-PR で確認する場合は、このフォーク内の取り込み作業用ブランチから
-`fix/userdict-head-contamination` 宛てに作成します。PR には対象の upstream コミット、
-採用・調整・見送りの内容と理由、検証結果を記載します。`main` は引き続き upstream の追従用です。
+GitHub のデフォルトブランチは `fork_by_hkrhd` です。
+Actions の `upstream-update` が毎時17分に upstream/main を確認し、`main` を更新します。
+`main` が upstream から分岐している場合は停止します。未取り込みの更新があれば
+`main` → `fork_by_hkrhd` の Draft PR を1件作成し、開いている同じ PR があれば再利用します。
+専用ブランチは作りません。Actions 画面から手動実行もできます。
+
+ユーザーが PR を確認して Codex に取り込みを依頼します。PR 本文には独自の挙動・方針を
+保った調整と検証を指示します。Actions は Codex の起動や独自ブランチへの取り込みを行いません。
+GitHub の Actions 設定では、Actions による PR 作成を有効にします。
 
 実機へ適用するときは、変更を jj で保存してから `bash mac/update.sh` を実行します。
 

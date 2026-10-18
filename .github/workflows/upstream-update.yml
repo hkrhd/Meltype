@@ -1,0 +1,60 @@
+name: upstream-update
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.repository == 'hkrhd/Meltype'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: upstream の main を追従し、取り込み依頼の PR を作成
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          status=$(gh api "repos/$REPO/compare/main...yksr-melt:main" --jq .status)
+          case "$status" in
+            identical) ;;
+            ahead)
+              gh api --method POST "repos/$REPO/merge-upstream" -f branch=main
+              ;;
+            *)
+              echo '::error::main が upstream/main から分岐しています。確認してください。'
+              exit 1
+              ;;
+          esac
+
+          ahead=$(gh api "repos/$REPO/compare/fork_by_hkrhd...main" --jq .ahead_by)
+          if [[ "$ahead" == 0 ]]; then
+            echo '未取り込みの更新はありません。'
+            exit 0
+          fi
+
+          existing=$(gh pr list --repo "$REPO" --base fork_by_hkrhd --head main --state open --json url --jq '.[0].url // empty')
+          if [[ -n "$existing" ]]; then
+            echo "取り込み依頼の PR は作成済みです: $existing"
+            exit 0
+          fi
+
+          cat > "$RUNNER_TEMP/upstream-pr.md" <<'BODY'
+          main の更新内容と意図を確認し、AGENTS.md・README.md にあるフォーク独自の挙動・方針を保って fork_by_hkrhd に取り込んでください。
+          競合の有無だけで判断せず、必要な調整後に `bash mac/build-cli.sh --test --build` で検証し、変更点と検証結果を報告してください。
+
+          ユーザーがこの PR を確認して Codex に依頼します。
+          BODY
+          gh pr create --repo "$REPO" --base fork_by_hkrhd --head main --draft \
+            --title 'upstream/main の更新を取り込む' --body-file "$RUNNER_TEMP/upstream-pr.md"
