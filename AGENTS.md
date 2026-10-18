@@ -3,6 +3,7 @@
 # このフォークの開発
 
 - 履歴操作は jj。`main` は `upstream/main` 追従専用。独自変更は `fix/userdict-head-contamination` に置く。
+- upstream の取り込みは Codex が差分と変更意図を確認し、フォーク独自の挙動・方針を保って調整する。競合がない場合も機械的な merge/rebase だけで完了としない。
 - 作業後に適切にコミットして.
 - 検証・ビルドのみ：`bash mac/build-cli.sh --test --build`。
 - 適用：`bash mac/update.sh`。フォーク版番号を生成し、テスト・実変換検証後にインストール・起動・入力ソース選択まで行う。

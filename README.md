@@ -11,5 +11,6 @@
 - `$`・`"`・バッククォート・`_`・`/` は変換対象にせず、入力中も確定後も半角を維持。
 - Mac の変換に Zenzai small（Metal、ニューラル評価上限2回）を使用。
 - フォーク独自の追加テストは [tests/fork](tests/fork/) に集約し、upstream のテストと区別。
+- upstream の取り込みは Codex が独自の挙動・方針との整合を確認して調整する（[運用手順](docs/FORK.md)）。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。

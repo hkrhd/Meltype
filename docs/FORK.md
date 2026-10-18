@@ -5,16 +5,22 @@
 
 ## 更新
 
-作業を `jj commit -m '変更の説明'` で保存してから実行します。
+upstream の更新は Codex に取り込みを依頼します。Codex は upstream の差分と変更意図を
+確認し、フォーク独自の変換・記号入力などの挙動と方針を保つように調整します。
+テキスト上の競合がなくても意味上の衝突があるため、機械的な merge/rebase だけで
+完了としません。既存の作業中の変更は保持します。
+
+取り込み後は次のコマンドで検証します。
 
 ```sh
-bash tools/sync-upstream.sh
-bash mac/update.sh
+bash mac/build-cli.sh --test --build
 ```
 
-同期は upstream の main とタグを取得し、改善ブランチを新しい main に rebase します。
-main に独自変更がある場合や競合した場合は停止します。競合を解消するまで導入しません。
-同期だけではリモートへの push やインストールは行いません。
+PR で確認する場合は、このフォーク内の取り込み作業用ブランチから
+`fix/userdict-head-contamination` 宛てに作成します。PR には対象の upstream コミット、
+採用・調整・見送りの内容と理由、検証結果を記載します。`main` は引き続き upstream の追従用です。
+
+実機へ適用するときは、変更を jj で保存してから `bash mac/update.sh` を実行します。
 
 `mac/update.sh` は Core・Swift テスト、ビルド、実エンジンのフォーク回帰テストと
 既存の入力チェックを通してからアプリを入れ替え、起動して入力ソースを選びます。
