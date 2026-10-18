@@ -17,7 +17,7 @@ bash mac/build-cli.sh --test --build
 ```
 
 GitHub のデフォルトブランチは `fork_by_hkrhd` です。
-Actions の `upstream-update` が毎時17分に upstream/main を確認し、`main` を更新します。
+Actions の `upstream-update` が12時間ごと（日本時間 9:17・21:17）に upstream/main を確認し、`main` を更新します。
 `main` が upstream から分岐している場合は停止します。未取り込みの更新があれば
 `main` → `fork_by_hkrhd` の Draft PR を1件作成し、開いている同じ PR があれば再利用します。
 専用ブランチは作りません。Actions 画面から手動実行もできます。
@@ -26,7 +26,19 @@ Actions の `upstream-update` が毎時17分に upstream/main を確認し、`ma
 保った調整と検証を指示します。Actions は Codex の起動や独自ブランチへの取り込みを行いません。
 GitHub の Actions 設定では、Actions による PR 作成を有効にします。
 
-このフォークで有効な Actions は `upstream-update` のみです。`build`・`linux`・`mac`・
+`zenzai-update` も同じ12時間間隔で、Hugging Face の `Miwa-Keita` 配下の
+`zenz-v<数値版>-small-gguf` を確認します。最新系列の `ggml-model-Q5_K_M.gguf` と
+使用中の固定モデルを比べ、新系列または重みの SHA-256 が変わった場合に、候補ごとの
+`automation/zenzai-v<版>-<SHA-256>` ブランチから `fork_by_hkrhd` への Draft PR を作成します。
+PR の変更は `docs/ZENZAI-UPDATE.md` の更新候補の記録だけです。モデル設定の更新・自動マージは行いません。
+同じ配布先・重みの PR があれば、クローズ・マージ済みも含めて再作成しません。
+説明文だけの更新や xsmall・別量子化形式は通知対象外です。API 障害や必須情報の欠落は実行失敗として扱います。
+ユーザーの確認後、Codex にモデル・エンジン互換性・ライセンスの確認と、差し替え・検証を依頼します。
+手動実行もでき、`GITHUB_TOKEN` 以外の追加シークレットは不要です。
+`GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run` で、
+公開 API に対する検知と重複確認を、PR やブランチを作成せずに試せます。
+
+このフォークで利用する Actions は `upstream-update` と `zenzai-update` です。`build`・`linux`・`mac`・
 `bot`・`cla`・`dotnet-update`・`notices`・`pr-checks`・`sponsors`・`winget` は
 リポジトリ設定で無効にしています。ワークフローの定義は残し、必要になった場合は
 Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Meltype` で再開できます。

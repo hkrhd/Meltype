@@ -6,6 +6,8 @@
   `Meltype.Core.Tests.csproj` から同じアセンブリに取り込み、既存の入力用ヘルパーを共有します。
   実行結果はメソッド名の `Fork_` で識別できます。
 - `mac/check-inputs.sh`: 一時辞書・設定を使った実エンジンの回帰テスト。
+- `zenzai-update.test.mjs`: 外部 API を再現し、新系列・重み更新の通知、重複抑制、障害時の停止を検証。
+  `node --test tests/fork/zenzai-update.test.mjs` で実行し、GitHub には書き込みません。
 - `mac/Tests/ForkMacTests/DictionarySyncTests.swift` (リポジトリ直下からのパス): 一時 SQLite DB を使い、自動同期、WAL・DB 入れ替えの監視、スリープ時の再読込を検証。
 - `mac/InputChecks.tsv`: Zenzai の変換例と記号入力の期待値。upstream の
   `mac/Resources/InputChecks.tsv` と別に実行します。
