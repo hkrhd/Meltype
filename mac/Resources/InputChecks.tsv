@@ -45,4 +45,14 @@ Zorgblax	Zorgblax
 https://example.com	https://example.com
 alice@example.com	alice@example.com
 getUserName	getUserName
+~ hello	~ hello
+~~~ hello	~~~ hello
++ hello	+ hello
+++ hello	++ hello
+& hello	& hello
+&& hello	&& hello
+"kyouha"	"今日は"
+`kyouha`	`今日は`
+"$"	"$"
+_kyouha_	_kyouha_
 kyouhagoogledekensakuwo,sitaitoomoimasu.seeyouagain	今日はgoogleで検索を、したいと思います。see you again

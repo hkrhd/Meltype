@@ -48,7 +48,15 @@ if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contai
             case " ": vk = 0x20
             case "\n": vk = 0x0D
             case "\t": vk = 0x09
-            default: vk = Int32(character.uppercased().utf16.first ?? 0)
+            case ",": vk = 0xBC
+            case ".": vk = 0xBE
+            case "-": vk = 0xBD
+            case "/": vk = 0xBF
+            case "[": vk = 0xDB
+            case "]": vk = 0xDD
+            // 記号のASCII値は矢印等の仮想キーと重なる。実IMEと同じく文字キーとして渡す。
+            default: vk = character.isASCII && (character.isLetter || character.isNumber)
+                ? Int32(character.uppercased().utf16.first ?? 0) : 0x07
             }
             let code = Int32(String(character).utf16.first ?? 0)
             last = NativeCore.shared.handleKey(session, vk: vk, character: code,

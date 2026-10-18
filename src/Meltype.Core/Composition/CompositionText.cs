@@ -733,7 +733,8 @@ public sealed class CompositionText
     /// </summary>
     private List<CompositionUnit>? HalfWidthOpeners(IReadOnlyList<CompositionSegment> segments)
     {
-        if (KanaInput || !_units.Any(u => Openers.ContainsKey(u.Raw) && u.Kana != u.Raw)) return null;
+        if (KanaInput || !_units.Any(u => Openers.ContainsKey(u.Raw) &&
+            (u.Kana != u.Raw || IsLiteralSymbol(u.Raw[0])))) return null;
         // 打った英字の 1 文字ずつが英語の区間か
         var english = new List<bool>();
         foreach (var segment in segments) foreach (var _ in segment.Raw) english.Add(segment.IsEnglish);
@@ -744,7 +745,8 @@ public sealed class CompositionText
         List<CompositionUnit>? adjusted = null;
         for (var i = 0; i < _units.Count; i++)
         {
-            if (!Openers.TryGetValue(_units[i].Raw, out var closer) || _units[i].Kana == _units[i].Raw) continue;
+            if (!Openers.TryGetValue(_units[i].Raw, out var closer) ||
+                _units[i].Kana == _units[i].Raw && !IsLiteralSymbol(_units[i].Raw[0])) continue;
             var nextIsEnglish = i + 1 < _units.Count ? offsets[i + 1] < english.Count && english[offsets[i + 1]] && char.IsAsciiLetter(_units[i + 1].Raw[0])
                 : Pending.Length > 0 && segments.Count > 0 && segments[^1].IsEnglish;
             var closing = Enumerable.Range(i + 1, _units.Count - i - 1).FirstOrDefault(k => _units[k].Raw == closer, -1);
@@ -1234,7 +1236,8 @@ public sealed class CompositionText
         '|' => '|',
         '~' => '～',
         '\'' => '’',
-        '"' => '”',
+        // コード用の記号は英語・日本語の判定によらず半角を維持する。
+        _ when IsLiteralSymbol(c) => c,
         // @ はメールアドレス・メンション、/ は URL・日付・パスで使うので、日本語の中でも半角のまま (Space で ＠ ／ ・)。
         '@' => '@',
         // # はハッシュタグ・チャンネル名 (Discord の #雑談) で使うので半角のまま (Space で ＃)。
@@ -1324,12 +1327,14 @@ public sealed class CompositionText
         return builder.ToString();
     }
 
+    internal static bool IsLiteralSymbol(char c) => c is '$' or '"' or '`' or '_';
+
     public static string ToFullWidth(string text)
     {
         var chars = text.ToCharArray();
         for (var i = 0; i < chars.Length; i++)
         {
-            if (chars[i] is >= '!' and <= '~') chars[i] = (char)(chars[i] + 0xFEE0);
+            if (chars[i] is >= '!' and <= '~' && !IsLiteralSymbol(chars[i])) chars[i] = (char)(chars[i] + 0xFEE0);
             else if (chars[i] == ' ') chars[i] = '　';
         }
         return new string(chars);

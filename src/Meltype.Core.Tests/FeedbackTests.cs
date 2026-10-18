@@ -1234,7 +1234,7 @@ internal static class RomajiTypoTests
             {
                 ("kore`git status`dekakunin", "これ`git status`でかくにん"),
                 ("`npm install`wojikkou", "`npm install`をじっこう"),
-                ("`kakko`", "｀かっこ｀"),
+                ("`kakko`", "`かっこ`"),
             })
             {
                 var k = new CompositionTests.Keyboard();

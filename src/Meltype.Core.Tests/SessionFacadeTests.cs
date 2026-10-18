@@ -28,6 +28,12 @@ internal static class SessionFacadeTests
                 '-' => VirtualKeys.OemMinus,
                 '"' or '\'' => 0xDE,
                 '#' => '3',
+                '$' => '4',
+                '&' => '6',
+                '~' => 0xDE,
+                '+' => 0xBB,
+                '`' => 0xC0,
+                '_' => 0xE2,
                 '/' => VirtualKeys.Oem2,
                 _ when char.IsAsciiLetter(c) => char.ToUpperInvariant(c),
                 _ => c,
@@ -91,9 +97,9 @@ internal static class SessionFacadeTests
     }
 
     [Test]
-    public static void MarkdownMarkers_SpaceCommitsAsciiWithoutConversion()
+    public static void SymbolMarkers_SpaceCommitsAsciiWithoutConversion()
     {
-        foreach (var marker in new[] { "#", "##", "###", "####", "#####", "######", "-", "--", "---" })
+        foreach (var marker in new[] { "#", "##", "###", "####", "#####", "######", "-", "--", "---", "~", "~~~", "+", "++", "&", "&&" })
         foreach (var live in new[] { false, true })
         foreach (var separate in new[] { false, true })
         foreach (var shift in new[] { false, true })
@@ -114,6 +120,46 @@ internal static class SessionFacadeTests
         Type(japanese, "ko-hi- ");
         Assert.Equal("こーひー", Type(japanese, "\n")[0].Commits.Single().Text,
             "単語中の長音は日本語の変換・確定に使う");
+    }
+
+    [Test]
+    public static void LiteralSymbols_StayAsciiThroughConversion()
+    {
+        foreach (var symbol in "$\"`_")
+        foreach (var live in new[] { false, true })
+        foreach (var separate in new[] { false, true })
+        foreach (var prefix in new[] { "", "kyouha" })
+        {
+            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live, SeparateKeyRoles = () => separate,
+                    AutomaticEnglishSpacing = () => true, SpaceAroundEnglish = () => true,
+                    MoreCandidates = reading => reading == symbol.ToString() ? [((char)(symbol + 0xFEE0)).ToString(), "”"] : [] },
+                () => new Settings { SigilWordsDirect = false });
+            Type(session, prefix);
+            var result = Type(session, symbol.ToString())[0];
+            var expectedPrefix = prefix.Length == 0 ? "" : symbol == '_' ? prefix : live ? "今日は" : "きょうは";
+            var text = string.Concat(result.Commits.Select(edit => edit.Text)) + result.View?.Text;
+            if (!result.Consumed) text += symbol;
+            Assert.Equal(expectedPrefix + symbol, text, $"{prefix}{symbol}");
+            if (result.Consumed)
+            {
+                for (var i = 0; i < 4; i++)
+                {
+                    var converted = session.HandleKey(VirtualKeys.Convert, null, false, false, false, false);
+                    Assert.True(converted.View?.Text.EndsWith(symbol) == true, "繰り返し変換しても記号は半角のまま");
+                    Assert.True(converted.View!.Candidates.All(c => !c.Contains((char)(symbol + 0xFEE0)) && !c.Contains('”')),
+                        "全角や曲がった引用符を候補に出さない");
+                }
+                if (prefix.Length == 0)
+                {
+                    var fullWidth = session.HandleKey(VirtualKeys.F9, null, false, false, false, false);
+                    Assert.Equal(symbol.ToString(), fullWidth.View?.Text, "全角英数の操作でも指定記号は半角のまま");
+                }
+            }
+            var committed = Type(session, "\n")[0];
+            Assert.True(!committed.Consumed || committed.Commits.Last().Text.EndsWith(symbol), "確定しても半角のまま");
+            Assert.Equal(live ? "今日は" : "きょうは", Type(session, "kyouha")[^1].View?.Text, "続けて日本語を入力できる");
+        }
     }
 
     [Test]

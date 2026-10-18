@@ -648,8 +648,8 @@ public sealed class CompositionController
                 Commit();
                 return;
             case VirtualKeys.Space when _text.Raw is { Length: > 0 } marker &&
-                (marker.All(c => c == '#') || marker.All(c => c == '-')):
-                // Markdown の見出し・箇条書きは、Shift やキー役割の設定によらず半角のまま確定する。
+                marker[0] is '#' or '-' or '~' or '+' or '&' && marker.All(c => c == marker[0]):
+                // 記号だけの入力は、Shift やキー役割の設定によらず半角と空白で確定する。
                 _correctable.Clear();
                 CommitText(marker + " ", english: false, preserveText: true);
                 return;
@@ -1326,6 +1326,7 @@ public sealed class CompositionController
             {
                 clause.Raw = _text.RawForReading(s, offset, clause.Reading.Length);
                 offset += clause.Reading.Length;
+                if (clause.Reading.All(CompositionText.IsLiteralSymbol)) continue;
                 AddOldKana(clause);
                 AddTranslations(clause);
                 AddRawCandidates(clause);
@@ -1425,10 +1426,13 @@ public sealed class CompositionController
             var start = 0;
             for (var i = 1; i <= kana.Length; i++)
             {
-                if (i < kana.Length && keep[i] == keep[start]) continue;
+                if (i < kana.Length && keep[i] == keep[start] &&
+                    CompositionText.IsLiteralSymbol(kana[i]) == CompositionText.IsLiteralSymbol(kana[start])) continue;
                 var run = kana[start..i];
+                // 常に半角にする記号は、辞書・候補展開でも置き換えない。
                 // ユーザー辞書に英字のまま登録した読み (zh → ←) はここでも引く
-                if (keep[start]) result.Add(new Clause(run, false, Distinct([.. _options.UserDictionary?.Lookup(run) ?? [], run, .. _options.Candidates?.Lookup(run) ?? [], CompositionText.ToFullWidth(run)])));
+                if (CompositionText.IsLiteralSymbol(run[0])) result.Add(new Clause(run, false, [run]) { Expanded = true });
+                else if (keep[start]) result.Add(new Clause(run, false, Distinct([.. _options.UserDictionary?.Lookup(run) ?? [], run, .. _options.Candidates?.Lookup(run) ?? [], CompositionText.ToFullWidth(run)])));
                 else result.AddRange(ConvertJapanese(run));
                 start = i;
             }
