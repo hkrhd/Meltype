@@ -253,9 +253,10 @@ public sealed class CompositionText
         for (var start = 0; start <= run.Length - 3; start++)
         {
             if (!_detector.IsKnownEnglishWord(run[start..])) continue;
-            // ローマ字として最後まで読める語 (gomen の omen = おめ + n) は、日本語を打っている (ごめんよ)。
-            // 分けるのは、ローマ字として読めない英単語 (python、kotlin、json) だけ。
-            if (_detector.Romaji.AnalyzeFragment(run[start..].ToLowerInvariant()) is { IsValid: true }) continue;
+            // ローマ字としても読める語は日本語のままにする (ごめん の途中の omen など)。
+            // ただし英語として学習した main などは、その学習を境界の判定にも使う。
+            if (_detector.Romaji.AnalyzeFragment(run[start..].ToLowerInvariant()) is { IsValid: true } &&
+                _detector.Memory?.Get(run[start..].ToLowerInvariant()) != true) continue;
             _units[^1] = new CompositionUnit("ん", last.Raw[..1]);
             _pending.Append(last.Raw[1]);
             return;

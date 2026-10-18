@@ -10,6 +10,59 @@ namespace Meltype.Tests;
 /// <summary>個人フォークで追加した入力動作の回帰テスト。</summary>
 internal static partial class CompositionTests
 {
+    [Test]
+    public static void Fork_LearnedEnglishEndingInN_KeepsTheFollowingParticle()
+    {
+        var memory = new LanguageMemory(null);
+        memory.Remember("main", true);
+        memory.Remember("no", true, explicitChoice: true);
+        memory.Remember("me", true, explicitChoice: true);
+        Detector.Memory = memory;
+        try
+        {
+            foreach (var live in new[] { false, true })
+            foreach (var convert in new[] { false, true })
+            foreach (var (input, expected) in new[]
+            {
+                ("mainno", "mainの"), ("mainde", "mainで"), ("mainwo", "mainを"),
+            })
+            {
+                var k = new Keyboard(live: live, languages: memory);
+                k.Type(input + (convert ? " " : ""));
+                Assert.Equal(expected, k.Showing, $"{input}: live={live}, convert={convert}");
+                k.Type("\n");
+                Assert.Equal(expected, k.Host.Document, "表示どおり確定する: " + input);
+            }
+            foreach (var input in new[] { "mainme", "no problem", "I have no problem" })
+            {
+                var k = new Keyboard(languages: memory);
+                k.Type(input + "\n");
+                Assert.Equal(input, k.Host.Document, "学習した英単語と英文は維持する: " + input);
+            }
+        }
+        finally
+        {
+            Detector.Memory = null;
+        }
+    }
+
+    [Test]
+    public static void Fork_DoubleN_KeepsJapaneseReadings()
+    {
+        foreach (var (input, expected) in new[]
+        {
+            ("konnnichiha", "こんにちは"), ("kannji", "かんじ"),
+            ("gomennnasai", "ごめんなさい"), ("onnna", "おんな"), ("annnai", "あんない"),
+        })
+        {
+            var k = new Keyboard();
+            k.Type(input);
+            Assert.Equal(expected, k.Showing, input);
+            k.Type("\n");
+            Assert.Equal(expected, k.Host.Document, "表示どおり確定する: " + input);
+        }
+    }
+
     private sealed class KansenConverter : IKanjiConverter
     {
         public string? Convert(string hiragana) => ConvertClauses(hiragana) is { } clauses ? string.Concat(clauses.Select(c => c.Text)) : null;
