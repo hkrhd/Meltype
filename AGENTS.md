@@ -5,7 +5,7 @@
 - 検証・ビルドのみ：`bash mac/build-cli.sh --test --build`。
 - 適用：`bash mac/update.sh`。フォーク版番号を生成し、テスト・実変換検証後にインストール・起動・入力ソース選択まで行う。
 - fork版番号と更新は [docs/FORK.md](docs/FORK.md)。
-- 辞書への
+- 辞書個別対応は最終手段とする(キリがないので.記号は辞書的な決め打ちでOK)
 
 ## upstream の取り込み
 

@@ -15,8 +15,12 @@ for live in false true; do
     printf 'motatsukukanjihaaru \tもたつく感じはある\nsukoshimotatsukukanjigasuru \t少しもたつく感じがする\n' >> "$temporary/checks.tsv"
     printf 'shijisuru \t支持する\n' >> "$temporary/checks.tsv"
     printf 'mainno\tmainの\nmainno \tmainの\nmainde\tmainで\nmainde \tmainで\nmainwo\tmainを\nmainwo \tmainを\n' >> "$temporary/checks.tsv"
+    printf 'mainnoyousuwomite \tmainの様子を見て\n' >> "$temporary/checks.tsv"
     if [[ "$live" == true ]]; then
         printf 'kankisen\t換気扇\nmotatsukukanjihaaru\tもたつく感じはある\n' >> "$temporary/checks.tsv"
+        printf 'mainnoyousuwomite\tmainの様子を見て\n' >> "$temporary/checks.tsv"
+    else
+        printf 'mainnoyousuwomite\tmainのようすをみて\n' >> "$temporary/checks.tsv"
     fi
     echo "ユーザー辞書・英単語と助詞の実変換テスト (LiveConversion=$live)"
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-inputs "$temporary/checks.tsv"

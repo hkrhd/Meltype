@@ -25,10 +25,17 @@ internal static partial class CompositionTests
             foreach (var (input, expected) in new[]
             {
                 ("mainno", "mainの"), ("mainde", "mainで"), ("mainwo", "mainを"),
+                ("mainnoyousuwomite", "mainのようすをみて"), ("mainnohenkou", "mainのへんこう"),
             })
             {
                 var k = new Keyboard(live: live, languages: memory);
-                k.Type(input + (convert ? " " : ""));
+                for (var i = 0; i < input.Length; i++)
+                {
+                    k.Type(input[i].ToString());
+                    if (input.StartsWith("mainno") && i >= "mainno".Length - 1)
+                        Assert.True(k.Showing!.StartsWith("mainの"), "日本語を続けても助詞を保つ: " + input);
+                }
+                if (convert) k.Type(" ");
                 Assert.Equal(expected, k.Showing, $"{input}: live={live}, convert={convert}");
                 k.Type("\n");
                 Assert.Equal(expected, k.Host.Document, "表示どおり確定する: " + input);
