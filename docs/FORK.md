@@ -26,6 +26,12 @@ Actions の `upstream-update` が毎時17分に upstream/main を確認し、`ma
 保った調整と検証を指示します。Actions は Codex の起動や独自ブランチへの取り込みを行いません。
 GitHub の Actions 設定では、Actions による PR 作成を有効にします。
 
+このフォークで有効な Actions は `upstream-update` のみです。`build`・`linux`・`mac`・
+`bot`・`cla`・`dotnet-update`・`notices`・`pr-checks`・`sponsors`・`winget` は
+リポジトリ設定で無効にしています。ワークフローの定義は残し、必要になった場合は
+Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Meltype` で再開できます。
+検証・ビルド・適用は上記のMac用コマンドで行います。
+
 実機へ適用するときは、変更を jj で保存してから `bash mac/update.sh` を実行します。
 
 `mac/update.sh` は Core・Swift テスト、ビルド、実エンジンのフォーク回帰テストと
@@ -46,5 +52,5 @@ Swift の既存テストには Xcode (XCTest) が必要です。単体の Comman
 アプリの数値ビルド番号には、履歴全体のコミット数を使います。
 意図的に指定するときは `MELTYPE_VERSION=... bash mac/update.sh` を使います。
 
-CI もフォークのブランチでは同じバージョンでビルドし、実エンジンの辞書回帰テストを行います。
+停止中の `mac` CI を再開する場合も、フォークのブランチでは同じバージョンでビルドし、実エンジンの辞書回帰テストを行います。
 フォーク版は upstream の自動更新ではなく、このリポジトリから更新してください。
