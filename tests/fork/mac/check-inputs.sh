@@ -12,11 +12,14 @@ for live in false true; do
     printf '{"LiveConversion":%s}\n' "$live" > "$temporary/$live/config.json"
     printf 'kankisen \t換気扇\nkan \t燗\nkanwosuru \t燗をする\nshinogakita \t紫乃が来た\n' > "$temporary/checks.tsv"
     printf 'motatsukukanjihaaru \tもたつく感じはある\nsukoshimotatsukukanjigasuru \t少しもたつく感じがする\n' >> "$temporary/checks.tsv"
+    printf 'shijisuru \t支持する\n' >> "$temporary/checks.tsv"
     if [[ "$live" == true ]]; then
         printf 'kankisen\t換気扇\nmotatsukukanjihaaru\tもたつく感じはある\n' >> "$temporary/checks.tsv"
     fi
     echo "ユーザー辞書の実変換テスト (LiveConversion=$live)"
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-inputs "$temporary/checks.tsv"
+    echo "候補の表示・選択・確定テスト (LiveConversion=$live)"
+    MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-candidates "$here/CandidateChecks.tsv"
 done
 
 echo "フォーク独自の入力チェック"

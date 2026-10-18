@@ -8,6 +8,9 @@
 - `mac/check-inputs.sh`: 一時辞書・設定を使った実エンジンの回帰テスト。
 - `mac/InputChecks.tsv`: Zenzai の変換例と記号入力の期待値。upstream の
   `mac/Resources/InputChecks.tsv` と別に実行します。
+- `mac/CandidateChecks.tsv`: 入力キー列と選択・確定する候補。`--check-candidates` が
+  Space で一覧を開き、候補の位置に依存せず選択して確定結果を確認します。
+  ライブ変換の有効・無効それぞれで、同じセッションへの再入力も検証します。
 
 通常どおり `bash mac/build-cli.sh --test --build` で Core・Swift のテストとビルドを行います。
 ビルド後は `bash tests/fork/mac/check-inputs.sh` で実エンジンのフォーク回帰テストを実行できます。

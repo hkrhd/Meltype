@@ -25,9 +25,18 @@ final class MeltypeConverter {
     // (Meltype.app の直下には置けない: 署名が通らない)。なので、辞書の場所をこちらで渡す。
     private let converter = KanaKanjiConverter(dicdataStore: DicdataStore(dictionaryURL: MeltypeConverter.resource("Dictionary")))
     private let options: ConvertRequestOptions
+    private let candidateOptions: ConvertRequestOptions
+    private let dictionaryCandidateOptions: ConvertRequestOptions
     private var expectedZenzaiStatus: String?
-    private var resultCache: [String: [Candidate]] = [:]
-    private var cacheOrder: [String] = []
+    private enum RequestPurpose: Hashable {
+        case composition, candidateList
+    }
+    private struct CacheKey: Hashable {
+        let reading: String
+        let purpose: RequestPurpose
+    }
+    private var resultCache: [CacheKey: [Candidate]] = [:]
+    private var cacheOrder: [CacheKey] = []
     private(set) var candidateRequestCount = 0
 
     /// 同梱の辞書のバンドル (Contents/Resources に入れている) の中のフォルダー。
@@ -48,7 +57,7 @@ final class MeltypeConverter {
     private init() {
         let model = (Bundle.main.resourceURL ?? Bundle.main.bundleURL)
             .appendingPathComponent("zenz-v3.1-small-Q5_K_M.gguf")
-        // 従来方式は計測時の比較用だけ。モデル不在を黙って従来変換に戻さない。
+        // 通常入力の従来変換は計測時の比較用だけ。モデル不在を黙って従来変換に戻さない。
         let classicBenchmark = CommandLine.arguments.contains("--benchmark-conversion")
             && CommandLine.arguments.contains("--classic")
         precondition(classicBenchmark || FileManager.default.isReadableFile(atPath: model.path),
@@ -79,6 +88,23 @@ final class MeltypeConverter {
             experimentalZenzaiPredictiveInput: false,
             metadata: .init(versionString: "Meltype \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown")")
         )
+        var candidateOptions = options
+        if !classicBenchmark {
+            candidateOptions.zenzaiMode = .on(
+                weight: model,
+                inferenceLimit: Self.inferenceLimit,
+                requestRichCandidates: true,
+                personalizationMode: nil,
+                versionDependentMode: .v3(.init())
+            )
+        }
+        self.candidateOptions = candidateOptions
+        // モデルの確率しきい値で省かれる同音異義語も、同じエンジンの辞書探索から併記する。
+        var dictionaryCandidateOptions = options
+        dictionaryCandidateOptions.zenzaiMode = .off
+        dictionaryCandidateOptions.N_best = 30
+        dictionaryCandidateOptions.typoCorrectionMode = .disabled
+        self.dictionaryCandidateOptions = dictionaryCandidateOptions
     }
 
     /// モデルの読み込み・Metal初期化を最初のキー入力から起動時へ移す。
@@ -88,26 +114,44 @@ final class MeltypeConverter {
     }
 
     /// ひらがな全体に対する変換結果 (入力をすべて使ったものだけ、よい順)。
-    private func results(for hiragana: String) -> [Candidate] {
-        if let cached = resultCache[hiragana] { return cached }
+    private func results(for hiragana: String, purpose: RequestPurpose = .composition) -> [Candidate] {
+        let key = CacheKey(reading: hiragana, purpose: purpose)
+        if let cached = resultCache[key] { return cached }
         var composing = ComposingText()
         composing.insertAtCursorPosition(hiragana, inputStyle: .direct)
-        let results = converter.requestCandidates(composing, options: options)
-        candidateRequestCount += 1
-        if let expectedZenzaiStatus {
-            precondition(converter.zenzStatus == expectedZenzaiStatus,
-                "Zenzai model could not be loaded: \(converter.zenzStatus)")
-        }
+        let requests = purpose == .candidateList ? [candidateOptions, dictionaryCandidateOptions] : [options]
         let count = hiragana.count
-        // 入力 (ひらがな) をすべて使った候補だけ (.direct で入れたので、入力の文字数 = ひらがなの文字数)
-        let candidates = results.mainResults.filter { $0.composingCount == .inputCount(count) || $0.composingCount == .surfaceCount(count) }
+        var candidates: [Candidate] = []
+        for request in requests {
+            let results: ConversionResult
+            if purpose == .candidateList {
+                // 各探索を独立した状態で行い、通常変換の表記による制約を持ち込まない。
+                // 辞書・モデルは共有され、通常入力の逐次変換状態も保つ。
+                let session = converter.createSession()
+                defer { converter.removeSession(session) }
+                results = try! converter.withSession(session) {
+                    converter.requestCandidates(composing, options: request)
+                }
+            } else {
+                results = converter.requestCandidates(composing, options: request)
+            }
+            candidateRequestCount += 1
+            if let expectedZenzaiStatus {
+                precondition(converter.zenzStatus == expectedZenzaiStatus,
+                    "Zenzai model could not be loaded: \(converter.zenzStatus)")
+            }
+            // 入力 (ひらがな) をすべて使った候補だけ (.direct なので入力数 = ひらがな数)。
+            candidates.append(contentsOf: results.mainResults.filter {
+                $0.composingCount == .inputCount(count) || $0.composingCount == .surfaceCount(count)
+            })
+        }
         // Keep the engine's previous lattice for incremental conversion; bound retained results.
         if count <= 256 {
             if cacheOrder.count >= 64 {
                 resultCache.removeValue(forKey: cacheOrder.removeFirst())
             }
-            resultCache[hiragana] = candidates
-            cacheOrder.append(hiragana)
+            resultCache[key] = candidates
+            cacheOrder.append(key)
         }
         return candidates
     }
@@ -136,7 +180,7 @@ final class MeltypeConverter {
     func candidates(for reading: String) -> [String] {
         var seen = Set<String>()
         var list: [String] = []
-        for candidate in results(for: reading) where seen.insert(candidate.text).inserted {
+        for candidate in results(for: reading, purpose: .candidateList) where seen.insert(candidate.text).inserted {
             list.append(candidate.text)
             if list.count >= 30 { break }
         }

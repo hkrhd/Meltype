@@ -33,7 +33,8 @@ if CommandLine.arguments.contains("--benchmark-conversion") {
     exit(0)
 }
 
-if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contains("--check-inputs") {
+if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contains("--check-inputs")
+    || CommandLine.arguments.contains("--check-candidates") {
     var failures = 0
     func check(_ name: String, _ condition: Bool) {
         print("\(condition ? "PASS" : "FAIL") \(name)")
@@ -71,6 +72,52 @@ if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contai
             if last?.consumed != true { output += String(character) }
         }
         return (output, last)
+    }
+    // TSV: ローマ字の入力キー列・選択して確定する候補。Space はここで押す。
+    // 同じセッションで繰り返し入力し、候補取得後の通常変換も検証する。
+    if let index = CommandLine.arguments.firstIndex(of: "--check-candidates") {
+        guard index + 1 < CommandLine.arguments.count else { exit(2) }
+        do {
+            let content = try String(contentsOfFile: CommandLine.arguments[index + 1], encoding: .utf8)
+            let session = NativeCore.shared.createSession()
+            MeltypeConverter.shared.warmUp()
+            var count = 0
+            for line in content.split(separator: "\n") where !line.hasPrefix("#") {
+                let parts = line.split(separator: "\t", maxSplits: 1, omittingEmptySubsequences: false)
+                guard parts.count == 2 else { continue }
+                let input = String(parts[0])
+                let expected = String(parts[1])
+                let started = DispatchTime.now().uptimeNanoseconds
+                let (typed, _) = type(input, session: session)
+                let opening = DispatchTime.now().uptimeNanoseconds
+                let (opened, result) = type(" ", session: session)
+                let listed = DispatchTime.now().uptimeNanoseconds
+                var output = typed + opened
+                let candidates = result?.view?.candidates ?? []
+                let selected = candidates.firstIndex(of: expected).flatMap {
+                    NativeCore.shared.selectCandidate(session, index: $0)
+                }
+                let committed = NativeCore.shared.commit(session)
+                for edit in (selected?.commits ?? []) + (committed?.commits ?? []) {
+                    let current = output as NSString
+                    output = current.substring(to: max(0, current.length - edit.deleteBefore)) + edit.text
+                }
+                check("\(input) → \(expected)", result?.view?.converting == true
+                    && selected?.view?.text == expected && committed?.view == nil && output == expected)
+                if output != expected || selected == nil {
+                    print("candidates: \(candidates.joined(separator: " / ")); committed: \(output)")
+                }
+                print(String(format: "inputMs=%.2f listMs=%.2f", Double(opening - started) / 1_000_000,
+                    Double(listed - opening) / 1_000_000))
+                count += 1
+            }
+            NativeCore.shared.destroySession(session)
+            print("\(count - failures)/\(count) candidate checks passed")
+            exit(count > 0 && failures == 0 ? 0 : 1)
+        } catch {
+            print("Candidate check file could not be read: \(error.localizedDescription)")
+            exit(1)
+        }
     }
     if let index = CommandLine.arguments.firstIndex(of: "--check-inputs"), index + 1 < CommandLine.arguments.count {
         do {
