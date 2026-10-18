@@ -8,7 +8,7 @@ using Meltype.Input;
 namespace Meltype.Tests;
 
 /// <summary>Mac 版・Linux 版から使う入力の本体 (MeltypeSession) のテスト。OS がキーを 1 つずつ渡し、使ったかをその場で返す。</summary>
-internal static class SessionFacadeTests
+internal static partial class SessionFacadeTests
 {
     private static MeltypeSession Create() => new(CompositionTests.Detector, new CompositionTests.FakeConverter(), new CompositionOptions(), () => new Settings());
 
@@ -94,72 +94,6 @@ internal static class SessionFacadeTests
         var session = Create();
         var results = Type(session, "google ");
         Assert.Equal("google ", results[^1].Commits.Single().Text);
-    }
-
-    [Test]
-    public static void SymbolMarkers_SpaceCommitsAsciiWithoutConversion()
-    {
-        foreach (var marker in new[] { "#", "##", "###", "####", "#####", "######", "-", "--", "---", "~", "~~~", "+", "++", "&", "&&" })
-        foreach (var live in new[] { false, true })
-        foreach (var separate in new[] { false, true })
-        foreach (var shift in new[] { false, true })
-        {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionOptions { LiveConversion = () => live, SeparateKeyRoles = () => separate,
-                    AutomaticEnglishSpacing = () => true, SpaceAroundEnglish = () => true }, () => new Settings());
-            Type(session, marker);
-            var space = session.HandleKey(VirtualKeys.Space, null, shift, false, false, false);
-            Assert.True(space.Consumed, "Space を半角空白の確定に使う");
-            Assert.Equal(marker + " ", string.Concat(space.Commits.Select(edit => edit.Text)), marker);
-            Assert.True(space.View is null, "候補を開かずに確定する");
-            Assert.Equal(live ? "今日は" : "きょうは", Type(session, "kyouha")[^1].View?.Text,
-                "続けて日本語を入力できる");
-        }
-
-        var japanese = Create();
-        Type(japanese, "ko-hi- ");
-        Assert.Equal("こーひー", Type(japanese, "\n")[0].Commits.Single().Text,
-            "単語中の長音は日本語の変換・確定に使う");
-    }
-
-    [Test]
-    public static void LiteralSymbols_StayAsciiThroughConversion()
-    {
-        foreach (var symbol in "$\"`_")
-        foreach (var live in new[] { false, true })
-        foreach (var separate in new[] { false, true })
-        foreach (var prefix in new[] { "", "kyouha" })
-        {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionOptions { LiveConversion = () => live, SeparateKeyRoles = () => separate,
-                    AutomaticEnglishSpacing = () => true, SpaceAroundEnglish = () => true,
-                    MoreCandidates = reading => reading == symbol.ToString() ? [((char)(symbol + 0xFEE0)).ToString(), "”"] : [] },
-                () => new Settings { SigilWordsDirect = false });
-            Type(session, prefix);
-            var result = Type(session, symbol.ToString())[0];
-            var expectedPrefix = prefix.Length == 0 ? "" : symbol == '_' ? prefix : live ? "今日は" : "きょうは";
-            var text = string.Concat(result.Commits.Select(edit => edit.Text)) + result.View?.Text;
-            if (!result.Consumed) text += symbol;
-            Assert.Equal(expectedPrefix + symbol, text, $"{prefix}{symbol}");
-            if (result.Consumed)
-            {
-                for (var i = 0; i < 4; i++)
-                {
-                    var converted = session.HandleKey(VirtualKeys.Convert, null, false, false, false, false);
-                    Assert.True(converted.View?.Text.EndsWith(symbol) == true, "繰り返し変換しても記号は半角のまま");
-                    Assert.True(converted.View!.Candidates.All(c => !c.Contains((char)(symbol + 0xFEE0)) && !c.Contains('”')),
-                        "全角や曲がった引用符を候補に出さない");
-                }
-                if (prefix.Length == 0)
-                {
-                    var fullWidth = session.HandleKey(VirtualKeys.F9, null, false, false, false, false);
-                    Assert.Equal(symbol.ToString(), fullWidth.View?.Text, "全角英数の操作でも指定記号は半角のまま");
-                }
-            }
-            var committed = Type(session, "\n")[0];
-            Assert.True(!committed.Consumed || committed.Commits.Last().Text.EndsWith(symbol), "確定しても半角のまま");
-            Assert.Equal(live ? "今日は" : "きょうは", Type(session, "kyouha")[^1].View?.Text, "続けて日本語を入力できる");
-        }
     }
 
     [Test]
@@ -552,28 +486,6 @@ internal static class SessionFacadeTests
         var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(), new CompositionOptions { ShowTypedKeys = () => true }, () => new Settings());
         var json = Type(session, "kyou")[^1].ToJson();
         Assert.True(json.Contains("\"typed\":\"kyou\""), json);
-    }
-
-    [Test]
-    public static void Period_DirectAndCodeInputStayAscii()
-    {
-        var direct = Create();
-        direct.Direct = true;
-        var result = Type(direct, ".", "日本語")[0];
-        Assert.True(!result.Consumed && result.Commits.Count == 0 && result.View is null, "英数直接入力はそのまま通す");
-
-        var code = Create();
-        code.CodeInput = true;
-        result = Type(code, ".", "const value = 日本語")[0];
-        Assert.True(!result.Consumed && result.Commits.Count == 0 && result.View is null, "コードのピリオドはそのまま通す");
-
-        var comment = Create();
-        comment.CodeInput = true;
-        Assert.Equal("。", Type(comment, ".", "// 日本語")[0].View?.Text, "日本語コメント内は直前の文字で判定");
-
-        var unreadable = Create();
-        Type(unreadable, "nihongo\n");
-        Assert.Equal(".", Type(unreadable, ".")[0].View?.Text, "現在位置が読めない場合は古い確定記録を使わず半角");
     }
 
     [Test]

@@ -10,6 +10,7 @@
     <RootNamespace>Meltype.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/fork/Core/**/*.cs" />
     <ProjectReference Include="..\Meltype.Core\Meltype.Core.csproj" />
     <ProjectReference Include="..\Meltype.Mac.Native\Meltype.Mac.Native.csproj" />
     <InternalsVisibleTo Include="Meltype.Tests" />

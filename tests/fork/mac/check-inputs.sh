@@ -2,7 +2,8 @@
 # ビルドした実エンジンを一時辞書・一時学習データで検証する。
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-app="${1:-$here/build/Meltype.app}"
+root="$(cd "$here/../../.." && pwd)"
+app="${1:-$root/mac/build/Meltype.app}"
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 for live in false true; do
@@ -17,3 +18,7 @@ for live in false true; do
     echo "ユーザー辞書の実変換テスト (LiveConversion=$live)"
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-inputs "$temporary/checks.tsv"
 done
+
+echo "フォーク独自の入力チェック"
+mkdir "$temporary/inputs"
+MELTYPE_DATA_DIR="$temporary/inputs" "$app/Contents/MacOS/Meltype" --check-inputs "$here/InputChecks.tsv"

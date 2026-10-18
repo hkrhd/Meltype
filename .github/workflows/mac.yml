@@ -11,6 +11,7 @@ on:
       - 'mac/**'
       - 'src/Meltype.Core/**'
       - 'src/Meltype.Core.Tests/**'
+      - 'tests/fork/**'
       - 'src/Meltype.Mac.Native/**'
       - 'dictionaries/**'
       - 'tools/test-native-boundaries.py'
@@ -80,8 +81,8 @@ jobs:
       - name: Build
         working-directory: mac
         run: ./build.sh --no-install
-      - name: User dictionary with the real converter
-        run: bash mac/test-user-dictionary.sh
+      - name: Fork input regressions with the real converter
+        run: bash tests/fork/mac/check-inputs.sh
       - name: NativeAOT and Swift boundary tests
         run: |
           python3 tools/test-native-boundaries.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib

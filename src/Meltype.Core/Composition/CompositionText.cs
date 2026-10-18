@@ -1327,7 +1327,7 @@ public sealed class CompositionText
         return builder.ToString();
     }
 
-    internal static bool IsLiteralSymbol(char c) => c is '$' or '"' or '`' or '_';
+    internal static bool IsLiteralSymbol(char c) => c is '$' or '"' or '`' or '_' or '/';
 
     public static string ToFullWidth(string text)
     {

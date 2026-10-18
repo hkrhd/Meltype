@@ -270,7 +270,7 @@ public sealed class Settings
     public bool CorrectTypos { get; set; } = true;
 
     [Category("1. 全般"), DisplayName("/ キーで中黒「・」"),
-     Description("かなのすぐ後ろで打った / を中黒「・」にします (いーろん/ますく → イーロン・マスク)。英字・数字の後ろ (and/or、3/4、URL) と、打ち始めの / (/help) は / のままです。OFF のときも、z/ または / を打って Space で「・」にできます。")]
+     Description("かなのすぐ後ろで打った / を中黒「・」にします (いーろん/ますく → イーロン・マスク)。英字・数字の後ろ (and/or、3/4、URL) と、打ち始めの / (/help) は / のままです。OFF のときは / を変換せず半角のまま入力します。中黒は z/ でも入力できます。")]
     public bool SlashAsMiddleDot { get; set; }
 
     [Category("1. 全般"), DisplayName("入力モードをカーソルの近くに表示"),
