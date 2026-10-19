@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 concurrency:
@@ -15,28 +15,47 @@ concurrency:
 
 jobs:
   update:
-    if: github.repository == 'hkrhd/Meltype'
+    if: github.repository == 'hkrhd/Meltype' && github.ref == 'refs/heads/fork_by_hkrhd'
+    environment: upstream-sync
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: upstream の main を追従し、取り込み依頼の PR を作成
+      - name: 同期用の SSH キーを確認
+        env:
+          SYNC_SSH_KEY: ${{ secrets.UPSTREAM_SYNC_SSH_KEY }}
+        run: |
+          if [[ -z "$SYNC_SSH_KEY" ]]; then
+            echo '::error::upstream-sync Environment に書き込み用 deploy key の UPSTREAM_SYNC_SSH_KEY を設定してください。'
+            exit 1
+          fi
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: main
+          fetch-depth: 0
+          ssh-key: ${{ secrets.UPSTREAM_SYNC_SSH_KEY }}
+          path: upstream-sync
+
+      - name: upstream の main を追従
+        working-directory: upstream-sync
+        run: |
+          set -euo pipefail
+
+          # upstream のコードは実行せず、取得したコミットを main に転送する。
+          git fetch --no-tags https://github.com/yksr-melt/Meltype.git refs/heads/main:refs/remotes/upstream/main
+          if ! git merge-base --is-ancestor HEAD refs/remotes/upstream/main; then
+            echo '::error::main が upstream/main から分岐しています。確認してください。'
+            exit 1
+          fi
+          # force は使わず、他の更新と競合した場合も上書きしない。
+          git push git@github.com:hkrhd/Meltype.git refs/remotes/upstream/main:refs/heads/main
+
+      - name: 取り込み依頼の PR を作成
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-
-          status=$(gh api "repos/$REPO/compare/main...yksr-melt:main" --jq .status)
-          case "$status" in
-            identical) ;;
-            ahead)
-              gh api --method POST "repos/$REPO/merge-upstream" -f branch=main
-              ;;
-            *)
-              echo '::error::main が upstream/main から分岐しています。確認してください。'
-              exit 1
-              ;;
-          esac
 
           ahead=$(gh api "repos/$REPO/compare/fork_by_hkrhd...main" --jq .ahead_by)
           if [[ "$ahead" == 0 ]]; then

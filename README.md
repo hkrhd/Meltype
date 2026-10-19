@@ -25,5 +25,6 @@
 - Mac の候補一覧では通常入力と別の変換状態でモデル評価・辞書探索の候補を併記し、「しじする → 指示する・支持する・師事する」などの同音異義語を選べるよう改善。
 - フォーク独自の追加テストは [tests/fork](tests/fork/) と Swift 用の `mac/Tests/ForkMacTests` に置き、upstream のテストと区別。
 - GitHub Actions は `upstream-update` と `zenzai-update` で12時間ごとに更新を確認し、取り込み・モデル更新依頼の Draft PR を作成。upstream 由来のビルド・配布・bot用Actionsは停止し、検証・適用はローカルMacで行う（[運用手順](docs/FORK.md)）。
+- upstream のワークフロー定義も同期できるよう、`main` の追従には専用 SSH デプロイキーを使用。キーは `fork_by_hkrhd` だけが使える Environment に保存し、分岐した履歴は上書きしない。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。

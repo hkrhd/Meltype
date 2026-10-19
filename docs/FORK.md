@@ -26,6 +26,18 @@ Actions の `upstream-update` が12時間ごと（日本時間 9:17・21:17）�
 保った調整と検証を指示します。Actions は Codex の起動や独自ブランチへの取り込みを行いません。
 GitHub の Actions 設定では、Actions による PR 作成を有効にします。
 
+`main` の同期は、このリポジトリ専用の書き込み用 SSH デプロイキーで行います。
+公開鍵を Settings → Deploy keys に書き込み許可付きで登録します。
+Settings → Environments に `upstream-sync` を作り、Deployment branches and tags を
+Selected branches and tags にして、Branch の `fork_by_hkrhd` だけを許可します。
+秘密鍵はその Environment の `UPSTREAM_SYNC_SSH_KEY` シークレットに登録します。
+リポジトリ全体のシークレットには置かず、同期対象の `main` からキーを使えないようにします。
+標準の `GITHUB_TOKEN` では upstream の `.github/workflows/` の変更を同期できないためです。
+キーが未設定の場合はエラーで停止します。upstream のコードは実行せず、`main` が
+upstream/main の祖先であることを確認して、force なしの push で追従します。
+PR 作成には引き続き `GITHUB_TOKEN` を使います。キーを廃止・交換する際は
+Deploy keys と Environment シークレットの両方を削除・更新してください。
+
 `zenzai-update` も同じ12時間間隔で、Hugging Face の `Miwa-Keita` 配下の
 `zenz-v<数値版>-small-gguf` を確認します。最新系列の `ggml-model-Q5_K_M.gguf` と
 使用中の固定モデルを比べ、新系列または重みの SHA-256 が変わった場合に、候補ごとの
