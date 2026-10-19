@@ -17,7 +17,7 @@ Meltype のソースコード (このリポジトリ) には、他者の著作�
 | 部品 | ライセンス | 使い方 |
 | --- | --- | --- |
 | [AzooKeyKanaKanjiConverter](https://github.com/azooKey/AzooKeyKanaKanjiConverter) (azooKey の変換エンジンと辞書) | MIT License | Swift Package として取り込み、Meltype.app に組み込む (漢字変換)。Meltype.app を配布するときは、azooKey のライセンス表示も同梱する |
-| [zenz-v3.1-small-gguf](https://huggingface.co/Miwa-Keita/zenz-v3.1-small-gguf) (Miwa-Keita、Q5_K_M モデル) | CC BY-SA 4.0 | 固定リビジョンのモデルを変更せず同梱。帰属・取得元・ライセンスは `Contents/Resources/Zenzai-NOTICE.txt` |
+| [zenz-v3.2-small-gguf](https://huggingface.co/Miwa-Keita/zenz-v3.2-small-gguf) (Miwa-Keita、Q5_K_M モデル) | Apache License 2.0 | 固定リビジョンのモデルを変更せず同梱。帰属・取得元は `Contents/Resources/Zenzai-NOTICE.txt`、ライセンス全文は `Zenzai-LICENSE.txt` |
 | [llama.cpp](https://github.com/azooKey/llama.cpp) | MIT License | azooKey 経由で取得し、Metal による Zenzai 推論に利用 |
 | .NET ランタイム (NativeAOT) | MIT License | libMeltypeNative.dylib に組み込まれる |
 | [swift-collections](https://github.com/apple/swift-collections)・[swift-algorithms](https://github.com/apple/swift-algorithms)・[swift-numerics](https://github.com/apple/swift-numerics) (Apple) | Apache License 2.0 | AzooKeyKanaKanjiConverter が使う部品として、一緒に Meltype.app に組み込まれる (`mac/Package.resolved` で版を固定) |

@@ -97,8 +97,9 @@ if [[ -n "${MELTYPE_BUILD_NUMBER:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $MELTYPE_BUILD_NUMBER" "$APP/Contents/Info.plist"
 fi
 cp Resources/icon.tiff "$APP/Contents/Resources/icon.tiff"
-cp "$MODEL" "$APP/Contents/Resources/zenz-v3.1-small-Q5_K_M.gguf"
+cp "$MODEL" "$APP/Contents/Resources/zenz-v3.2-small-Q5_K_M.gguf"
 cp Resources/Zenzai-NOTICE.txt "$APP/Contents/Resources/Zenzai-NOTICE.txt"
+cp Resources/Zenzai-LICENSE.txt "$APP/Contents/Resources/Zenzai-LICENSE.txt"
 cp "$(dirname "$LLAMA_METAL")/llama-LICENSE.txt" "$APP/Contents/Resources/llama-LICENSE.txt"
 cp .build/checkouts/AzooKeyKanaKanjiConverter/LICENSE "$APP/Contents/Resources/azooKey-LICENSE.txt"
 # システム設定の入力ソースの一覧に出す名前

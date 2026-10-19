@@ -54,7 +54,7 @@ enum ConversionBenchmark {
     static func run() {
         let keyEvents = CommandLine.arguments.contains("--key-events")
         let classic = CommandLine.arguments.contains("--classic")
-        var report: [String: Any] = ["engine": classic ? "classic" : "zenz-v3.1-small-Q5_K_M-metal",
+        var report: [String: Any] = ["engine": classic ? "classic" : "zenz-v3.2-small-Q5_K_M-metal",
             "pipeline": keyEvents ? "native-key-events" : "kana-converter",
             "inferenceLimit": classic ? 0 : MeltypeConverter.inferenceLimit, "memoryBefore": memory(), "rounds": 5,
             "cache": "production caches enabled; corpus exceeds 64 readings; no artificial sleeps"]

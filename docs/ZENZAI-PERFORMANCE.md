@@ -4,7 +4,7 @@
 
 - 変換ライブラリは `d59a28e4c7ca049aef04f29a91eae9677a7753f2` のまま、`Zenzai` trait を有効化。`ZenzaiCPU` は使用しない。
 - llama.cpp b4846 は配布バイナリでBF16カーネル初期化が失敗したため、同じ公開ABIのソースから `GGML_METAL=ON`・`GGML_METAL_USE_BF16=OFF` で再ビルドする。Q5_K_MモデルとF16 KV cacheを使用し、Metalを維持する。ソースのリビジョンとSHA-256は `mac/build-llama-metal.sh` で固定。ビルドにはCMakeも必要。Macの最低バージョンはランタイムに合わせ13.3。
-- 公式 azooKey-Desktop が採用する `zenz-v3.1-small-gguf` の Q5_K_M（73,871,968 bytes）を利用。xsmall は使用しない。
+- `zenz-v3.2-small-gguf` の Q5_K_M（73,871,936 bytes）を利用。xsmall は使用しない。
 - モデルの取得リビジョンと SHA-256 は `mac/fetch-zenzai-model.sh` で固定。重みは `mac/.build/models/` とアプリ内にだけ置き、リポジトリには含めない。
 - `inferenceLimit: 2`、`requestRichCandidates: false`。1回では `でむこうかした → で向こう化した` が残ったため、最低限の品質を優先して上限2回とする。予測入力・個人最適化は有効にしない。
 - 既存の64件までの変換結果キャッシュと、エンジンの増分計算・メモ化・KVキャッシュを利用。モデルはプロセス内で共有・mmap読み込み。
@@ -35,7 +35,7 @@ bash mac/benchmark-conversion.sh
 - GUIのイベントループと同様に、キーごとの `autoreleasepool` で一時オブジェクトを解放し、解放時間もキー遅延に含める。
 - IMKの描画・OSのイベント配送時間は含まない。モデル読み込みは新規プロセスで測るが、OSのファイルキャッシュは消さない。
 
-## 実測
+## v3.1 の実測（2026-10-17）
 
 計測環境: Apple M2 Pro（10コア）、16 GB、macOS 27.2、Releaseビルド。
 

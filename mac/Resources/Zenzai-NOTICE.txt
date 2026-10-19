@@ -1,11 +1,11 @@
-Zenzai model: zenz-v3.1-small-gguf / ggml-model-Q5_K_M.gguf
+Zenzai model: zenz-v3.2-small-gguf / ggml-model-Q5_K_M.gguf
 Author / publisher: Miwa-Keita
-Source: https://huggingface.co/Miwa-Keita/zenz-v3.1-small-gguf
-Revision: ddf6e44b2e05ab7ea9a3e31559c5e7948761365c
-SHA-256: 4de930c06bef8c263aa1aa40684af206db4ce1b96375b3b8ed0ea508e0b14f6c
-License: Creative Commons Attribution-ShareAlike 4.0 International
-https://creativecommons.org/licenses/by-sa/4.0/
-License declaration: https://huggingface.co/Miwa-Keita/zenz-v3.1-small-gguf/blob/ddf6e44b2e05ab7ea9a3e31559c5e7948761365c/README.md
+Source: https://huggingface.co/Miwa-Keita/zenz-v3.2-small-gguf
+Revision: c67e03e07d215c869f591b274c1631170d3e11fe
+SHA-256: 29c223d4c23327b80fd13ebb5ab2555057a46317997d5da391584ffbef0db673
+License: Apache License 2.0 (see Zenzai-LICENSE.txt)
+https://www.apache.org/licenses/LICENSE-2.0
+License declaration: https://huggingface.co/Miwa-Keita/zenz-v3.2-small-gguf/blob/c67e03e07d215c869f591b274c1631170d3e11fe/README.md
 The downloaded model is included without changes.
 
 Inference uses azooKey/AzooKeyKanaKanjiConverter (MIT) and

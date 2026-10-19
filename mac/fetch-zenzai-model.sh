@@ -3,9 +3,9 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 directory="$here/.build/models"
-model="$directory/zenz-v3.1-small-Q5_K_M.gguf"
-checksum=4de930c06bef8c263aa1aa40684af206db4ce1b96375b3b8ed0ea508e0b14f6c
-url=https://huggingface.co/Miwa-Keita/zenz-v3.1-small-gguf/resolve/ddf6e44b2e05ab7ea9a3e31559c5e7948761365c/ggml-model-Q5_K_M.gguf
+model="$directory/zenz-v3.2-small-Q5_K_M.gguf"
+checksum=29c223d4c23327b80fd13ebb5ab2555057a46317997d5da391584ffbef0db673
+url=https://huggingface.co/Miwa-Keita/zenz-v3.2-small-gguf/resolve/c67e03e07d215c869f591b274c1631170d3e11fe/ggml-model-Q5_K_M.gguf
 valid() { [[ -f "$1" && "$(shasum -a 256 "$1" | cut -d ' ' -f 1)" == "$checksum" ]]; }
 if ! valid "$model"; then
     mkdir -p "$directory"
