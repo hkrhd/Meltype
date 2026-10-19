@@ -17,6 +17,9 @@ bash mac/build-cli.sh --test --build
 ```
 
 GitHub のデフォルトブランチは `fork_by_hkrhd` です。
+GitHub のブランチ保護で `fork_by_hkrhd` への強制プッシュとブランチ削除を禁止し、
+管理者にも適用しています。通常の push は可能です。必須ステータスチェックや
+PR レビューの必須化は設定せず、検証は上記のローカルコマンドで行います。
 Actions の `upstream-update` が12時間ごと（日本時間 9:17・21:17）に upstream/main を確認し、`main` を更新します。
 `main` が upstream から分岐している場合は停止します。未取り込みの更新があれば
 `main` → `fork_by_hkrhd` の Draft PR を1件作成し、開いている同じ PR があれば再利用します。

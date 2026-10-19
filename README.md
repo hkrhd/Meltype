@@ -26,5 +26,6 @@
 - フォーク独自の追加テストは [tests/fork](tests/fork/) と Swift 用の `mac/Tests/ForkMacTests` に置き、upstream のテストと区別。
 - GitHub Actions は `upstream-update` と `zenzai-update` で12時間ごとに更新を確認し、取り込み・モデル更新依頼の Draft PR を作成。upstream 由来のビルド・配布・bot用Actionsは停止し、検証・適用はローカルMacで行う（[運用手順](docs/FORK.md)）。
 - upstream のワークフロー定義も同期できるよう、`main` の追従には専用 SSH デプロイキーを使用。キーは `fork_by_hkrhd` だけが使える Environment に保存し、分岐した履歴は上書きしない。
+- `fork_by_hkrhd` は GitHub のブランチ保護で強制プッシュ・削除を禁止し、管理者にも適用。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。
