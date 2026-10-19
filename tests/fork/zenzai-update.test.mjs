@@ -94,7 +94,9 @@ test('新系列の small / Q5_K_M を Draft PR で通知し、変更は候補文
   for (const value of [NewChecksum, api.metadata.sha, 'apache-2.0', 'bash mac/update.sh', '実機へインストールして動作確認']) {
     assert.ok(pr.body.includes(value));
   }
+  assert.match(pr.body, /推論上限1回と2回の精度を比較し、低下がなければ1回に減ら/);
   assert.equal(api.report.path, 'docs/ZENZAI-UPDATE.md');
+  assert.equal(api.report.content, pr.body);
   assert.ok(api.report.content.includes(NewChecksum));
   assert.ok(!api.writes.some(write => write.pathname.includes('fetch-zenzai-model.sh')));
 });

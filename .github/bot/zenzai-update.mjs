@@ -29,7 +29,8 @@ function report(current, candidate) {
 - [ライセンス・モデルカード](${source}/blob/${candidate.revision}/README.md): \`${candidate.license}\`
 
 ライセンスとエンジン・Metal との互換性を確認して更新してください。
-フォークの変換挙動と評価上限2回を保ち、\`bash mac/update.sh\` で実機へインストールして動作確認し、変換品質・性能の結果を報告してください。
+フォークの変換挙動を保ち、推論上限1回と2回の精度を比較し、低下がなければ1回に減らしてください。
+\`bash mac/update.sh\` で実機へインストールして動作確認し、変換品質・性能の結果を報告してください。
 `;
 }
 
