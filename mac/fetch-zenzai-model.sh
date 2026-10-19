@@ -15,4 +15,9 @@ if ! valid "$model"; then
     valid "$temporary" || { echo 'Zenzai model checksum mismatch' >&2; exit 1; }
     mv "$temporary" "$model"
 fi
+# 検証済みの現行モデルだけを残す。取得失敗時には旧モデルを消さない。
+for cached in "$directory"/zenz-*.gguf; do
+    [[ -e "$cached" && "$cached" != "$model" ]] || continue
+    rm -f "$cached"
+done
 printf '%s\n' "$model"

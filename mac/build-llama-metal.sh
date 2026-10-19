@@ -36,4 +36,9 @@ xcrun --sdk macosx clang++ -dynamiclib -arch "$architecture" \
     -Wl,-force_load,"$build/combined.a" -framework Foundation -framework Metal -framework Accelerate \
     -install_name '@rpath/llama.framework/Versions/Current/llama' -o "$build/llama" >&2
 cp "$source/LICENSE" "$build/llama-LICENSE.txt"
+# 成功した現行構成のソースと増分ビルドを残し、旧版・別CPU向けを整理する。
+for cached in "$directory"/source-* "$directory"/b*-no-bf16-*; do
+    [[ -d "$cached" && "$cached" != "$source" && "$cached" != "$build" ]] || continue
+    rm -rf "$cached"
+done
 printf '%s\n' "$build/llama"

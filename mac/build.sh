@@ -120,6 +120,9 @@ else
     codesign --force --deep --sign - "$APP"
 fi
 echo "作成しました: $APP"
+# 配置・署名まで成功すれば publish の作業用コピーと dSYM は不要。
+# 増分ビルドに使う src/*/obj と .build は保持する。
+rm -rf "$BUILD/native"
 
 if [[ $INSTALL -eq 1 ]]; then
     TARGET="$HOME/Library/Input Methods"
