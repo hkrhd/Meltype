@@ -159,12 +159,14 @@ final class DictionarySyncTests: XCTestCase {
         var reloads = 0
         let reloaded = expectation(description: "スリープ時の再読込")
         reloaded.assertForOverFulfill = true
-        let sync = synchronizer {
-            DispatchQueue.main.async {
-                reloads += 1
-                reloaded.fulfill()
-            }
+        let observer = NotificationCenter.default.addObserver(
+            forName: Notification.Name("MeltypeUserDictionaryChanged"), object: nil, queue: .main
+        ) { _ in
+            reloads += 1
+            reloaded.fulfill()
         }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let sync = MacUserDictionarySync(directory: directory.path, database: database)
         sync.start()
         waitForWords([])
         try replace("('ちょくぜん', 'スリープ直前の変更', 0)")

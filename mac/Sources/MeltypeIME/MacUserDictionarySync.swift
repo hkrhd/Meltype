@@ -84,9 +84,8 @@ final class MacUserDictionarySync {
     init(directory: String, database: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/KeyboardServices/TextReplacements.db"),
         reload: @escaping () -> Void = {
-            DistributedNotificationCenter.default().postNotificationName(
-                Notification.Name("MeltypeUserDictionaryChanged"), object: nil,
-                userInfo: nil, deliverImmediately: true)
+            NotificationCenter.default.post(
+                name: Notification.Name("MeltypeUserDictionaryChanged"), object: nil)
         }) {
         self.database = database
         self.reload = reload

@@ -54,7 +54,7 @@ PR の変更は `docs/ZENZAI-UPDATE.md` の更新候補の記録だけです。�
 公開 API に対する検知と重複確認を、PR やブランチを作成せずに試せます。
 
 このフォークで利用する Actions は `upstream-update` と `zenzai-update` です。`build`・`linux`・`mac`・
-`bot`・`cla`・`dotnet-update`・`notices`・`pr-checks`・`sponsors`・`winget` は
+`bot`・`cla`・`dotnet-update`・`notices`・`pr-checks`・`sponsors`・`web`・`winget` は
 リポジトリ設定で無効にしています。ワークフローの定義は残し、必要になった場合は
 Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Meltype` で再開できます。
 検証・ビルド・適用は上記のMac用コマンドで行います。
