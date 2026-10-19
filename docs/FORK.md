@@ -24,7 +24,8 @@ GitHub のデフォルトブランチは `fork_by_hkrhd` です。
 GitHub のブランチ保護で `fork_by_hkrhd` への強制プッシュとブランチ削除を禁止し、
 管理者にも適用しています。通常の push は可能です。必須ステータスチェックや
 PR レビューの必須化は設定せず、検証は上記のローカルコマンドで行います。
-Actions の `upstream-update` が12時間ごと（日本時間 9:17・21:17）に upstream/main を確認し、`main` を更新します。
+Actions の `upstream-update` が2日に1回（日本時間 21:17）に upstream/main を確認し、`main` を更新します。
+cron では2日間隔を表せないため、毎日 21:17 に起動して、UTC の通算日が偶数の日だけ同期します（手動実行は常に動きます）。
 `main` が upstream から分岐している場合は停止します。未取り込みの更新があれば
 `main` → `fork_by_hkrhd` の Draft PR を1件作成し、開いている同じ PR があれば再利用します。
 専用ブランチは作りません。Actions 画面から手動実行もできます。
