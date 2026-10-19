@@ -11,6 +11,10 @@ on:
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
       - 'packaging/**'
+      - 'Casks/**'
+      - 'docs/**'
+      - '.github/workflows/mac.yml'
+      - '.github/workflows/linux.yml'
       - '.github/workflows/build.yml'
   pull_request:
     paths:
@@ -22,6 +26,10 @@ on:
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
       - 'packaging/**'
+      - 'Casks/**'
+      - 'docs/**'
+      - '.github/workflows/mac.yml'
+      - '.github/workflows/linux.yml'
       - '.github/workflows/build.yml'
   workflow_dispatch:
 

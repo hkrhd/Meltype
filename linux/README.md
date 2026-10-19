@@ -68,7 +68,27 @@ ARM64:
 sudo apt install ./meltype_<version>_arm64.deb
 ```
 
-`.deb` は IBus と fcitx5 の両方に入れます (IBus の部品は「おすすめ」なので、ふつうは一緒に入ります)。新しい版は、新しい `.deb` を同じように入れると更新されます。
+`.deb` は IBus と fcitx5 の両方に入れます (IBus の部品は「おすすめ」なので、ふつうは一緒に入ります)。
+
+apt リポジトリから入れると、以後 `sudo apt update && sudo apt upgrade` で更新できます。初回だけ、公開鍵とリポジトリを登録します。
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://yksr-melt.github.io/Meltype/apt/meltype-archive-key.asc | sudo tee /etc/apt/keyrings/meltype-archive-key.asc >/dev/null
+sudo chmod 0644 /etc/apt/keyrings/meltype-archive-key.asc
+sudo tee /etc/apt/sources.list.d/meltype.sources >/dev/null <<'EOF'
+Types: deb
+URIs: https://yksr-melt.github.io/Meltype/apt
+Suites: stable
+Components: main
+Architectures: amd64 arm64
+Signed-By: /etc/apt/keyrings/meltype-archive-key.asc
+EOF
+sudo apt update
+sudo apt install meltype
+```
+
+apt リポジトリがまだ公開されていない場合は、上の Releases から `.deb` を入れる方法を使ってください.
 
 <a name="ibus-のとき"></a>
 <img src="../docs/images/headings/linux/s01.svg" alt="IBus のとき" height="40">

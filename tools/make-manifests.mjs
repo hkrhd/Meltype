@@ -112,7 +112,7 @@ ManifestVersion: 1.6.0
 `);
 }
 
-// --- Homebrew (自分の tap yksr-melt/homebrew-tap に置く想定) ---
+// --- Homebrew Cask (このリポジトリを URL 指定の tap として使う) ---
 // input_method で ~/Library/Input Methods/Meltype.app に入れ、postflight で mac/install.sh と同じこと
 // (隔離属性を外す・入力ソースに登録・LaunchServices に登録・GUI のセッションで起動) をする。
 // start-input-method.sh は zip の中 (Meltype-mac/) のものを使う (Homebrew は Meltype.app だけを動かし、ほかは staged_path に残す)。

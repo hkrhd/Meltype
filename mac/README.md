@@ -58,6 +58,15 @@ Meltype はアプリではなく「入力ソース」(日本語入力) です。
 
 起動エラーが出たときは、入力メニューから ABC または標準の日本語入力を選んでください。初回に入力ソースが見つからないときだけ、ログアウト・ログインしてから入力メニューを確かめてください。
 
+以下の Homebrew 手順は upstream 版向けです。このフォーク版の更新は `bash mac/update.sh` を使ってください（[運用手順](../docs/FORK.md)）。
+
+Homebrew から入れる場合は、最初に tap を追加してからインストールします。以後は `brew upgrade --cask meltype` で更新できます。
+
+```bash
+brew tap yksr-melt/Meltype https://github.com/yksr-melt/Meltype.git
+brew install --cask yksr-melt/Meltype/meltype
+```
+
 <a name="ソースからビルドする"></a>
 <img src="../docs/images/headings/mac/s01.svg" alt="ソースからビルドする" height="40">
 

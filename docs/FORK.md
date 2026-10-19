@@ -10,6 +10,10 @@ upstream の更新は Codex に取り込みを依頼します。Codex は upstre
 テキスト上の競合がなくても意味上の衝突があるため、機械的な merge/rebase だけで
 完了としません。既存の作業中の変更は保持します。
 
+取り込みは `fork_by_hkrhd` と `main` を親に持つマージコミットとして記録します。
+squash や rebase で取り込み元の履歴を平坦化せず、Git の履歴から両方の親を追えるようにします。
+`jj new fork_by_hkrhd main` で統合し、調整・検証後に `fork_by_hkrhd` を進めます。
+
 取り込み後は次のコマンドで検証します。
 
 ```sh
@@ -59,6 +63,9 @@ PR の変更は `docs/ZENZAI-UPDATE.md` の更新候補の記録だけです。�
 リポジトリ設定で無効にしています。ワークフローの定義は残し、必要になった場合は
 Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Meltype` で再開できます。
 検証・ビルド・適用は上記のMac用コマンドで行います。
+
+取り込んだ `Casks/meltype.rb` と apt 配布手順は upstream 版向けです。
+このフォークの独自変更を使う場合は Homebrew・apt ではなく `bash mac/update.sh` で更新します。
 
 実機へ適用するときは、変更を jj で保存してから `bash mac/update.sh` を実行します。
 
