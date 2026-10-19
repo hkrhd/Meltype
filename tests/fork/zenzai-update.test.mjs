@@ -90,9 +90,8 @@ test('新系列の small / Q5_K_M を Draft PR で通知し、変更は候補文
   assert.equal(pr.base, 'fork_by_hkrhd');
   assert.equal(pr.draft, true);
   assert.match(pr.title, /v3\.2/);
-  assert.match(pr.body, /現在使用しているモデル[\s\S]*v3\.1/);
-  assert.match(pr.body, /更新候補[\s\S]*v3\.2/);
-  for (const value of [NewChecksum, api.metadata.sha, '73871936', 'apache-2.0', 'bash mac/build-cli.sh --test --build']) {
+  assert.match(pr.body, /v3\.1[\s\S]*→[\s\S]*v3\.2/);
+  for (const value of [NewChecksum, api.metadata.sha, 'apache-2.0', 'bash mac/update.sh', '実機へインストールして動作確認']) {
     assert.ok(pr.body.includes(value));
   }
   assert.equal(api.report.path, 'docs/ZENZAI-UPDATE.md');
@@ -170,7 +169,7 @@ test('dry-run は候補と文書を確認するだけで書き込まない', asy
   const result = await api.run({ dryRun: true, token: undefined });
   assert.equal(result.status, 'dry-run');
   assert.equal(result.candidate.id, New);
-  assert.match(result.content, /ライセンス: `apache-2\.0`/);
+  assert.ok(result.content.includes('`apache-2.0`'));
   assert.equal(api.writes.length, 0);
 });
 

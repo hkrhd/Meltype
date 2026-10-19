@@ -20,38 +20,16 @@ function compareVersions(a, b) {
 
 function report(current, candidate) {
   const source = `https://huggingface.co/${candidate.id}`;
-  return `# Zenzai モデルの更新候補
+  return `# Zenzai small / Q5_K_M の更新
 
-## 現在使用しているモデル
+[v${current.version}](https://huggingface.co/${current.id}/tree/${current.revision}) → [v${candidate.version}](${source}/tree/${candidate.revision})
 
-- 配布先: https://huggingface.co/${current.id}
-- バージョン: v${current.version} small / Q5_K_M
-- リビジョン: \`${current.revision}\`
-- SHA-256: \`${current.checksum}\`
-
-## 更新候補
-
-- 配布先: ${source}
-- バージョン: v${candidate.version} small / Q5_K_M
-- ファイル: \`${ModelFile}\`
-- リビジョン: \`${candidate.revision}\`
+- [モデル取得先](${source}/resolve/${candidate.revision}/${ModelFile})
 - SHA-256: \`${candidate.checksum}\`
-- サイズ: ${candidate.size} bytes
-- ライセンス: \`${candidate.license}\`
-- 固定取得 URL: ${source}/resolve/${candidate.revision}/${ModelFile}
-- モデルカード・ライセンス確認先: ${source}/blob/${candidate.revision}/README.md
+- [ライセンス・モデルカード](${source}/blob/${candidate.revision}/README.md): \`${candidate.license}\`
 
-## 確認・適用
-
-ユーザーがこの PR を確認した後、Codex に更新を依頼してください。
-この PR は更新候補の記録だけを追加します。実際のモデル設定は変更していません。
-
-- モデルカードと変更内容を読み、ライセンスおよび固定中の変換エンジン・Metal ランタイムとの互換性を確認する。
-- フォーク独自の変換挙動・small / Q5_K_M・ニューラル評価上限2回を保つ。
-- 必要に応じてモデル取得先・SHA-256、同梱リソース名、変換器の世代設定、ライセンス表記、関連文書を整合させる。
-- \`bash mac/build-cli.sh --test --build\` と \`bash tests/fork/mac/check-inputs.sh\` で検証し、変換品質・性能と結果を報告する。
-
-自動マージや実機へのインストールは行いません。
+ライセンスとエンジン・Metal との互換性を確認して更新してください。
+フォークの変換挙動と評価上限2回を保ち、\`bash mac/update.sh\` で実機へインストールして動作確認し、変換品質・性能の結果を報告してください。
 `;
 }
 
@@ -175,7 +153,7 @@ export async function run({
   const pr = await (await request(`${github}/pulls`, {
     method: 'POST', body: {
       title, base: Base, head: branch, draft: true,
-      body: `${content}\nzenzai-update が12時間ごとに確認し、この更新依頼を作成しました。\n`,
+      body: content,
     },
   })).json();
   console.log(`更新依頼の Draft PR を作成しました: ${pr.html_url}`);

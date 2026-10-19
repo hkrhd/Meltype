@@ -24,7 +24,7 @@ jobs:
           ref: fork_by_hkrhd
           sparse-checkout: .github/bot
           persist-credentials: false
-      - name: Zenzai small の新版を確認し、更新依頼の Draft PR を作成
+      - name: Zenzai 更新確認
         run: node .github/bot/zenzai-update.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
