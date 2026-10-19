@@ -70,10 +70,8 @@ jobs:
           fi
 
           cat > "$RUNNER_TEMP/upstream-pr.md" <<'BODY'
-          main の更新内容と意図を確認し、AGENTS.md・README.md にあるフォーク独自の挙動・方針を保って fork_by_hkrhd に取り込んでください。
-          競合の有無だけで判断せず、必要な調整後に `bash mac/build-cli.sh --test --build` で検証し、変更点と検証結果を報告してください。
-
-          ユーザーがこの PR を確認して Codex に依頼します。
+          main の差分と意図を確認し、フォーク独自の挙動・方針を保ってください。
+          fork_by_hkrhd と main を親に持つマージコミットを作り、必要な調整後に `bash mac/build-cli.sh --test --build` で検証してください。
           BODY
           gh pr create --repo "$REPO" --base fork_by_hkrhd --head main --draft \
-            --title 'upstream/main の更新を取り込む' --body-file "$RUNNER_TEMP/upstream-pr.md"
+            --title 'main の更新を取り込む' --body-file "$RUNNER_TEMP/upstream-pr.md"
