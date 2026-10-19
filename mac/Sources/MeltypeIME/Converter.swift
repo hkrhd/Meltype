@@ -57,6 +57,8 @@ final class MeltypeConverter {
     private init() {
         let model = (Bundle.main.resourceURL ?? Bundle.main.bundleURL)
             .appendingPathComponent("zenz-v3.2-small-Q5_K_M.gguf")
+            // エンジンに渡すパスが相対にならないよう、Bundle の基底URLも解決する。
+            .absoluteURL
         // 通常入力の従来変換は計測時の比較用だけ。モデル不在を黙って従来変換に戻さない。
         let classicBenchmark = CommandLine.arguments.contains("--benchmark-conversion")
             && CommandLine.arguments.contains("--classic")
