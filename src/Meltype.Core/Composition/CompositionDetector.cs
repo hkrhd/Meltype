@@ -748,10 +748,11 @@ public sealed partial class CompositionDetector
         if (readableEnglish) return true;
         // ユーザーが英字 / かなに直して覚えた語。ただし短くてローマ字として読める語 (go、no) は、日本語のすぐ後ろ
         // (nihon|go) では使わない (一度 go を英字で確定しただけで、日本語 が にほんgo になっていた)。
-        // 英単語に直結した 2 文字の助詞も、後ろに英語の根拠がなければ通常の助詞判定を使う。
+        // 英単語に続く 2 文字の助詞も、後ろに英語の根拠がなければ通常の助詞判定を使う。
+        // 前の英単語を確定済みでも同じ扱いにする (google 確定後の ni → に)。
         // 続けて日本語を打っても同じ判定にする (main|no|yousuwomite → mainのようすをみて)。
         if (Memory?.Get(lower) is { } learned && !(learned && lower.Length <= 3 && Fragment() is { IsValid: true, Partial: "" } &&
-            (before < 0 || !startOfInput && before == 1 && lower.Length <= 2 && after != true && TrailingParticles.Contains(lower)))) return learned;
+            (before < 0 || before == 1 && lower.Length <= 2 && after != true && TrailingParticles.Contains(lower)))) return learned;
         // ユーザーが追加した単独の語は、ローマ字として読み切れても英字にする (sudo → すど を防ぐ)。
         // 単語の途中は対象にしない (no の登録で nihongo・nekono などを分断しない)。
         if (startOfInput && (atEnd || endsWord) && _userEnglish.ContainsWord(lower)) return true;

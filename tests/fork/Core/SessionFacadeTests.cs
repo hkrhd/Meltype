@@ -11,6 +11,29 @@ namespace Meltype.Tests;
 internal static partial class SessionFacadeTests
 {
     [Test]
+    public static void Fork_CommittedEnglish_KeepsFollowingParticlesJapaneseDespiteLearning()
+    {
+        foreach (var learned in new bool?[] { null, false, true })
+        foreach (var live in new[] { false, true })
+        foreach (var scored in new[] { false, true })
+        foreach (var prefix in new[] { "google\n", "google " })
+        foreach (var (raw, kana) in new[] { ("ni", "に"), ("de", "で"), ("wo", "を"), ("ga", "が") })
+        {
+            var detector = CompositionDetector.CreateDefault();
+            var memory = new LanguageMemory(null);
+            if (learned is { } english) memory.Remember(raw, english, explicitChoice: true);
+            detector.Memory = memory;
+            detector.UseScoredSegmentation = () => scored;
+            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
+            Type(session, prefix);
+            Assert.Equal(kana, Type(session, raw)[^1].View?.Text,
+                $"英字確定後の助詞: {raw}, learned={learned}, live={live}, scored={scored}, prefix={prefix.TrimEnd()}");
+            Assert.Equal(kana, Type(session, "\n")[0].Commits.Single().Text, "表示どおり確定する");
+        }
+    }
+
+    [Test]
     public static void Fork_SymbolMarkers_SpaceCommitsAsciiWithoutConversion()
     {
         foreach (var marker in new[] { "#", "##", "###", "####", "#####", "######", "-", "--", "---", "~", "~~~", "+", "++", "&", "&&" })
