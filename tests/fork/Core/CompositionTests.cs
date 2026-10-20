@@ -11,6 +11,52 @@ namespace Meltype.Tests;
 internal static partial class CompositionTests
 {
     [Test]
+    public static void Fork_DaysAndCounts_RemainJapaneseWhenNumbersRepeat()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var (input, expected) in new[]
+        {
+            ("1niti1kai", "1にち1かい"), ("1nichi1kai", "1にち1かい"),
+            ("1nitini1kai", "1にちに1かい"), ("2kani1kai", "2かに1かい"),
+            ("3kani1kai", "3かに1かい"), ("4kani1kai", "4かに1かい"),
+            ("10kani1kai", "10かに1かい"), ("1niti2kai", "1にち2かい"),
+            ("1niti3kai", "1にち3かい"), ("2kani3kai", "2かに3かい"),
+            ("12nichini10kai", "12にちに10かい"),
+        })
+        {
+            var k = new Keyboard(live: live);
+            k.Type(input + " ");
+            Assert.Equal(expected, k.Showing, $"{input}: live={live}");
+            k.Type("\n");
+            Assert.Equal(expected, k.Host.Document, "表示どおり確定する: " + input);
+        }
+    }
+
+    [Test]
+    public static void Fork_DayCandidate_KeepsOtherMeaningsSelectable()
+    {
+        var converter = new SplitConverter(new()
+        {
+            ["2かに"] = [new("2かに", "2課に")],
+            ["3かに"] = [new("3", "3"), new("かに", "課に")],
+        });
+        foreach (var live in new[] { false, true })
+        foreach (var number in new[] { "2", "3" })
+        {
+            var k = new Keyboard(live: live, converter: converter);
+            k.Type(number + "kani ");
+            Assert.Equal(number + "課に", k.Showing, "元の先頭候補を維持する");
+            if (k.Host.View!.Clauses!.Count > 1) k.Press(VirtualKeys.Right);
+            var day = number == "2" ? "2日に" : "日に";
+            var index = k.Host.View!.Candidates.ToList().IndexOf(day);
+            Assert.True(index >= 0, "日にを候補から選べる: " + number);
+            k.Controller.SelectCandidate(index);
+            k.Type("\n");
+            Assert.Equal(number + "日に", k.Host.Document, "日数の候補を確定する");
+        }
+    }
+
+    [Test]
     public static void Fork_No_UsesSpaceToChooseEnglish()
     {
         foreach (var learned in new bool?[] { null, false, true })

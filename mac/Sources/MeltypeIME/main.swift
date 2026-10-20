@@ -99,7 +99,7 @@ if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contai
         }
         return (output, last)
     }
-    // TSV: ローマ字の入力キー列・選択して確定する候補。Space はここで押す。
+    // TSV: ローマ字の入力キー列・候補を選択して確定する文章全体。Space はここで押す。
     // 同じセッションで繰り返し入力し、候補取得後の通常変換も検証する。
     if let index = CommandLine.arguments.firstIndex(of: "--check-candidates") {
         guard index + 1 < CommandLine.arguments.count else { exit(2) }
@@ -119,19 +119,50 @@ if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contai
                 let (opened, result) = type(" ", session: session)
                 let listed = DispatchTime.now().uptimeNanoseconds
                 var output = typed + opened
-                let candidates = result?.view?.candidates ?? []
-                let selected = candidates.firstIndex(of: expected).flatMap {
-                    NativeCore.shared.selectCandidate(session, index: $0)
+                var view = result?.view
+                var candidates: [[String]] = []
+                if let initial = view, initial.converting {
+                    for clause in initial.clauses.indices {
+                        if clause > 0 {
+                            view = NativeCore.shared.handleKey(session, vk: 0x27, character: 0,
+                                modifiers: 0, before: nil, after: nil)?.view
+                        }
+                        candidates.append(view?.candidates ?? [])
+                    }
+                }
+                // 文節ごとの候補を組み合わせ、期待する文章になる選択を探す。
+                func choices(_ clause: Int, _ remaining: Substring) -> [Int]? {
+                    if clause == candidates.count { return remaining.isEmpty ? [] : nil }
+                    for (index, candidate) in candidates[clause].enumerated() where remaining.hasPrefix(candidate) {
+                        if let rest = choices(clause + 1, remaining.dropFirst(candidate.count)) {
+                            return [index] + rest
+                        }
+                    }
+                    return nil
+                }
+                let selection = choices(0, expected[...])
+                if let selection, !selection.isEmpty {
+                    for _ in 1..<selection.count {
+                        _ = NativeCore.shared.handleKey(session, vk: 0x25, character: 0,
+                            modifiers: 0, before: nil, after: nil)
+                    }
+                    for (clause, index) in selection.enumerated() {
+                        if clause > 0 {
+                            _ = NativeCore.shared.handleKey(session, vk: 0x27, character: 0,
+                                modifiers: 0, before: nil, after: nil)
+                        }
+                        view = NativeCore.shared.selectCandidate(session, index: index)?.view
+                    }
                 }
                 let committed = NativeCore.shared.commit(session)
-                for edit in (selected?.commits ?? []) + (committed?.commits ?? []) {
+                for edit in committed?.commits ?? [] {
                     let current = output as NSString
                     output = current.substring(to: max(0, current.length - edit.deleteBefore)) + edit.text
                 }
                 check("\(input) → \(expected)", result?.view?.converting == true
-                    && selected?.view?.text == expected && committed?.view == nil && output == expected)
-                if output != expected || selected == nil {
-                    print("candidates: \(candidates.joined(separator: " / ")); committed: \(output)")
+                    && selection != nil && view?.text == expected && committed?.view == nil && output == expected)
+                if output != expected || selection == nil {
+                    print("candidates: \(candidates.map { $0.joined(separator: " / ") }.joined(separator: " | ")); committed: \(output)")
                 }
                 print(String(format: "inputMs=%.2f listMs=%.2f", Double(opening - started) / 1_000_000,
                     Double(listed - opening) / 1_000_000))

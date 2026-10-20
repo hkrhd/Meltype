@@ -1895,6 +1895,18 @@ public sealed class CompositionController
         var clauses = parts.Select(p => new Clause(p.Reading, false, JapaneseCandidates(p.Reading, NormalizeHalfWidth(p.Text, p.Reading)))).ToList();
         for (var i = 0; i < clauses.Count; i++)
         {
+            // 数字に続く「かに」は、日数の省略入力としても選べる (2かに → 2日に)。
+            // エンジンが数字を別文節にした場合も扱い、「課に」などの先頭候補は維持する。
+            var reading = clauses[i].Reading;
+            var digits = reading.TakeWhile(char.IsAsciiDigit).Count();
+            var counter = reading[digits..];
+            // 次の数字が同じ文節に入る場合もある (2 | かに1 | かい)。
+            if (counter.StartsWith("かに", StringComparison.Ordinal) && counter[2..].All(char.IsAsciiDigit) &&
+                (digits > 0 || i > 0 && clauses[i - 1].Reading.Length > 0 && char.IsAsciiDigit(clauses[i - 1].Reading[^1])))
+            {
+                var day = reading[..digits] + "日に" + counter[2..];
+                if (!clauses[i].Candidates.Contains(day)) clauses[i].Candidates.Insert(Math.Min(1, clauses[i].Candidates.Count), day);
+            }
             var others = string.Concat(clauses.Where((_, k) => k != i).Select(c => c.Text));
             var surrounding = (_precedingText ?? "") + others + (_followingText ?? "");
             var preferred = _options.ContextRules?.Choose(clauses[i].Reading, surrounding) ?? _options.History?.Get(clauses[i].Reading);

@@ -1148,6 +1148,11 @@ public sealed partial class CompositionDetector
         static bool IsLetter(CompositionUnit unit) => unit.Raw.Length > 0 && unit.Raw.All(char.IsAsciiLetter);
         static bool IsDigit(CompositionUnit unit) => unit.Raw is [var d] && char.IsAsciiDigit(d);
         if (start >= units.Count || !IsLetter(units[start])) return -1;
+        // 数字で始まる入力の途中を略語にしない (1niti1kai の ti1kai、2kani1kai の ni1kai)。
+        // 直前の英字列までさかのぼり、その前にも数字があれば日数・回数などの続きとして判定する。
+        var before = start;
+        while (before > 0 && IsLetter(units[before - 1])) before--;
+        if (before > 0 && IsDigit(units[before - 1])) return -1;
         var i = start;
         while (i < units.Count && IsLetter(units[i])) i++;
         var headLen = Raw(units, start, i).Length;
