@@ -94,6 +94,7 @@ Actions の予算を `$0`、`Stop usage when budget limit is reached` を有効�
 2026-10-24 にアカウント全体の Actions 予算が `$0`・超過利用停止であることを確認済みです。
 
 Windows のアプリにも `mac/fork-version.sh` のフォーク版番号を埋め込み、upstream 版と区別します。
+CI では upstream の版タグも取得し、フォーク側の古いタグを基準にしないようにします。
 更新先は `hkrhd/Meltype` とし、フォーク版番号は自動更新の対象外なので Releases から手動で更新します。
 署名用のシークレットが無ければ未署名で作成します。
 

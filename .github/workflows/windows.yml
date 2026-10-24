@@ -124,7 +124,10 @@ jobs:
           dotnet-version: 10.0.x
       - name: Fork version
         shell: bash
-        run: echo "MELTYPE_VERSION=$(bash mac/fork-version.sh)" >> "$GITHUB_ENV"
+        run: |
+          # フォーク側には未同期の upstream タグも取得し、Mac と同じ基準で版を付ける。
+          git fetch --no-tags https://github.com/yksr-melt/Meltype.git 'refs/tags/v*:refs/tags/v*'
+          echo "MELTYPE_VERSION=$(bash mac/fork-version.sh)" >> "$GITHUB_ENV"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.12'
