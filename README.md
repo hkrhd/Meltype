@@ -11,7 +11,7 @@
 ## 変更点：
 
 - 短い英単語に日本語が続くとき、日本語の読みの根拠があり、全体を英語とみなす根拠が薄ければ区切りを維持（`macnanode → macなので`、`macdakara → macだから`）。英語として学習した語や英文中の入力は維持。
-- Windows のビルド・テストを GitHub Actions で実行。手動実行では通常版ZIP・ポータブル版ZIP・インストーラーを作り、Releases に最新の成功分だけ保存。Actions の成果物保存は使わず、Mac は引き続きローカルで検証・適用（[運用手順](docs/FORK.md)）。
+- Windows のビルド・テストを GitHub Actions で実行。手動実行では通常版ZIP・ポータブル版ZIP・インストーラーを作り、Releases に最新の成功分だけ保存。Actions の成果物保存は使わず、ビルドキャッシュは無料枠の10 GB内で保持。Mac は引き続きローカルで検証・適用（[運用手順](docs/FORK.md)）。
 - upstream/main（`7587cda5`、1.3.1-pre.2）を取り込み。辞書・学習保存・文節操作の改善を反映し、Zenzai・半角記号などの独自動作を維持。
 - upstream の追加CI・bot用Actionsは実行対象外の `.github/disabled-workflows/` に保管し、`ime-tests` も停止。
 

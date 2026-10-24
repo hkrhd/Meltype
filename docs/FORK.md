@@ -87,6 +87,8 @@ Defender 検査に通った配布物を、`hkrhd-windows-<実行ID>-<再実行�
 配布物は Releases に保存し、Actions の artifact は使いません。Mozc とパッケージは
 同じ Windows VM でビルドし、中間ファイルも artifact にアップロードしません。
 公開リポジトリの標準ランナーを使用し、キャッシュ容量は無料枠の 10 GB のままにします。
+ビルドを速くするキャッシュは保持し、配布物の世代整理では削除しません。
+容量上限内での古いキャッシュの入れ替えは GitHub に任せ、有料の容量拡張は行いません。
 課金防止には GitHub の Settings → Billing and licensing → Budgets and alerts で、
 Actions の予算を `$0`、`Stop usage when budget limit is reached` を有効にします。
 2026-10-24 にアカウント全体の Actions 予算が `$0`・超過利用停止であることを確認済みです。
