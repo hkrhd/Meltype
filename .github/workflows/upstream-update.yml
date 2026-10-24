@@ -95,34 +95,18 @@ jobs:
           fi
 
           {
-            echo '## 変更の内容'
-            echo
-            echo 'これは upstream 更新の取り込み依頼です。調整済みの変更ではありません。GitHub のマージボタンでそのまま取り込まないでください。'
+            echo 'upstream の更新を、フォーク独自の挙動・方針を保って取り込んでください。'
             echo
             echo "- 通知時点の main（upstream/main）: \`$main_sha\`（未取り込み $ahead コミット）"
             echo "- 通知時点の fork_by_hkrhd: \`$fork_sha\`"
             echo "- [通知時点の upstream 差分](https://github.com/$REPO/compare/$fork_sha...$main_sha)"
             cat <<'BODY'
 
-          PR の差分は main の更新に伴って増えます。作業開始時に最新の main を取得し、上記のコミット以降の追加分も確認してください。
+          作業開始時に最新の main を取得し、既存の作業中の変更を保持して `jj new fork_by_hkrhd main` で統合してください。
+          競合がない箇所も意味上の衝突を確認し、AGENTS.md・README.md・docs/FORK.md に沿って調整してください。
+          `bash mac/update.sh` でテスト・ビルド・実機への適用を行い、両ブランチを親に持つマージコミットを push して、変更点と検証結果をこの PR に記録してください。
 
-          ## 確かめること
-
-          - upstream 更新の取り込み → AGENTS.md・README.md・docs/FORK.md にある fork 独自の挙動・方針が保たれる
-          - テキスト上の競合がない変更 → 意味上の衝突も確認し、必要なら調整する
-          - 統合後の入力 → 既存テストと fork の回帰テストが通る。判定・変換を変える場合は再現例をテストに足す
-
-          ## 確認したこと
-
-          - [ ] 既存の作業中の変更を保持し、`jj new fork_by_hkrhd main` で統合・調整した
-          - [ ] `bash mac/build-cli.sh --test --build` が通った
-          - [ ] `fork_by_hkrhd` と確認済みの `main` を親に持つマージコミットを push した（squash・rebase は使わない）
-          - [ ] 変更点と検証結果をこの PR に記録した
-          - [x] AI を使った（使った部分: この取り込み依頼文の作成。コードの調整・検証は未実施）
-
-          ## 貢献者ライセンス同意 (CLA)
-
-          個人フォーク内の更新通知です。upstream への貢献 PR ではありません。
+          - [x] AI を使った（使った部分: この取り込み依頼文の作成）
           BODY
           } > "$RUNNER_TEMP/upstream-pr.md"
 
