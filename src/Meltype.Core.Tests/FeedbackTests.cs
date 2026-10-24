@@ -409,7 +409,8 @@ internal static class FeedbackTests
         foreach (var (typed, expected) in new[]
         {
             ("kore ha pen desu", "これはぺんです"),
-            ("GitHub no repo", "GitHub のれぽ"),
+            // フォークでは no + Space で英語の no を確定する。Windows のスペルチェッカーがあっても同じ。
+            ("GitHub no repo", "GitHub no repo"),
             ("Google to Apple", "Google とApple"),
             ("watashi ha sushi ga suki", "わたしはすしがすき"),
             ("mala", "まぁ"),
