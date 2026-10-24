@@ -63,11 +63,35 @@ PR の変更は `docs/ZENZAI-UPDATE.md` の更新候補の記録だけです。�
 `GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run` で、
 公開 API に対する検知と重複確認を、PR やブランチを作成せずに試せます。
 
-このフォークで利用する Actions は `upstream-update` と `zenzai-update` です。`build`・`linux`・`mac`・
+このフォークで利用する Actions は `upstream-update`・`zenzai-update`・Windows 用の `windows` です。`build`・`linux`・`mac`・
 `bot`・`cla`・`dotnet-update`・`ime-tests`・`notices`・`pr-checks`・`sponsors`・`web`・`winget` は
 リポジトリ設定で無効にしています。ワークフローの定義は残し、必要になった場合は
 Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Meltype` で再開できます。
-検証・ビルド・適用は上記のMac用コマンドで行います。
+Mac の検証・ビルド・適用は上記のコマンドで行います。
+
+### Windows のクラウド検証と配布物
+
+`windows` は `fork_by_hkrhd` への push・PR で Windows の Release ビルド、TSF DLL の
+x64・x86 ビルド、共通コアを含む Windows テスト、インストーラー関連の検証を行います。
+Microsoft IME・スペルチェッカーが無い環境の該当テストは upstream と同じくスキップされます。
+実際の入力欄への打鍵 E2E は含みません。
+
+Actions の `windows` を `fork_by_hkrhd` で手動実行すると、テスト成功後に Mozc をビルドし、
+通常版 ZIP・ポータブル版 ZIP・インストーラーを作成します。通常版・ポータブル版の自己診断と
+Defender 検査に通った配布物を、`hkrhd-windows-<実行ID>-<再実行番号>` のプレリリースに添付します。
+全ファイルを公開した後、この接頭辞を持つ旧リリースとタグだけを削除します。
+ビルド・アップロード・公開が失敗した場合は前の成功分を残します。
+
+配布物は Releases に保存し、Actions の artifact は使いません。Mozc とパッケージは
+同じ Windows VM でビルドし、中間ファイルも artifact にアップロードしません。
+公開リポジトリの標準ランナーを使用し、キャッシュ容量は無料枠の 10 GB のままにします。
+課金防止には GitHub の Settings → Billing and licensing → Budgets and alerts で、
+Actions の予算を `$0`、`Stop usage when budget limit is reached` を有効にします。
+2026-10-24 にアカウント全体の Actions 予算が `$0`・超過利用停止であることを確認済みです。
+
+Windows のアプリにも `mac/fork-version.sh` のフォーク版番号を埋め込み、upstream 版と区別します。
+更新先は `hkrhd/Meltype` とし、フォーク版番号は自動更新の対象外なので Releases から手動で更新します。
+署名用のシークレットが無ければ未署名で作成します。
 
 upstream で追加された `code-scanning`・`codeql`・`conflicts`・`quality` は、
 GitHub がワークフローとして登録する前に `.github/disabled-workflows/` に移して保管します。

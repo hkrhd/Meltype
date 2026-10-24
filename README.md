@@ -10,13 +10,14 @@
 
 ## 変更点：
 
+- Windows のビルド・テストを GitHub Actions で実行。手動実行では通常版ZIP・ポータブル版ZIP・インストーラーを作り、Releases に最新の成功分だけ保存。Actions の成果物保存は使わず、Mac は引き続きローカルで検証・適用（[運用手順](docs/FORK.md)）。
 - upstream/main（`7587cda5`、1.3.1-pre.2）を取り込み。辞書・学習保存・文節操作の改善を反映し、Zenzai・半角記号などの独自動作を維持。
 - upstream の追加CI・bot用Actionsは実行対象外の `.github/disabled-workflows/` に保管し、`ime-tests` も停止。
 
 - 文中でエンジンがかなのまま残した箇所は、学習で自動上書きしない（「内容に」の学習があっても「当たらないように」を維持）。単独入力の学習と候補からの選択は維持。
 - 英字を確定した後の助詞（`ni → に` など）が、英字としての学習に引っ張られる問題を修正。
 - 日数・回数の途中が英字になる問題を修正（`1niti1kai → 1日1回`）。`2kani`・`3kani` などは「課に」などの候補を残して「日に」も選択可能に。
-- main 更新通知のPR文を簡潔にし、`fork_by_hkrhd` と `main` を親に持つマージコミットを作る指示を追加。Actionsは取り込み・モデル更新の通知だけを行い、ビルドはローカルで実施。
+- main 更新通知のPR文を簡潔にし、`fork_by_hkrhd` と `main` を親に持つマージコミットを作る指示を追加。取り込み・モデル更新の通知はActions、Macのビルドはローカルで実施。
 - モデルの参照を絶対URLにし、Mac CIなどで実変換時にモデルを相対パスで探して停止する問題を修正。
 - upstream の Homebrew Cask・署名付き apt 配布処理を取り込み。これらは upstream 版向けで、フォーク版は引き続き `bash mac/update.sh` で更新。
 - `main` の取り込みは2つの親を持つマージコミットで記録し、Git履歴から取り込み元とフォーク側の変更を追跡できるようにする。
@@ -39,7 +40,7 @@
 - Zenzai small（Metal、評価上限2回）を使用。
 - Mac の候補一覧では通常入力と別の変換状態でモデル評価・辞書探索の候補を併記し、「しじする → 指示する・支持する・師事する」などの同音異義語を選べるよう改善。
 - フォーク独自の追加テストは [tests/fork](tests/fork/) と Swift 用の `mac/Tests/ForkMacTests` に置き、upstream のテストと区別。
-- GitHub Actions は `upstream-update` が2日に1回、`zenzai-update` が12時間ごとに更新を確認し、取り込み・モデル更新依頼の Draft PR を作成。取り込み依頼には通知時点のコミット・差分リンクと、fork の挙動を保つ調整・検証の手順を記載（そのままマージしない）。upstream 由来のビルド・配布・bot用Actionsは停止し、検証・適用はローカルMacで行う（[運用手順](docs/FORK.md)）。
+- GitHub Actions は `upstream-update` が2日に1回、`zenzai-update` が12時間ごとに更新を確認し、取り込み・モデル更新依頼の Draft PR を作成。取り込み依頼には通知時点のコミット・差分リンクと、fork の挙動を保つ調整・検証の手順を記載（そのままマージしない）。upstream由来のActionsは停止し、Windows用の `windows` を追加して、Macの検証・適用はローカルで行う（[運用手順](docs/FORK.md)）。
 - upstream のワークフロー定義も同期できるよう、`main` の追従には専用 SSH デプロイキーを使用。キーは `fork_by_hkrhd` だけが使える Environment に保存し、分岐した履歴は上書きしない。
 - `fork_by_hkrhd` は GitHub のブランチ保護で強制プッシュ・削除を禁止し、管理者にも適用。
 
