@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 hkrhd
-# upstream の build.yml を元に、Windows の検証と最新配布物の保存を行う。
+# upstream の build.yml を元に、Windows の検証と Windows・Mac の最新配布物の保存を行う。
 name: windows
 
 on:
@@ -106,14 +106,59 @@ jobs:
           & $iscc /Q "/DAppVersion=0.0.0-check-ime" "/DSourceDir=$stage" "/DOutputDir=$env:RUNNER_TEMP" packaging\Meltype.iss
           if ($LASTEXITCODE -ne 0) { throw "IME 同梱のインストーラーを Inno Setup で通せませんでした (exit code $LASTEXITCODE)。" }
 
-  # 同じ VM で Mozc と配布物を作り、Actions の成果物保存を使わない。
-  package:
+  release:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fork_by_hkrhd'
     needs: [test, installer-script]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      build-number: ${{ steps.release.outputs.build-number }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prepare release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          git fetch --no-tags https://github.com/yksr-melt/Meltype.git 'refs/tags/v*:refs/tags/v*'
+          version="$(bash mac/fork-version.sh)"
+          tag="hkrhd-release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          {
+            echo "version=$version"
+            echo "build-number=$(git rev-list --count HEAD)"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+          cat > "$RUNNER_TEMP/release.md" <<EOF
+          Windows・Mac 向けの個人フォーク検証版です。
+
+          - 版: $version
+          - ソース: https://github.com/$GITHUB_REPOSITORY/commit/$GITHUB_SHA
+          - 検証: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          - Windows: テスト・パッケージ自己診断・Defender 検査を実行済み。
+          - Mac: Apple Silicon / macOS 13.3 以降。Core・Swift テストと実エンジンの入力検証を実行済み。
+          - Mac は ZIP を展開し、Install Meltype.command を実行してください。
+          - 未署名の場合、OS の警告が出ることがあります。
+          - 更新はこの Releases から手動で行ってください。
+          EOF
+          gh release create "$tag" --target "$GITHUB_SHA" --title "Meltype $version" --notes-file "$RUNNER_TEMP/release.md" --draft --prerelease
+
+  # 同じ VM で Mozc と配布物を作り、Actions の成果物保存を使わない。
+  package:
+    needs: release
     runs-on: windows-2022
     timeout-minutes: 120
     permissions:
       contents: write
+    env:
+      MELTYPE_VERSION: ${{ needs.release.outputs.version }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -122,12 +167,6 @@ jobs:
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           dotnet-version: 10.0.x
-      - name: Fork version
-        shell: bash
-        run: |
-          # フォーク側には未同期の upstream タグも取得し、Mac と同じ基準で版を付ける。
-          git fetch --no-tags https://github.com/yksr-melt/Meltype.git 'refs/tags/v*:refs/tags/v*'
-          echo "MELTYPE_VERSION=$(bash mac/fork-version.sh)" >> "$GITHUB_ENV"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.12'
@@ -220,44 +259,115 @@ jobs:
           $setups = @(Get-ChildItem -LiteralPath dist -Filter 'Meltype-*-setup.exe' -File)
           if ($setups.Count -ne 1) { throw 'Expected one Meltype-*-setup.exe file but found ' + $setups.Count }
           .\tools\Scan-WindowsPackage.ps1 -Path @('.\dist\Meltype', '.\dist\Meltype-portable', $packages[0].FullName, $packages[1].FullName, $setups[0].FullName)
-      # 新版を公開できてから、この CI が作った旧版だけを削除する。
-      - name: Publish latest Windows package
+      - name: Upload Windows packages
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $tag = "hkrhd-windows-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           $files = @(Get-ChildItem -LiteralPath dist -File | Where-Object { $_.Name -like 'Meltype-*.zip' -or $_.Name -like 'Meltype-*-setup.exe' })
           if ($files.Count -ne 3) { throw "配布物が3個そろっていません: $($files.Count)" }
-          $notes = @"
-          Windows 向けの個人フォーク検証版です。最新版の成功分だけ保存します。
+          gh release upload $env:RELEASE_TAG @($files.FullName) --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Windows 配布物をアップロードできませんでした。旧版は保持します。' }
 
-          - 版: $env:MELTYPE_VERSION
-          - ソース: https://github.com/$env:GITHUB_REPOSITORY/commit/$env:GITHUB_SHA
-          - 検証: https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID
-          - Windows テスト・パッケージ自己診断・Defender 検査を実行済み。
-          - 未署名の場合、Windows の警告が出ることがあります。
-          - 更新はこの Releases から手動で行ってください。
-          "@
-          $notesPath = Join-Path $env:RUNNER_TEMP 'windows-release.md'
-          [IO.File]::WriteAllText($notesPath, $notes)
-          gh release create $tag --target $env:GITHUB_SHA --title "Windows $env:MELTYPE_VERSION" --notes-file $notesPath --draft --prerelease
-          if ($LASTEXITCODE -ne 0) { throw 'リリースの下書きを作成できませんでした。' }
-          gh release upload $tag @($files.FullName)
-          if ($LASTEXITCODE -ne 0) { throw '配布物をアップロードできませんでした。旧版は保持します。' }
-          gh release edit $tag --draft=false --prerelease --latest=false
-          if ($LASTEXITCODE -ne 0) { throw 'リリースを公開できませんでした。旧版は保持します。' }
-          $oldReleases = gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name | startswith("hkrhd-windows-")) | [.tag_name, .draft] | @tsv'
-          if ($LASTEXITCODE -ne 0) { throw '旧リリースを取得できませんでした。' }
-          foreach ($oldRelease in $oldReleases) {
-            $oldTag, $draft = $oldRelease -split "`t", 2
-            if ($oldTag -eq $tag) { continue }
-            # 公開前に失敗した下書きには Git タグがないため、公開済みのタグだけを削除する。
-            $deleteArgs = @('release', 'delete', $oldTag, '--yes')
-            if ($draft -eq 'false') { $deleteArgs += '--cleanup-tag' }
-            gh @deleteArgs
-            if ($LASTEXITCODE -ne 0) { throw "旧リリースを削除できませんでした: $oldTag" }
-          }
-          "配布物: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag" >> $env:GITHUB_STEP_SUMMARY
+  mac:
+    needs: release
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      MELTYPE_VERSION: ${{ needs.release.outputs.version }}
+      MELTYPE_BUILD_NUMBER: ${{ needs.release.outputs.build-number }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: 10.0.x
+      - name: Check build architecture
+        run: test "$(uname -m)" = arm64
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: mac/.build
+          key: fork-mac-arm64-${{ runner.os }}-${{ hashFiles('mac/Package.swift', 'mac/Package.resolved', 'mac/fetch-zenzai-model.sh', 'mac/build-llama-metal.sh') }}
+          restore-keys: fork-mac-arm64-${{ runner.os }}-
+      - name: Signing certificate
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          MAC_IDENTITY: ${{ secrets.MAC_IDENTITY }}
+        run: |
+          if [[ -z "$MAC_CERT_P12_BASE64" ]]; then echo "証明書が無いので ad-hoc 署名で配布します"; exit 0; fi
+          keychain="$RUNNER_TEMP/meltype.keychain-db"
+          password="$(uuidgen)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain"
+          keychains=("$keychain")
+          while IFS= read -r existing; do
+            keychains+=("$(printf '%s' "$existing" | sed 's/^[[:space:]]*"//; s/"[[:space:]]*$//')")
+          done < <(security list-keychains -d user)
+          security list-keychains -d user -s "${keychains[@]}"
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "MELTYPE_MAC_IDENTITY=$MAC_IDENTITY" >> "$GITHUB_ENV"
+      - name: Core and Swift tests and build
+        run: bash mac/build-cli.sh --test --build
+      - name: Input checks with the real converter
+        run: |
+          bash tests/fork/mac/check-inputs.sh
+          temporary="$(mktemp -d)"
+          trap 'rm -rf "$temporary"' EXIT
+          MELTYPE_DATA_DIR="$temporary" mac/build/Meltype.app/Contents/MacOS/Meltype --check-inputs mac/Resources/InputChecks.tsv
+      - name: NativeAOT and Swift boundary tests
+        run: |
+          python3 tools/test-native-boundaries.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib
+          python3 tools/test-mac-boundaries.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib
+          python3 tools/test-mac-events.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib
+      - name: Notarize
+        if: env.MELTYPE_MAC_IDENTITY != ''
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent mac/build/Meltype.app "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --wait
+          xcrun stapler staple mac/build/Meltype.app
+      - name: Package and upload Mac app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          bash mac/package.sh "Meltype-$MELTYPE_VERSION-mac.zip"
+          gh release upload "$RELEASE_TAG" "dist/Meltype-$MELTYPE_VERSION-mac.zip" --clobber
+
+  publish:
+    needs: [release, package, mac]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.release.outputs.tag }}
+      MELTYPE_VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - name: Publish Windows and Mac release
+        run: |
+          actual="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort)"
+          expected="$(printf '%s\n' "Meltype-$MELTYPE_VERSION-windows.zip" "Meltype-$MELTYPE_VERSION-windows-portable.zip" "Meltype-$MELTYPE_VERSION-setup.exe" "Meltype-$MELTYPE_VERSION-mac.zip" | sort)"
+          if [[ "$actual" != "$expected" ]]; then
+            echo 'Windows・Mac の配布物4個がそろっていません。旧版は保持します。' >&2
+            exit 1
+          fi
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false
+          echo "配布物: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"

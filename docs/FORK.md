@@ -64,13 +64,13 @@ PR の変更は `docs/ZENZAI-UPDATE.md` の更新候補の記録だけです。�
 `GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run` で、
 公開 API に対する検知と重複確認を、PR やブランチを作成せずに試せます。
 
-このフォークで利用する Actions は `upstream-update`・`zenzai-update`・Windows 用の `windows` です。`build`・`linux`・`mac`・
+このフォークで利用する Actions は `upstream-update`・`zenzai-update`・Windows 検証と両 OS の配布用の `windows` です。`build`・`linux`・`mac`・
 `bot`・`cla`・`dotnet-update`・`ime-tests`・`notices`・`pr-checks`・`sponsors`・`web`・`winget` は
 リポジトリ設定で無効にしています。ワークフローの定義は残し、必要になった場合は
 Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Meltype` で再開できます。
-Mac の検証・ビルド・適用は上記のコマンドで行います。
+Mac のローカル検証・ビルド・適用は上記のコマンドで行います。リリース時は `windows` 内の Mac ジョブでも検証・ビルドします。
 
-### Windows のクラウド検証と配布物
+### Windows のクラウド検証と Windows・Mac の配布物
 
 `windows` は `fork_by_hkrhd` への push・PR で Windows の Release ビルド、TSF DLL の
 x64・x86 ビルド、共通コアを含む Windows テスト、インストーラー関連の検証を行います。
@@ -79,16 +79,29 @@ Microsoft IME・スペルチェッカーが無い環境の該当テストは ups
 `GitHub no repo` はフォークの `no + Space` 仕様に合わせて英字のまま確定することを、
 Windows のスペルチェッカーを使用する既存のテストでも確認します。
 
-Actions の `windows` を `fork_by_hkrhd` で手動実行すると、テスト成功後に Mozc をビルドし、
-通常版 ZIP・ポータブル版 ZIP・インストーラーを作成します。通常版・ポータブル版の自己診断と
-Defender 検査に通った配布物を、`hkrhd-windows-<実行ID>-<再実行番号>` のプレリリースに添付します。
-全ファイルを公開した後、この接頭辞を持つ旧リリースとタグだけを削除します。
-ビルド・アップロード・公開が失敗した場合は前の成功分を残します。
+Actions の `windows` を `fork_by_hkrhd` で手動実行すると、Windows のテスト成功後にリリースの下書きを作り、
+Windows・Mac の配布物を並列でビルドします。実行コマンドは次のとおりです。
+
+```sh
+gh workflow run windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd
+```
+
+Windows は Mozc をビルドし、通常版 ZIP・ポータブル版 ZIP・インストーラーを作成します。
+通常版・ポータブル版の自己診断と Defender 検査を行います。
+Mac は Apple Silicon（macOS 13.3 以降）向けに Core・Swift テスト、実エンジンの入力検証、
+NativeAOT・Swift 境界テストを行い、Zenzai モデル・Metal ランタイム・インストーラーを同梱した
+`Meltype-<版>-mac.zip` を作成します。展開して `Install Meltype.command` を実行すると導入できます。
+Developer ID の証明書・公証用シークレットがあれば署名・公証し、証明書が無ければ ad-hoc 署名で配布します。
+
+同じソースとフォーク版番号の配布物4個がそろったら、`hkrhd-release-<実行ID>-<再実行番号>` の
+プレリリースを公開します。一部でも失敗した場合は下書きのままにし、前の成功分を残します。
+公開済みの旧リリースとタグは自動削除しません。
 
 配布物は Releases に保存し、Actions の artifact は使いません。Mozc とパッケージは
 同じ Windows VM でビルドし、中間ファイルも artifact にアップロードしません。
+Mac の Swift Package・モデル・Metal ビルドもキャッシュして再利用します。
 公開リポジトリの標準ランナーを使用し、キャッシュ容量は無料枠の 10 GB のままにします。
-ビルドを速くするキャッシュは保持し、配布物の世代整理では削除しません。
+ビルドを速くするキャッシュは保持します。
 容量上限内での古いキャッシュの入れ替えは GitHub に任せ、有料の容量拡張は行いません。
 課金防止には GitHub の Settings → Billing and licensing → Budgets and alerts で、
 Actions の予算を `$0`、`Stop usage when budget limit is reached` を有効にします。
@@ -105,7 +118,7 @@ GitHub がワークフローとして登録する前に `.github/disabled-workfl
 開発指示は、大文字小文字を区別しない macOS でも衝突しないよう `AGENTS.md` に統合しています。
 
 取り込んだ `Casks/meltype.rb` と apt 配布手順は upstream 版向けです。
-このフォークの独自変更を使う場合は Homebrew・apt ではなく `bash mac/update.sh` で更新します。
+このフォークの独自変更を使う場合は Releases の Mac 版 ZIP、または `bash mac/update.sh` で更新します。
 
 実機へ適用するときは、変更を jj で保存してから `bash mac/update.sh` を実行します。
 
@@ -136,5 +149,5 @@ Xcode本体は起動しないため、場所の検出で追加コンポーネン
 アプリの数値ビルド番号には、履歴全体のコミット数を使います。
 意図的に指定するときは `MELTYPE_VERSION=... bash mac/update.sh` を使います。
 
-停止中の `mac` CI を再開する場合も、フォークのブランチでは同じバージョンでビルドし、実エンジンの辞書回帰テストを行います。
+リリースの Mac ジョブも同じバージョンでビルドし、実エンジンの辞書回帰テストを行います。
 フォーク版は upstream の自動更新ではなく、このリポジトリから更新してください。
