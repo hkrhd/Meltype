@@ -250,7 +250,7 @@ public sealed partial class CompositionDetector
         }
         // 辞書の短い英語 (pro) だけが先頭で英語になり、残りの英字がかな化される (procrasticle: issue #537)。
         if (level != DetectionLevel.Manual && whole.All(char.IsAsciiLetter) && Memory?.Get(whole.ToLowerInvariant()) != false &&
-            !IsKnownEnglishWord(whole.ToLowerInvariant()) && HasListedEnglishPrefixSplit(whole, segments))
+            !IsKnownEnglishWord(whole.ToLowerInvariant()) && HasListedEnglishPrefixSplit(whole, segments, englishSentence && precedingEnglish == true))
             return [new CompositionSegment(true, "", whole)];
         return segments;
     }
@@ -293,7 +293,7 @@ public sealed partial class CompositionDetector
     }
 
     /// <summary>先頭が辞書の短い英語 (pro) で、残りがまだ英字なのに日本語区間になっている (procrasticle)。</summary>
-    private bool HasListedEnglishPrefixSplit(string whole, List<CompositionSegment> segments)
+    private bool HasListedEnglishPrefixSplit(string whole, List<CompositionSegment> segments, bool englishSentence)
     {
         if (segments.Count < 2 || !segments[0].IsEnglish || segments[1].IsEnglish) return false;
         var head = segments[0].Raw;
@@ -306,6 +306,11 @@ public sealed partial class CompositionDetector
         var lowerWhole = whole.ToLowerInvariant();
         for (var len = head.Length + 1; len <= lowerWhole.Length; len++)
             if (IsKnownEnglishWord(lowerWhole[..len])) return false;
+        // 全体に英語の根拠がなく、英文の途中でもなく、後ろが日本語の読みで始まるなら、短い英単語でも区切りを維持する
+        // (mac|nanode → macなので)。読めるだけの未知語 (macpapipupepo) は英字のままにする。
+        var rest = _romaji.AnalyzeFragment(lowerWhole[head.Length..]);
+        if (!englishSentence && rest.IsValid && rest.Kana.Length >= 3 &&
+            (_japanese.IsPrefix(restLower) || IsJapaneseReadingOrPrefix(rest.Kana[..3]))) return false;
         return segments.Skip(1).All(s => !s.IsEnglish && s.Raw.All(char.IsAsciiLetter));
     }
 

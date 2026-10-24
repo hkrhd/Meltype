@@ -11,6 +11,60 @@ namespace Meltype.Tests;
 internal static partial class SessionFacadeTests
 {
     [Test]
+    public static void Fork_ShortEnglishWord_KeepsSupportedJapaneseTail()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var scored in new[] { false, true })
+        foreach (var (input, expected) in new[]
+        {
+            ("macnanode", "macなので"), ("macdakara", "macだから"),
+            ("macnanodetsukau", "macなのでつかう"), ("macde", "macで"),
+            ("googlenanode", "googleなので"), ("pcnanode", "pcなので"),
+            ("macabre", "macabre"), ("macaroni", "macaroni"), ("machi", "まち"),
+            ("procrasticle", "procrasticle"), ("macpapipupepo", "macpapipupepo"),
+            ("macnanode_value", "macnanode_value"),
+        })
+        {
+            var detector = CompositionDetector.CreateDefault();
+            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
+            detector.UseScoredSegmentation = () => scored;
+            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live }, () => new Settings());
+            Assert.Equal(expected, Type(session, input)[^1].View?.Text,
+                $"入力中: {input}, live={live}, scored={scored}");
+            Assert.Equal(expected, string.Concat(Type(session, "\n").SelectMany(r => r.Commits).Select(e => e.Text)),
+                $"表示どおり確定: {input}, live={live}, scored={scored}");
+        }
+    }
+
+    [Test]
+    public static void Fork_ShortEnglishWord_RespectsEnglishEvidence()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var scored in new[] { false, true })
+        foreach (var (input, before, learned) in new[]
+        {
+            ("macnanode", "", true), ("macnanode", "I use ", false),
+            ("macdakara", "I use ", false), ("machine", "I use ", false),
+        })
+        {
+            var detector = CompositionDetector.CreateDefault();
+            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
+            detector.UseScoredSegmentation = () => scored;
+            var memory = new LanguageMemory(null);
+            if (learned) memory.Remember(input, true, explicitChoice: true);
+            detector.Memory = memory;
+            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
+            Type(session, before);
+            Assert.Equal(input, Type(session, input)[^1].View?.Text,
+                $"英語の根拠がある語: {input}, before={before}, learned={learned}, live={live}, scored={scored}");
+            Assert.Equal(input, string.Concat(Type(session, "\n").SelectMany(r => r.Commits).Select(e => e.Text)),
+                "英語のまま確定する");
+        }
+    }
+
+    [Test]
     public static void Fork_CommittedEnglish_KeepsFollowingParticlesJapaneseDespiteLearning()
     {
         foreach (var learned in new bool?[] { null, false, true })

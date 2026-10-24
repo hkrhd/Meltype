@@ -24,6 +24,7 @@ for live in false true; do
     printf 'sudo\tsudo\nsudo apt\tsudo apt\nrepo\trepo\n' >> "$temporary/checks.tsv"
     printf 'no\tの\nno no\tno の\nno problem\tno problem\nI have no problem\tI have no problem\n' >> "$temporary/checks.tsv"
     printf 'google ni\tgoogle に\n' >> "$temporary/checks.tsv"
+    printf 'macnanode\tmacなので\nmacnanode \tmacなので\nmacdakara\tmacだから\nmacdakara \tmacだから\n' >> "$temporary/checks.tsv"
     printf 'ataranaiyouni \t当たらないように\nfurenaiyouni \t触れないように\nnaiyouni \t内容に\n' >> "$temporary/checks.tsv"
     if [[ "$live" == true ]]; then
         printf 'ataranaiyouni\t当たらないように\nfurenaiyouni\t触れないように\nnaiyouni\t内容に\n' >> "$temporary/checks.tsv"
