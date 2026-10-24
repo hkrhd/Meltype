@@ -245,11 +245,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw '配布物をアップロードできませんでした。旧版は保持します。' }
           gh release edit $tag --draft=false --prerelease --latest=false
           if ($LASTEXITCODE -ne 0) { throw 'リリースを公開できませんでした。旧版は保持します。' }
-          $oldTags = gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name | startswith("hkrhd-windows-")) | .tag_name'
+          $oldReleases = gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name | startswith("hkrhd-windows-")) | [.tag_name, .draft] | @tsv'
           if ($LASTEXITCODE -ne 0) { throw '旧リリースを取得できませんでした。' }
-          foreach ($oldTag in $oldTags) {
+          foreach ($oldRelease in $oldReleases) {
+            $oldTag, $draft = $oldRelease -split "`t", 2
             if ($oldTag -eq $tag) { continue }
-            gh release delete $oldTag --yes --cleanup-tag
+            # 公開前に失敗した下書きには Git タグがないため、公開済みのタグだけを削除する。
+            $deleteArgs = @('release', 'delete', $oldTag, '--yes')
+            if ($draft -eq 'false') { $deleteArgs += '--cleanup-tag' }
+            gh @deleteArgs
             if ($LASTEXITCODE -ne 0) { throw "旧リリースを削除できませんでした: $oldTag" }
           }
           "配布物: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag" >> $env:GITHUB_STEP_SUMMARY
