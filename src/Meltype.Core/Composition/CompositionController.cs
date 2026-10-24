@@ -1872,7 +1872,7 @@ public sealed class CompositionController
     /// <summary>
     /// 日本語のかなを変換エンジンで文節に区切って変換する。各文節の最初の候補は次の順で決める:
     ///   1. 文脈の手がかり辞書 (前後に 気温 があれば あつい → 暑い)
-    ///   2. ユーザーが前に選び直した変換 (学習)
+    ///   2. ユーザーが前に選び直した変換 (文中でかなのまま残す箇所は上書きしない)
     ///   3. 変換エンジンの結果 (入力欄のキャレットの前の文字を文脈として渡している)
     /// engine を渡したときは、変換エンジンに頼まずにその文節を使う (文全体を変換したときの一部: AlignUserWords)。
     /// </summary>
@@ -1909,7 +1909,17 @@ public sealed class CompositionController
             }
             var others = string.Concat(clauses.Where((_, k) => k != i).Select(c => c.Text));
             var surrounding = (_precedingText ?? "") + others + (_followingText ?? "");
-            var preferred = _options.ContextRules?.Choose(clauses[i].Reading, surrounding) ?? _options.History?.Get(clauses[i].Reading);
+            var preferred = _options.ContextRules?.Choose(clauses[i].Reading, surrounding);
+            if (_options.History?.Get(reading) is { } learned)
+            {
+                // 文の一部としてかなのまま残った箇所は、文全体を見た判断を保つ。
+                // 「ないように → 内容に」の学習で「当たらないように」を壊さない。
+                // 学習した語は選択できるように残し、単独入力では従来どおり優先する。
+                if (!clauses[i].Candidates.Contains(learned)) clauses[i].Candidates.Insert(1, learned);
+                var keepKana = clauses[i].Text == reading && reading.Any(KanaChars.IsHiragana)
+                    && (kana != reading || context is not null);
+                if (!keepKana) preferred ??= learned;
+            }
             // 変換エンジンは、文節が「から」だけだと記号 (～) にしてしまう。記号だけの変換結果は、ひらがなの後ろに回す。
             preferred ??= IsSymbolOnly(clauses[i].Text) && clauses[i].Reading.All(KanaChars.IsHiragana) ? clauses[i].Reading : null;
             // 英単語に挟まれて助詞だけの文節になると、変換エンジンは漢字にしてしまう (github + に + push → 二)。助詞はかなのまま。

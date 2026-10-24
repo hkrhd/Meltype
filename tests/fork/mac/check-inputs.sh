@@ -13,6 +13,7 @@ for live in false true; do
     printf 'かん\t燗\nしの\t紫乃\n' > "$temporary/$live/userdict.txt"
     printf '{"LiveConversion":%s}\n' "$live" > "$temporary/$live/config.json"
     printf '{"main":{"English":true,"Used":"2026-10-18T00:00:00Z","Count":1},"no":{"English":true,"Used":"2026-10-18T00:00:00Z","Count":1,"Explicit":true},"ni":{"English":true,"Used":"2026-10-24T00:00:00Z","Count":2,"Explicit":true}}\n' > "$temporary/$live/languages.json"
+    printf '{"ないように":{"Text":"内容に","Used":"2026-10-24T00:00:00Z"}}\n' > "$temporary/$live/conversions.json"
     printf 'kankisen \t換気扇\nkan \t燗\nkanwosuru \t燗をする\nshinogakita \t紫乃が来た\n' > "$temporary/checks.tsv"
     printf 'motatsukukanjihaaru \tもたつく感じはある\nsukoshimotatsukukanjigasuru \t少しもたつく感じがする\n' >> "$temporary/checks.tsv"
     printf 'shijisuru \t支持する\n' >> "$temporary/checks.tsv"
@@ -23,7 +24,9 @@ for live in false true; do
     printf 'sudo\tsudo\nsudo apt\tsudo apt\nrepo\trepo\n' >> "$temporary/checks.tsv"
     printf 'no\tの\nno no\tno の\nno problem\tno problem\nI have no problem\tI have no problem\n' >> "$temporary/checks.tsv"
     printf 'google ni\tgoogle に\n' >> "$temporary/checks.tsv"
+    printf 'ataranaiyouni \t当たらないように\nfurenaiyouni \t触れないように\nnaiyouni \t内容に\n' >> "$temporary/checks.tsv"
     if [[ "$live" == true ]]; then
+        printf 'ataranaiyouni\t当たらないように\nfurenaiyouni\t触れないように\nnaiyouni\t内容に\n' >> "$temporary/checks.tsv"
         printf '1niti1kai\t1日1回\n' >> "$temporary/checks.tsv"
         printf 'kankisen\t換気扇\nmotatsukukanjihaaru\tもたつく感じはある\n' >> "$temporary/checks.tsv"
         printf 'mainnoyousuwomite\tmainの様子を見て\n' >> "$temporary/checks.tsv"
