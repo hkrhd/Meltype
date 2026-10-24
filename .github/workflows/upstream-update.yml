@@ -80,7 +80,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          ahead=$(gh api "repos/$REPO/compare/fork_by_hkrhd...main" --jq .ahead_by)
+          main_sha=$(gh api "repos/$REPO/commits/main" --jq .sha)
+          fork_sha=$(gh api "repos/$REPO/commits/fork_by_hkrhd" --jq .sha)
+          ahead=$(gh api "repos/$REPO/compare/$fork_sha...$main_sha" --jq .ahead_by)
           if [[ "$ahead" == 0 ]]; then
             echo '未取り込みの更新はありません。'
             exit 0
@@ -92,9 +94,37 @@ jobs:
             exit 0
           fi
 
-          cat > "$RUNNER_TEMP/upstream-pr.md" <<'BODY'
-          main の差分と意図を確認し、フォーク独自の挙動・方針を保ってください。
-          fork_by_hkrhd と main を親に持つマージコミットを作り、必要な調整後に `bash mac/build-cli.sh --test --build` で検証してください。
+          {
+            echo '## 変更の内容'
+            echo
+            echo 'これは upstream 更新の取り込み依頼です。調整済みの変更ではありません。GitHub のマージボタンでそのまま取り込まないでください。'
+            echo
+            echo "- 通知時点の main（upstream/main）: \`$main_sha\`（未取り込み $ahead コミット）"
+            echo "- 通知時点の fork_by_hkrhd: \`$fork_sha\`"
+            echo "- [通知時点の upstream 差分](https://github.com/$REPO/compare/$fork_sha...$main_sha)"
+            cat <<'BODY'
+
+          PR の差分は main の更新に伴って増えます。作業開始時に最新の main を取得し、上記のコミット以降の追加分も確認してください。
+
+          ## 確かめること
+
+          - upstream 更新の取り込み → AGENTS.md・README.md・docs/FORK.md にある fork 独自の挙動・方針が保たれる
+          - テキスト上の競合がない変更 → 意味上の衝突も確認し、必要なら調整する
+          - 統合後の入力 → 既存テストと fork の回帰テストが通る。判定・変換を変える場合は再現例をテストに足す
+
+          ## 確認したこと
+
+          - [ ] 既存の作業中の変更を保持し、`jj new fork_by_hkrhd main` で統合・調整した
+          - [ ] `bash mac/build-cli.sh --test --build` が通った
+          - [ ] `fork_by_hkrhd` と確認済みの `main` を親に持つマージコミットを push した（squash・rebase は使わない）
+          - [ ] 変更点と検証結果をこの PR に記録した
+          - [x] AI を使った（使った部分: この取り込み依頼文の作成。コードの調整・検証は未実施）
+
+          ## 貢献者ライセンス同意 (CLA)
+
+          個人フォーク内の更新通知です。upstream への貢献 PR ではありません。
           BODY
+          } > "$RUNNER_TEMP/upstream-pr.md"
+
           gh pr create --repo "$REPO" --base fork_by_hkrhd --head main --draft \
             --title 'main の更新を取り込む' --body-file "$RUNNER_TEMP/upstream-pr.md"
