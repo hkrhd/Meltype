@@ -27,6 +27,10 @@ if input_server_ready; then
 fi
 launchctl remove "$label" 2>/dev/null || true
 for attempt in {1..3}; do
+    if input_server_ready; then
+        echo "Meltype input server is running (started by macOS)."
+        exit 0
+    fi
     if launchctl submit -l "$label" -o "$log_dir/Meltype.stdout.log" -e "$log_dir/Meltype.stderr.log" -- "$app/Contents/MacOS/Meltype"; then
         for _ in {1..30}; do
             if input_server_ready; then

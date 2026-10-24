@@ -233,6 +233,12 @@ public sealed class CompositionText
                 return;
             }
         }
+        // 文章の入力欄で打ち始めに打った / は ・ (Microsoft IME と同じ)。Space で / にできる。
+        if (c == '/' && _units.Count == 0 && SlashAtStart())
+        {
+            _units.Add(new CompositionUnit("・", "/"));
+            return;
+        }
         // / キーで中黒 (設定): かなのすぐ後ろの / は ・ (いろん/ますく → いろん・ますく)。英字・数字の後ろ (and/or、3/4、URL)
         // と入力の始め (/help) は / のまま (issue #122)。英語の区間に入ったときは、打ったままの / を見せる。
         if (c == '/' && SlashAsMiddleDot() && _units.Count > 0 && _units[^1].Kana is [.., var kana] && kana is >= 'ぁ' and <= 'ヺ' or 'ー')
@@ -245,6 +251,12 @@ public sealed class CompositionText
 
     /// <summary>かなのすぐ後ろの / を中黒 (・) にするか (設定)。</summary>
     public Func<bool> SlashAsMiddleDot { get; set; } = () => false;
+
+    /// <summary>空の変換ボックスに打った / を、打ち始めの / として中黒 (・) にするか。読むと次からは false。</summary>
+    public Func<bool> SlashAtStart { get; set; } = () => false;
+
+    /// <summary>打ち始めの / だけを ・ にして入れているか。</summary>
+    public bool IsSlashAtStart => _pending.Length == 0 && _units is [{ Kana: "・", Raw: "/" }];
 
     /// <summary>
     /// 英単語の最後の n と、続けて打った n + 母音 (の・な …) が「nn → ん」とまとまってしまうのを防ぐ
@@ -887,6 +899,11 @@ public sealed class CompositionText
         foreach (var unit in units) pieces.Add((unit.Kana, unit.Raw));
         if (pending.Length > 0) pieces.Add((_detector.Romaji.ConvertLenient(pending.ToLowerInvariant(), final: true), pending));
 
+        return RawInPieces(pieces, start, length);
+    }
+
+    private static string? RawInPieces(List<(string Kana, string Raw)> pieces, int start, int length)
+    {
         var builder = new StringBuilder();
         var position = 0;
         foreach (var (kana, raw) in pieces)
@@ -901,6 +918,31 @@ public sealed class CompositionText
             position = end;
         }
         return builder.Length > 0 ? builder.ToString() : null;
+    }
+
+    /// <summary>
+    /// 文全体のかなを kanas の順に区切ったときの、各区切りに対応する打った英字。区切りは <see cref="RawForReading"/> と同じく 1 音の途中に入ると null。
+    /// かな入力のときと、kanas をつないだものが文全体のかな (<see cref="KanaForSegment"/> を全区間つないだもの) と一致しないときは、すべて null を返す。
+    /// 変換中に文節の区切りを動かしたあとで、文節ごとの打った英字を取り直すのに使う。
+    /// </summary>
+    public IReadOnlyList<string?> RawForKanas(IReadOnlyList<string> kanas)
+    {
+        var none = new string?[kanas.Count];
+        if (KanaInput) return none;
+        var units = UnitsInRawRange(_units, 0, Raw.Length, out var pending);
+        var pieces = new List<(string Kana, string Raw)>();
+        foreach (var unit in units) pieces.Add((unit.Kana, unit.Raw));
+        if (pending.Length > 0) pieces.Add((_detector.Romaji.ConvertLenient(pending.ToLowerInvariant(), final: true), pending));
+        if (string.Concat(pieces.Select(piece => piece.Kana)) != string.Concat(kanas)) return none;
+
+        var raws = new string?[kanas.Count];
+        var start = 0;
+        for (var i = 0; i < kanas.Count; i++)
+        {
+            raws[i] = RawInPieces(pieces, start, kanas[i].Length);
+            start += kanas[i].Length;
+        }
+        return raws;
     }
 
     /// <summary>
@@ -961,9 +1003,13 @@ public sealed class CompositionText
         // 先に即確定した / もパスの判定に含め、保護位置は未確定文字列の範囲に戻す。
         var offset = PrecedingCharacter == '/' ? 1 : 0;
         var raw = offset == 0 ? Raw : "/" + Raw;
-        var cacheKey = offset.ToString() + raw;
+        // 中黒として入力した先頭の / はパスに含めない。
+        var slash = _units is [{ Kana: "・", Raw: "/" }, ..];
+        var cacheKey = (slash ? "・" : "") + offset.ToString() + raw;
         if (_protectedCache is not null && _protectedCacheRaw == cacheKey) return _protectedCache;
-        _protectedCache = ProtectedSpanScanner.Scan(raw);
+        _protectedCache = slash
+            ? ProtectedSpanScanner.Scan(raw[(offset + 1)..]).Select(span => span with { Start = span.Start + offset + 1 }).ToArray()
+            : ProtectedSpanScanner.Scan(raw);
         if (offset > 0)
             _protectedCache = _protectedCache.Where(span => span.End > offset)
                 .Select(span => new ProtectedSpan(Math.Max(0, span.Start - offset),
