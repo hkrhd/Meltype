@@ -1589,6 +1589,14 @@ public sealed class CompositionController
     private void StartConversion(bool preferJapanese = false)
     {
         _tabStartedConversion = false;
+        // 形状の「L字」は、英字とかなを別々に変換せず固定の先頭候補にする。
+        if (_text.Mode == DisplayMode.Auto && _text.AllKana(final: true) is "lじ" or "Lじ")
+        {
+            _clauses = [new Clause(_text.AllKana(final: true), false, ["L字", _text.AllKana(final: true)]) { Raw = _text.Raw }];
+            _selectedClause = 0;
+            _converting = true;
+            return;
+        }
         // 子音の略入力 (ast → 明日): 打った英字全体が candidates.txt の英字の読みにあれば、それを 1 つの文節の候補にする (issue #62)
         if (!_text.KanaInput && _text.Mode == DisplayMode.Auto && _text.Raw is { Length: >= 2 } typedRaw && typedRaw.All(char.IsAsciiLetter) &&
             _options.ConsonantAbbreviations() && _options.Candidates?.Lookup(typedRaw.ToLowerInvariant()) is { Count: > 0 } abbreviation)

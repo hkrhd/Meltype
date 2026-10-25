@@ -11,6 +11,20 @@ namespace Meltype.Tests;
 internal static partial class CompositionTests
 {
     [Test]
+    public static void Fork_LShape_DefaultsToCapitalLAndKanji()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var input in new[] { "lji" })
+        {
+            var k = new Keyboard(live: live);
+            k.Type(input + " ");
+            Assert.Equal("L字", k.Showing, $"{input}: live={live}");
+            k.Type("\n");
+            Assert.Equal("L字", k.Host.Document, "先頭候補をそのまま確定する");
+        }
+    }
+
+    [Test]
     public static void Fork_ShortcutNotation_KeepsLettersAndCapitalizesModifiers()
     {
         foreach (var live in new[] { false, true })
