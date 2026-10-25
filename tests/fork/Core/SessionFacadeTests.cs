@@ -23,10 +23,10 @@ internal static partial class SessionFacadeTests
                 File.WriteAllText(Path.Combine(directory, "config.json"), enabled ? "{\"PredictiveCandidates\":true}" : "{\"PredictiveCandidates\":false}");
                 var session = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null,
                     supportsPredictions: supported);
-                var typing = Type(session, "de")[^1];
+                var typing = Type(session, "dec")[^1];
                 Assert.Equal(enabled && supported, typing.View?.Predictions is { Count: > 0 }, "ホストの表示対応と設定の両方が有効なときだけ補完する");
                 var plain = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
-                var expected = Type(plain, "de\n")[^1].Commits.Single().Text;
+                var expected = Type(plain, "dec\n")[^1].Commits.Single().Text;
                 Assert.Equal(expected, Type(session, "\n")[^1].Commits.Single().Text, "Tabで選ばずにEnterを押しても補完しない");
             }
         }
@@ -34,19 +34,19 @@ internal static partial class SessionFacadeTests
     }
 
     [Test]
-    public static void Fork_EnglishPredictions_StartAtTwoLettersWithoutChangingTypedText()
+    public static void Fork_EnglishPredictions_StartAtThreeLettersWithoutChangingTypedText()
     {
         foreach (var before in new[] { "", "I made " })
-        foreach (var raw in new[] { "de", "De", "DE", "th" })
+        foreach (var raw in new[] { "dec", "Dec", "DEC", "thr" })
         {
             var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
                 new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => true }, () => new Settings());
-            Assert.True(Type(session, raw[..1], before)[^1].View?.Predictions is null, "1文字では補完しない");
-            var typed = Type(session, raw[1..], before)[^1];
+            Assert.True(Type(session, raw[..2], before)[^1].View?.Predictions is null, "2文字では補完しない");
+            var typed = Type(session, raw[2..], before)[^1];
             var baseline = Type(Create(), raw, before)[^1];
             Assert.Equal(baseline.View?.Text, typed.View?.Text, "候補を選ぶまでは本文を変更しない");
             var predictions = typed.View?.Predictions ?? [];
-            Assert.True(predictions.Count is > 0 and <= 5, "判定前・英語判定済みとも2文字から候補を出す: " + raw);
+            Assert.True(predictions.Count is > 0 and <= 5, "判定前・英語判定済みとも3文字から候補を出す: " + raw);
             Assert.True(predictions.All(p => p.Length > raw.Length && p.StartsWith(raw, StringComparison.Ordinal)),
                 "入力の大文字・小文字に合わせた続きだけを出す: " + string.Join(",", predictions));
             var tab = session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
@@ -66,13 +66,13 @@ internal static partial class SessionFacadeTests
     {
         var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
             new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => true }, () => new Settings());
-        var typed = Type(session, "de")[^1].View;
+        var typed = Type(session, "dec")[^1].View;
         session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
         var escaped = session.HandleKey(VirtualKeys.Escape, null, false, false, false, false);
         Assert.Equal(typed?.Text, escaped.View?.Text, "Escで元の入力に戻す");
         Assert.Equal(-1, escaped.View?.SelectedPrediction);
         session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
-        var continued = Type(session, "cis")[^1];
+        var continued = Type(session, "is")[^1];
         Assert.Equal(-1, continued.View?.SelectedPrediction, "追加入力で選択を解除する");
         Assert.True(continued.View?.Predictions?.Contains("decision") == true, "最新の入力で候補を作り直す");
         var removed = Type(session, "\b\b\b\b")[^1];
@@ -80,10 +80,10 @@ internal static partial class SessionFacadeTests
 
         var disabled = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
             new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => false }, () => new Settings());
-        Assert.True(Type(disabled, "de")[^1].View?.Predictions is null, "設定OFFなら補完しない");
+        Assert.True(Type(disabled, "dec")[^1].View?.Predictions is null, "設定OFFなら補完しない");
         var direct = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
             new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => true }, () => new Settings()) { Direct = true };
-        Assert.True(Type(direct, "de").All(r => !r.Consumed && r.View is null), "直接入力はアプリへ渡す");
+        Assert.True(Type(direct, "dec").All(r => !r.Consumed && r.View is null), "直接入力はアプリへ渡す");
     }
 
     [Test]

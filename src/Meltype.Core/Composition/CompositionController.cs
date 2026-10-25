@@ -3139,7 +3139,7 @@ public sealed class CompositionController
                 }
             }
         }
-        // 英語と判定される前の打ちかけにも、英字だけを 2 文字以上打っていれば英単語の続きも出す。
+        // 英語と判定される前の打ちかけにも、英字だけを 3 文字以上打っていれば英単語の続きも出す。
         if (_text.Raw.Length >= Predictor.MinEnglishLength && _text.Raw.All(char.IsAsciiLetter))
         {
             foreach (var word in predictor.PredictEnglish(_text.Raw))
