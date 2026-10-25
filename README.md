@@ -10,7 +10,7 @@
 
 ## 変更点：
 
-- リリースの手動実行で Mac 版（Apple Silicon・Zenzai 同梱）もビルドし、Windows 版と同じ Releases に添付。両 OS の検証と配布物4個のアップロードが成功してから公開（[配布手順](docs/FORK.md)）。
+- リリースの手動実行で Mac 版（Apple Silicon・Zenzai 同梱）もビルドし、Windows 版と同じ Releases に添付。両 OS の検証と配布物4個のアップロードが成功してから公開。Swift の境界テストも本体と同じ C++ 相互運用設定で検証（[配布手順](docs/FORK.md)）。
 - PR #5 の upstream/main（`ae73a2bd`）を取り込み、Windows のスペルチェッカーへの問い合わせとキャッシュを効率化。更新通知 PR の「確かめること」「確認したこと」欄を削除し、依頼文を簡潔に。
 - 短い英単語に日本語が続くとき、日本語の読みの根拠があり、全体を英語とみなす根拠が薄ければ区切りを維持（`macnanode → macなので`、`macdakara → macだから`）。英語として学習した語や英文中の入力は維持。
 - Windows のビルド・テストを GitHub Actions で実行。手動実行では Windows の通常版ZIP・ポータブル版ZIP・インストーラーと Mac 版ZIPを作り、Releases に保存。Actions の成果物保存は使わず、ビルドキャッシュは無料枠の10 GB内で保持（[運用手順](docs/FORK.md)）。

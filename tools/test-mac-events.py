@@ -82,7 +82,7 @@ swiftSettings: [.define("REAL_CONVERTER")], linkerSettings: [.linkedFramework("I
             subprocess.run(['install_name_tool', '-add_rpath', '@executable_path/../Frameworks', str(executable)], check=True)
             subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(contents.parent)], check=True)
         else:
-            subprocess.run(['xcrun', 'swiftc', '-swift-version', '5',
+            subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-cxx-interoperability-mode=default',
                             str(repo / 'tools/test-mac-events.swift'),
                             *[str(sources / name) for name in filenames],
                             '-framework', 'InputMethodKit', '-framework', 'Carbon', '-o', str(executable)], check=True)

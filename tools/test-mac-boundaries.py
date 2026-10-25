@@ -32,7 +32,7 @@ def main():
         shutil.copy2(library, frameworks / "libMeltypeNative.dylib")
         (contents / "Info.plist").write_bytes(plistlib.dumps({"CFBundleExecutable": executable.name,
                                                             "CFBundlePackageType": "APPL"}))
-        subprocess.run(["xcrun", "swiftc", "-swift-version", "5",
+        subprocess.run(["xcrun", "swiftc", "-swift-version", "5", "-cxx-interoperability-mode=default",
                         str(repo / "tools/test-mac-boundaries.swift"),
                         *[str(repo / "mac/Sources/MeltypeIME" / name)
                           for name in ("NativeCore.swift", "InputController.swift", "KeyMapping.swift",
