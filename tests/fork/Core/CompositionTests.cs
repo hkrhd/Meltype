@@ -11,6 +11,38 @@ namespace Meltype.Tests;
 internal static partial class CompositionTests
 {
     [Test]
+    public static void Fork_ShortcutNotation_KeepsLettersAndCapitalizesModifiers()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var (prefix, expectedPrefix) in new[] { ("c-", "C-"), ("c-s-", "C-S-"), ("c-a-", "C-A-") })
+        foreach (var letter in "abcdefghijklmnopqrstuvwxyz")
+        {
+            var k = new Keyboard(live: live);
+            k.Type(prefix + letter);
+            Assert.Equal(expectedPrefix + letter, k.Showing, "入力中も英字で表示する: " + prefix + letter);
+            k.Type("\n");
+            Assert.Equal(expectedPrefix + letter, k.Host.Document, "修飾キーだけ大文字で確定する");
+        }
+
+        foreach (var (input, expected) in new[]
+        {
+            ("c-", "C-"), ("c-s-", "C-S-"), ("c-a-", "C-A-"),
+            ("C-s-a", "C-S-a"), ("c-A-x", "C-A-x"), ("C-S-Z", "C-S-Z"),
+            ("c-zh", "C-zh"), ("c-a-kana", "C-A-kana"), ("c-x c-s-a", "C-x C-S-a"),
+            ("c-s-a\b\b\bi", "C-i"), ("camera", "camera"),
+        })
+        {
+            var k = new Keyboard();
+            k.Type(input + " ");
+            Assert.Equal(expected + " ", k.Host.Document, "Space でショートカット表記と空白を確定する: " + input);
+        }
+
+        var japanese = new Keyboard();
+        japanese.Type("ka-do\n");
+        Assert.Equal("かーど", japanese.Host.Document, "変換前のかな入力では通常の長音を維持する（カタカナ変換の検証ではない）");
+    }
+
+    [Test]
     public static void Fork_DaysAndCounts_RemainJapaneseWhenNumbersRepeat()
     {
         foreach (var live in new[] { false, true })

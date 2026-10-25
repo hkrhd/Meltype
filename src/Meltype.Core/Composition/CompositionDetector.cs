@@ -144,6 +144,9 @@ public sealed partial class CompositionDetector
         // 連結した原文と各位置のオフセットを使い回す (内容・順序は同じで、文字列を毎回連結しない)。
         Prepare(units);
         var token = Raw(units, 0, units.Count) + pending;
+        // ショートカットキーの表記は辞書・文脈によらず英字。修飾キーだけ大文字にそろえる。
+        if (!kanaInput && FormatShortcutNotation(token) is { } shortcut)
+            return [new CompositionSegment(true, "", shortcut)];
         // Structured Latin tokens are opaque; their components are not Japanese readings.
         if (!kanaInput && token.All(c => c is >= '!' and <= '~') &&
             (token.Contains('@') && token.Any(char.IsAsciiLetter) || token.Contains('_') || token.Contains("://", StringComparison.Ordinal) ||
@@ -975,6 +978,15 @@ public sealed partial class CompositionDetector
         var upper = 0;
         while (upper < head.Length && char.IsAsciiLetterUpper(head[upper])) upper++;
         return upper >= 2 && upper < head.Length && head[upper..].All(char.IsAsciiLetterLower) && !IsKnownCapitalizedWord(head);
+    }
+
+    /// <summary>C- / C-S- / C-A- で始まるショートカット表記。続く英字の大小は維持する。</summary>
+    internal static string? FormatShortcutNotation(string raw)
+    {
+        if (raw.Length < 2 || raw[0] is not ('c' or 'C') || raw[1] != '-') return null;
+        var prefixLength = raw.Length >= 4 && raw[2] is 's' or 'S' or 'a' or 'A' && raw[3] == '-' ? 4 : 2;
+        var letters = raw[prefixLength..];
+        return letters.All(char.IsAsciiLetter) ? raw[..prefixLength].ToUpperInvariant() + letters : null;
     }
 
     // - を付けて使う英語の接頭辞 (e-mail、re-do、co-op、x-ray)。接頭辞 + - + 3 文字以上の英単語なら英語。

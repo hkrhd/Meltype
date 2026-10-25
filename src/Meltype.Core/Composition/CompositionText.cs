@@ -90,6 +90,15 @@ public sealed class CompositionText
     /// <param name="textBeforePeriod">句点キーを押す直前の表示文字列。省略時はこの未確定入力の表示を使う。</param>
     public void Append(char c, string? textBeforePeriod = null)
     {
+        // ショートカット表記の英字をローマ字や z 系の記号に読まない (c-a → C-a、c-zh → C-zh)。
+        // 修飾キーの大小も入力時にそろえ、英数表示・確定のどちらでも同じ表記を使う。
+        if (!KanaInput && (char.IsAsciiLetter(c) || c == '-') && CompositionDetector.FormatShortcutNotation(Raw + c) is { } shortcut)
+        {
+            _units.Clear();
+            _pending.Clear();
+            foreach (var letter in shortcut) _units.Add(new CompositionUnit(letter.ToString(), letter.ToString()));
+            return;
+        }
         // 英数字の間に打った . / - はドメイン名や略語の区切り。入力直後は後続文字が分からないため、
         // 次の英数字が来た時点で句点・長音として読んだ記号を半角に戻す (tetr.io、J-core)。
         if (char.IsAsciiLetterOrDigit(c) && _units.Count >= 2 && (_units[^1].Raw is "." or "-") &&
