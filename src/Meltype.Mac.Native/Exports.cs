@@ -74,7 +74,7 @@ public static unsafe class Exports
         {
             var session = s_mozc is { } mozc
                 ? MeltypeSession.CreateDefault(mozc, mozc.Candidates, s_isWord == null ? null : new CallbackWordChecker())
-                : MeltypeSession.CreateDefault(new CallbackConverter(), MoreCandidates, s_isWord == null ? null : new CallbackWordChecker(), autoSpacing: true);
+                : MeltypeSession.CreateDefault(new CallbackConverter(), MoreCandidates, s_isWord == null ? null : new CallbackWordChecker(), autoSpacing: true, supportsPredictions: true);
             return GCHandle.ToIntPtr(GCHandle.Alloc(session));
         }
         catch (Exception ex)
@@ -147,6 +147,10 @@ public static unsafe class Exports
     /// <summary>候補ウィンドウで候補を選んだ。</summary>
     [UnmanagedCallersOnly(EntryPoint = "meltype_select_candidate")]
     public static byte* SelectCandidate(IntPtr handle, int index) => Run(handle, session => session.SelectCandidate(index));
+
+    /// <summary>予測変換の候補をクリックして確定する。</summary>
+    [UnmanagedCallersOnly(EntryPoint = "meltype_select_prediction")]
+    public static byte* SelectPrediction(IntPtr handle, int index) => Run(handle, session => session.SelectPrediction(index));
 
     /// <summary>英数 (直接入力) にするか (1) 日本語にするか (0)。</summary>
     [UnmanagedCallersOnly(EntryPoint = "meltype_set_direct")]

@@ -47,7 +47,7 @@ if CommandLine.arguments.contains("--benchmark-conversion") {
 }
 
 if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contains("--check-inputs")
-    || CommandLine.arguments.contains("--check-candidates") {
+    || CommandLine.arguments.contains("--check-candidates") || CommandLine.arguments.contains("--check-predictions") {
     var failures = 0
     func check(_ name: String, _ condition: Bool) {
         print("\(condition ? "PASS" : "FAIL") \(name)")
@@ -98,6 +98,35 @@ if CommandLine.arguments.contains("--self-test") || CommandLine.arguments.contai
             if last?.consumed != true { output += String(character) }
         }
         return (output, last)
+    }
+    if CommandLine.arguments.contains("--check-predictions") {
+        let session = NativeCore.shared.createSession()
+        defer { NativeCore.shared.destroySession(session) }
+        let (_, one) = type("d", session: session)
+        check("英語補完: 1文字では非表示", one?.view?.predictions.isEmpty == true)
+        let (_, two) = type("e", session: session)
+        let predictions = two?.view?.predictions ?? []
+        check("英語補完: 2文字から候補を表示", !predictions.isEmpty && predictions.allSatisfy { $0.hasPrefix("de") && $0.count > 2 })
+        check("英語補完: 表示時点では未選択", two?.view?.selectedPrediction == -1)
+        let (_, tab) = type("\t", session: session)
+        check("英語補完: Tabで先頭を選択", tab?.consumed == true && tab?.view?.selectedPrediction == 0 && tab?.view?.text == predictions.first)
+        let back = NativeCore.shared.handleKey(session, vk: 0x09, character: 0, modifiers: 1, before: nil, after: nil)
+        check("英語補完: Shift+Tabで未選択", back?.view?.selectedPrediction == -1 && back?.view?.text == two?.view?.text)
+        _ = type("\t", session: session)
+        let escaped = NativeCore.shared.handleKey(session, vk: 0x1B, character: 0, modifiers: 0, before: nil, after: nil)
+        check("英語補完: Escで元の入力に戻る", escaped?.view?.selectedPrediction == -1 && escaped?.view?.text == two?.view?.text)
+        _ = type("\t", session: session)
+        let (committed, enter) = type("\n", session: session)
+        check("英語補完: Enterで選択した単語を確定", committed == predictions.first && enter?.view == nil)
+        let (_, again) = type("de", session: session)
+        let clicked = NativeCore.shared.selectCandidate(session, index: 0, prediction: true)
+        check("英語補完: クリック用のC ABIで確定", clicked?.commits.map(\.text).joined() == again?.view?.predictions.first && clicked?.view == nil)
+        let (_, single) = type("decision", session: session)
+        check("英語補完: 1件の候補も取得", single?.view?.predictions == ["decisions"])
+        _ = type("\t", session: session)
+        let (singleWord, _) = type("\n", session: session)
+        check("英語補完: 1件の候補を選択して確定", singleWord == "decisions")
+        exit(failures == 0 ? 0 : 1)
     }
     // TSV: ローマ字の入力キー列・候補を選択して確定する文章全体。Space はここで押す。
     // 同じセッションで繰り返し入力し、候補取得後の通常変換も検証する。

@@ -168,7 +168,7 @@ public sealed class Predictor
     public const int MaxPredictions = 5;
 
     /// <summary>この文字数から予測する (短いと候補が多すぎて当たらない)。</summary>
-    public const int MinKanaLength = 2, MinEnglishLength = 3;
+    public const int MinKanaLength = 2, MinEnglishLength = 2;
 
     /// <summary>英字の名前を読みから予測する文字数 (2 文字だと あい → IIS, IaaS … のように当たらない候補が多すぎる)。</summary>
     public const int MinEnglishNameKanaLength = 3;

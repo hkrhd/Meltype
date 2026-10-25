@@ -11,6 +11,82 @@ namespace Meltype.Tests;
 internal static partial class SessionFacadeTests
 {
     [Test]
+    public static void Fork_DefaultSession_EnablesPredictionsOnlyForSupportedHostsAndSettings()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "meltype-predictions-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            foreach (var enabled in new[] { true, false })
+            foreach (var supported in new[] { true, false })
+            {
+                File.WriteAllText(Path.Combine(directory, "config.json"), enabled ? "{\"PredictiveCandidates\":true}" : "{\"PredictiveCandidates\":false}");
+                var session = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null,
+                    supportsPredictions: supported);
+                var typing = Type(session, "de")[^1];
+                Assert.Equal(enabled && supported, typing.View?.Predictions is { Count: > 0 }, "ホストの表示対応と設定の両方が有効なときだけ補完する");
+                var plain = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
+                var expected = Type(plain, "de\n")[^1].Commits.Single().Text;
+                Assert.Equal(expected, Type(session, "\n")[^1].Commits.Single().Text, "Tabで選ばずにEnterを押しても補完しない");
+            }
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Test]
+    public static void Fork_EnglishPredictions_StartAtTwoLettersWithoutChangingTypedText()
+    {
+        foreach (var before in new[] { "", "I made " })
+        foreach (var raw in new[] { "de", "De", "DE", "th" })
+        {
+            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => true }, () => new Settings());
+            Assert.True(Type(session, raw[..1], before)[^1].View?.Predictions is null, "1文字では補完しない");
+            var typed = Type(session, raw[1..], before)[^1];
+            var baseline = Type(Create(), raw, before)[^1];
+            Assert.Equal(baseline.View?.Text, typed.View?.Text, "候補を選ぶまでは本文を変更しない");
+            var predictions = typed.View?.Predictions ?? [];
+            Assert.True(predictions.Count is > 0 and <= 5, "判定前・英語判定済みとも2文字から候補を出す: " + raw);
+            Assert.True(predictions.All(p => p.Length > raw.Length && p.StartsWith(raw, StringComparison.Ordinal)),
+                "入力の大文字・小文字に合わせた続きだけを出す: " + string.Join(",", predictions));
+            var tab = session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
+            Assert.True(tab.Consumed, "Tabをアプリへ渡さない");
+            Assert.Equal(predictions[0], tab.View?.Text);
+            var back = session.HandleKey(VirtualKeys.Tab, null, true, false, false, false);
+            Assert.Equal(-1, back.View?.SelectedPrediction, "Shift+Tabで未選択へ戻る");
+            session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
+            var committed = session.HandleKey(VirtualKeys.Return, null, false, false, false, false);
+            Assert.Equal(predictions[0], committed.Commits.Single().Text);
+            Assert.True(committed.View is null, "確定後は候補を閉じる");
+        }
+    }
+
+    [Test]
+    public static void Fork_EnglishPredictions_RefreshAndRespectSettings()
+    {
+        var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+            new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => true }, () => new Settings());
+        var typed = Type(session, "de")[^1].View;
+        session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
+        var escaped = session.HandleKey(VirtualKeys.Escape, null, false, false, false, false);
+        Assert.Equal(typed?.Text, escaped.View?.Text, "Escで元の入力に戻す");
+        Assert.Equal(-1, escaped.View?.SelectedPrediction);
+        session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
+        var continued = Type(session, "cis")[^1];
+        Assert.Equal(-1, continued.View?.SelectedPrediction, "追加入力で選択を解除する");
+        Assert.True(continued.View?.Predictions?.Contains("decision") == true, "最新の入力で候補を作り直す");
+        var removed = Type(session, "\b\b\b\b")[^1];
+        Assert.True(removed.View?.Predictions is null, "1文字に戻ると候補を閉じる");
+
+        var disabled = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+            new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => false }, () => new Settings());
+        Assert.True(Type(disabled, "de")[^1].View?.Predictions is null, "設定OFFなら補完しない");
+        var direct = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+            new CompositionOptions { Predictor = new Predictor(null, null, null), Predictions = () => true }, () => new Settings()) { Direct = true };
+        Assert.True(Type(direct, "de").All(r => !r.Consumed && r.View is null), "直接入力はアプリへ渡す");
+    }
+
+    [Test]
     public static void Fork_ShortEnglishWord_KeepsSupportedJapaneseTail()
     {
         foreach (var live in new[] { false, true })

@@ -96,6 +96,8 @@ struct CompositionView: Decodable {
     /// 選んでいる候補の意味 (無ければ nil)。候補で少し止まったら注釈に出す。
     let meaning: String?
     let suggestion: String?
+    let predictions: [String]
+    let selectedPrediction: Int
 }
 
 /// libMeltypeNative.dylib を読み込んで呼ぶ。Meltype.app/Contents/Frameworks に置く (build.sh)。
@@ -110,6 +112,7 @@ final class NativeCore {
     private let handleKeyFunction: HandleKeyFunction?
     private let commitFunction: CommitFunction?
     private let selectFunction: SelectFunction?
+    private let selectPredictionFunction: SelectFunction?
     private let setDirectFunction: SetDirectFunction?
     private let setCodeInputFunction: SetDirectFunction?
     private let dataDirectoryFunction: DataDirectoryFunction?
@@ -134,6 +137,7 @@ final class NativeCore {
         handleKeyFunction = symbol("meltype_handle_key", as: HandleKeyFunction.self)
         commitFunction = symbol("meltype_commit", as: CommitFunction.self)
         selectFunction = symbol("meltype_select_candidate", as: SelectFunction.self)
+        selectPredictionFunction = symbol("meltype_select_prediction", as: SelectFunction.self)
         setDirectFunction = symbol("meltype_set_direct", as: SetDirectFunction.self)
         setCodeInputFunction = symbol("meltype_set_code_input", as: SetDirectFunction.self)
         dataDirectoryFunction = symbol("meltype_data_directory", as: DataDirectoryFunction.self)
@@ -177,9 +181,9 @@ final class NativeCore {
         return commit(session)
     }
 
-    func selectCandidate(_ session: UnsafeMutableRawPointer?, index: Int) -> SessionResult? {
-        guard let selectFunction else { return nil }
-        return decode(selectFunction(session, Int32(index)))
+    func selectCandidate(_ session: UnsafeMutableRawPointer?, index: Int, prediction: Bool = false) -> SessionResult? {
+        guard let select = prediction ? selectPredictionFunction : selectFunction else { return nil }
+        return decode(select(session, Int32(index)))
     }
 
     func setDirect(_ session: UnsafeMutableRawPointer?, _ direct: Bool) {

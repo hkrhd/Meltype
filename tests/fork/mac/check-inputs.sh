@@ -38,6 +38,8 @@ for live in false true; do
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-inputs "$temporary/checks.tsv"
     echo "候補の表示・選択・確定テスト (LiveConversion=$live)"
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-candidates "$here/CandidateChecks.tsv"
+    echo "英単語補完の表示・選択・確定テスト (LiveConversion=$live)"
+    MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-predictions
 done
 
 echo "フォーク独自の入力チェック"

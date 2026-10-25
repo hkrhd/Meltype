@@ -170,11 +170,12 @@ public sealed class MeltypeSession
     /// <summary>
     /// 既定の辞書・学習データ (保存場所は <see cref="AppPaths"/>) で作る。converter は OS 側の変換エンジン、
     /// moreCandidates は読みに対する候補の一覧 (無ければ null)、wordChecker は OS のスペルチェッカー (無ければ null)。
+    /// supportsPredictions はホストが予測候補の一覧を表示・選択できるときに有効にする。
     /// </summary>
-    public static MeltypeSession CreateDefault(IKanjiConverter converter, Func<string, IReadOnlyList<string>>? moreCandidates, IWordChecker? wordChecker, bool autoSpacing = false)
+    public static MeltypeSession CreateDefault(IKanjiConverter converter, Func<string, IReadOnlyList<string>>? moreCandidates, IWordChecker? wordChecker, bool autoSpacing = false, bool supportsPredictions = false)
     {
         AppPaths.MigrateFromOldName();
-        return CreateDefault(AppPaths.DataDirectory, converter, moreCandidates, wordChecker, autoSpacing);
+        return CreateDefault(AppPaths.DataDirectory, converter, moreCandidates, wordChecker, autoSpacing, supportsPredictions);
     }
 
     // 辞書・検出器・学習データは、入力欄 (セッション) がいくつあってもプロセスで 1 つだけ作って共有する (Windows 版の CompositionService.CreateSession と同じ)。
@@ -186,7 +187,7 @@ public sealed class MeltypeSession
     private static readonly GitHubIssueTitles s_githubTitles = new();
 
     /// <summary>dataDirectory に置いた設定・辞書・学習データで作る (テストでは一時フォルダーを渡す)。</summary>
-    internal static MeltypeSession CreateDefault(string dataDirectory, IKanjiConverter converter, Func<string, IReadOnlyList<string>>? moreCandidates, IWordChecker? wordChecker, bool autoSpacing = false)
+    internal static MeltypeSession CreateDefault(string dataDirectory, IKanjiConverter converter, Func<string, IReadOnlyList<string>>? moreCandidates, IWordChecker? wordChecker, bool autoSpacing = false, bool supportsPredictions = false)
     {
         Directory.CreateDirectory(dataDirectory);
         // 設定は入力欄を作るたびに読み直す (設定の変更は、次に開いた入力欄から効く)。
@@ -211,6 +212,8 @@ public sealed class MeltypeSession
                 Meanings = MeaningDictionary.Load(),
                 RomajiTypos = RomajiTypoCorrector.Load(created.Romaji),
                 TranslationHistory = new TranslationHistory(Path.Combine(dataDirectory, "translations.json")),
+                // 英単語補完の辞書は入力欄をまたいで共有する。
+                Predictor = new Predictor(null, null, null),
             });
             s_shared = shared;
         }
@@ -229,6 +232,7 @@ public sealed class MeltypeSession
             // dictionaries/ に置いた macOS の「ユーザ辞書」の .plist も読む (#40)
             UserDictionary = new UserDictionary(Path.Combine(dataDirectory, "userdict.txt"), importDirectory: userDirectory),
             MoreCandidates = moreCandidates,
+            Predictions = () => supportsPredictions && settings.PredictiveCandidates,
             TranslationCandidates = () => settings.TranslationCandidates,
             TabConversion = () => settings.TabConversion,
             ContinueAfterConversion = () => settings.ContinueAfterConversion,

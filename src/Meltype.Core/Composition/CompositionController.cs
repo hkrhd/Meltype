@@ -256,7 +256,7 @@ public sealed record CompositionOptions
     /// <summary>予測変換の候補を出す元 (null なら出さない)。</summary>
     public Predictor? Predictor { get; init; }
 
-    /// <summary>予測変換の候補を出すか (設定)。変換ボックスに候補の一覧を出せる画面 (Windows) だけ true にする。</summary>
+    /// <summary>予測変換の候補を出すか (設定)。候補の一覧を表示できるホストで有効にする。</summary>
     public Func<bool> Predictions { get; init; } = () => false;
 
     /// <summary>予測変換の候補に、読みから英字の社名・サービス名・語も出すか (設定。しゃお → Xiaomi、issue #890)。</summary>
@@ -3131,8 +3131,8 @@ public sealed class CompositionController
                 }
             }
         }
-        // 長い英単語は、打ち終わるまでローマ字として見えていることがある (decis → でしs)。英字だけを 4 文字以上打っていれば英単語の続きも出す
-        if (_text.Raw.Length >= 4 && _text.Raw.All(char.IsAsciiLetter))
+        // 英語と判定される前の打ちかけにも、英字だけを 2 文字以上打っていれば英単語の続きも出す。
+        if (_text.Raw.Length >= Predictor.MinEnglishLength && _text.Raw.All(char.IsAsciiLetter))
         {
             foreach (var word in predictor.PredictEnglish(_text.Raw))
             {

@@ -12,6 +12,7 @@ import InputMethodKit
 final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     private var session: UnsafeMutableRawPointer?
     private var candidateList: [String] = []
+    private var showingPredictions = false
     private var hasMarkedText = false
     private var codeInput = ModeSelection.shared.current == .code
     private var directInput = ModeSelection.shared.current == .direct
@@ -128,6 +129,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         displayedSuggestion = nil
         meaningKey = nil
         candidateList = []
+        showingPredictions = false
         super.deactivateServer(sender)
     }
 
@@ -143,7 +145,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
               let index = candidateList.firstIndex(of: string) else { return }
         // クリックした候補が候補ウィンドウで選ばれているので、覚えている位置も合わせる。
         windowIndex = index
-        apply(NativeCore.shared.selectCandidate(session, index: index), to: client)
+        apply(NativeCore.shared.selectCandidate(session, index: index, prediction: showingPredictions), to: client)
     }
 
     /// 候補ウィンドウの中で選択が動いた (マウスで選んだときなど)。本体の選択も合わせる。
@@ -153,7 +155,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     override func candidateSelectionChanged(_ candidateString: NSAttributedString!) {
         let mouseTypes: [NSEvent.EventType] = [.leftMouseDown, .leftMouseUp, .leftMouseDragged]
-        guard !selectingFromCore,
+        guard !selectingFromCore, !showingPredictions,
               let type = NSApp.currentEvent?.type, mouseTypes.contains(type),
               let client = self.client(),
               let string = candidateString?.string,
@@ -343,6 +345,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             hasMarkedText = false
         }
         candidateList = []
+        showingPredictions = false
         candidatesWindow?.hide()
         suggestionPanel?.orderOut(nil)
         displayedSuggestion = nil
@@ -418,24 +421,33 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     private func updateCandidates(_ view: CompositionView) {
         guard let window = candidatesWindow else { return }
-        if view.candidates.count > 1 {
+        // Tab が選ぶ予測の一覧を表示し、Space で変換を始めたら通常の候補に切り替える。
+        let prediction = !view.converting && !view.predictions.isEmpty
+        let items = prediction ? view.predictions : view.candidates
+        let selected = prediction ? view.selectedPrediction : view.selectedIndex
+        if prediction || items.count > 1 {
             // 作り直し・選択で候補ウィンドウから candidateSelectionChanged が来ても、本体に返さない。
             selectingFromCore = true
             defer { selectingFromCore = false }
             // 一覧を作り直すと選択が先頭に戻るので、中身が変わったとき (別の文節に移ったときなど) だけ作り直す。
-            if candidateList != view.candidates || !window.isVisible() {
-                candidateList = view.candidates
+            if candidateList != items || showingPredictions != prediction || !window.isVisible() {
+                candidateList = items
+                showingPredictions = prediction
                 window.update()
                 window.show(kIMKLocateCandidatesBelowHint)
                 windowIndex = 0
             }
-            if view.selectedIndex >= 0 && view.selectedIndex < view.candidates.count {
-                selectInWindow(window, index: view.selectedIndex)
+            if selected >= 0 && selected < items.count {
+                selectInWindow(window, index: selected)
+            } else if prediction {
+                // 未選択に戻ったら、次の Tab で選ぶ先頭に表示位置も戻す。
+                selectInWindow(window, index: 0)
             }
-            scheduleMeaning(view)
+            if prediction { meaningKey = nil } else { scheduleMeaning(view) }
         } else {
             meaningKey = nil
             candidateList = []
+            showingPredictions = false
             window.hide()
         }
     }
