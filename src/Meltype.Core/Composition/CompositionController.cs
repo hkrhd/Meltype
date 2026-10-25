@@ -2617,6 +2617,8 @@ public sealed class CompositionController
 
     /// <summary>今の表示 (ライブ変換が有効なら日本語区間は漢字に変換済み)。</summary>
     private string CurrentDisplay(bool final) =>
+        _options.LiveConversion() && _text.Mode == DisplayMode.Auto && _text.AllKana(final) is "lじ" or "Lじ"
+            ? "L字" :
         _text.Display(final, _options.LiveConversion() ? LiveConvert : null);
 
     // ---- 確定 ----

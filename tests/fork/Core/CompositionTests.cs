@@ -17,7 +17,9 @@ internal static partial class CompositionTests
         foreach (var input in new[] { "lji" })
         {
             var k = new Keyboard(live: live);
-            k.Type(input + " ");
+            k.Type(input);
+            if (live) Assert.Equal("L字", k.Showing, "ライブ変換中もL字を表示する");
+            k.Type(" ");
             Assert.Equal("L字", k.Showing, $"{input}: live={live}");
             k.Type("\n");
             Assert.Equal("L字", k.Host.Document, "先頭候補をそのまま確定する");
