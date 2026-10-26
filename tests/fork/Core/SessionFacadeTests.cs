@@ -141,6 +141,75 @@ internal static partial class SessionFacadeTests
     }
 
     [Test]
+    public static void Fork_LearnedReadableWords_KeepJapaneseInJapaneseContext()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var scored in new[] { false, true })
+        foreach (var explicitChoice in new[] { false, true })
+        foreach (var (input, before, expected) in new[]
+        {
+            ("puronputotoshite", "", "ぷろんぷととして"),
+            ("puronputotosite", "", "ぷろんぷととして"),
+            ("puronputoto", "", "ぷろんぷとと"),
+            ("katachiwototonoeru", "", "かたちをととのえる"),
+            ("osushiwotaberu", "", "おすしをたべる"),
+            ("toto", "今日は", "とと"),
+        })
+        {
+            var detector = CompositionDetector.CreateDefault();
+            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
+            detector.UseScoredSegmentation = () => scored;
+            var memory = new LanguageMemory(null);
+            memory.Remember("toto", true, explicitChoice);
+            memory.Remember("sushi", true, explicitChoice);
+            memory.Remember("sushi", true, explicitChoice);
+            detector.Memory = memory;
+            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
+            Assert.Equal(expected, Type(session, input, before)[^1].View?.Text,
+                $"入力中: {input}, before={before}, live={live}, scored={scored}, explicit={explicitChoice}");
+            Assert.Equal(expected, string.Concat(Type(session, "\n", before).SelectMany(r => r.Commits).Select(e => e.Text)),
+                "日本語のまま確定する: " + input);
+        }
+    }
+
+    [Test]
+    public static void Fork_LearnedReadableWords_PreserveClearEnglishAndEnglishContext()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var scored in new[] { false, true })
+        foreach (var (input, before, expected) in new[]
+        {
+            ("toto", "", "toto"), ("toto", "I use ", "toto"),
+            ("linede", "今日は", "lineで"),
+            ("kyouhalinede", "", live ? "今日はlineで" : "きょうはlineで"),
+            ("korewogooglede", "", "これをgoogleで"),
+            ("korewogithubde", "", "これをgithubで"),
+            ("korewopythonde", "", "これをpythonで"),
+            ("korewoamazonde", "", "これをamazonで"),
+            ("korewofeaturede", "", "これをfeatureで"),
+            ("korewoxqtoolde", "", "これをxqtoolで"),
+            ("korewomainno", "", "これをmainの"),
+            ("Toto", "今日は", "Toto"),
+        })
+        {
+            var detector = CompositionDetector.CreateDefault();
+            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
+            detector.UseScoredSegmentation = () => scored;
+            var memory = new LanguageMemory(null);
+            foreach (var word in new[] { "toto", "line", "google", "github", "python", "amazon", "feature", "xqtool", "main" })
+                memory.Remember(word, true, explicitChoice: true);
+            detector.Memory = memory;
+            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
+            Assert.Equal(expected, Type(session, input, before)[^1].View?.Text,
+                $"入力中: {input}, before={before}, live={live}, scored={scored}");
+            Assert.Equal(expected, string.Concat(Type(session, "\n", before).SelectMany(r => r.Commits).Select(e => e.Text)),
+                "英語部分を維持して確定する: " + input);
+        }
+    }
+
+    [Test]
     public static void Fork_CommittedEnglish_KeepsFollowingParticlesJapaneseDespiteLearning()
     {
         foreach (var learned in new bool?[] { null, false, true })

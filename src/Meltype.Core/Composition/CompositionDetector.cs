@@ -733,12 +733,13 @@ public sealed partial class CompositionDetector
         if (level == DetectionLevel.Manual) return false;
         // ローマ字として最後まで読めても日本語の語にならない英単語 (english-readable.txt)。Manual の後・助詞誤分割除外の後で確定する。
         if (readableEnglish) return true;
-        // ユーザーが英字 / かなに直して覚えた語。ただし短くてローマ字として読める語 (go、no) は、日本語のすぐ後ろ
-        // (nihon|go) では使わない (一度 go を英字で確定しただけで、日本語 が にほんgo になっていた)。
+        // ユーザーが英字 / かなに直して覚えた語。ただし最後までかなで読める語は、長さによらず日本語のすぐ後ろでは
+        // 英字学習だけで決めず、下の英語の根拠・文脈判定へ進む (puronpu|toto|shite → ぷろんぷととして)。
+        // 固有名詞 (line、amazon) など、別の英語の根拠がある語は引き続き英字になる。
         // 英単語に続く 2 文字の助詞も、後ろに英語の根拠がなければ通常の助詞判定を使う。
         // 前の英単語を確定済みでも同じ扱いにする (google 確定後の ni → に)。
         // 続けて日本語を打っても同じ判定にする (main|no|yousuwomite → mainのようすをみて)。
-        if (Memory?.Get(lower) is { } learned && !(learned && lower.Length <= 3 && Fragment() is { IsValid: true, Partial: "" } &&
+        if (Memory?.Get(lower) is { } learned && !(learned && Fragment() is { IsValid: true, Partial: "" } &&
             (before < 0 || before == 1 && lower.Length <= 2 && after != true && TrailingParticles.Contains(lower)))) return learned;
         // ユーザーが追加した単独の語は、ローマ字として読み切れても英字にする (sudo → すど を防ぐ)。
         // 単語の途中は対象にしない (no の登録で nihongo・nekono などを分断しない)。
