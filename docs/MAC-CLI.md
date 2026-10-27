@@ -107,9 +107,7 @@ OS の登録 API で登録・有効化した後、`com.apple.HIToolbox` の `App
 <img src="images/headings/mac-cli/06.svg" alt="macOS の辞書を読み込む" height="53"><br>
 
 
-このフォークでは、通常の IME 起動中に macOS のテキスト置換を `userdict.txt` に自動同期します。DB/WAL の変更通知を監視し、変更後は画面スリープ時に辞書を再読込します。macOS の登録が正となり、`userdict.txt` の独自登録も置き換わります。DB の取得・形式エラー時は既存辞書を保持します。CLI の変換・テスト実行では同期しません。
-
-macOS のユーザー辞書を書き出したファイルは、Meltype の入力メニューの「macOSのユーザー辞書を取り込む…」でも取り込めます。こちらの登録も次の自動同期で置き換わります。
+macOS のユーザー辞書を書き出したファイルは、Meltype の入力メニューの「辞書の読み込み」で取り込めます。
 
 - `shortcut` / `phrase`、または `reading` / `word` の組を持つ、XML とバイナリの plist に対応しています
 - 今ある語は残し、まったく同じ語は飛ばします

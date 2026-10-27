@@ -3,6 +3,42 @@
 `main` は `upstream/main` の追従用です。独自の変換改善と運用スクリプトは
 `fork_by_hkrhd` に置きます。履歴操作には jj を使います。
 
+## コマンド
+
+日常の検証・ビルド・適用は次の2つで足ります。
+
+```sh
+bash mac/build-cli.sh --test --build   # Core・Swift のテストとビルド
+bash mac/update.sh                     # 実機へ適用 (コミットしてから実行)
+```
+
+`src/Meltype.Core` だけを確かめるとき (Mac・Linux でも動く) は次を使います。
+ほかのフラグは [DEVELOPMENT.md](DEVELOPMENT.md#テスト) にあります。
+
+```sh
+dotnet run --project src/Meltype.Core.Tests                 # すべてのテスト
+dotnet run --project src/Meltype.Core.Tests -- --eval       # 品質テスト
+dotnet run --project src/Meltype.Core.Tests -- --repro kyouhagoogle enter   # 打ったときの見え方と確定の結果
+node tools/check-dictionaries.mjs                           # 辞書を変えたとき
+```
+
+「モデル更新・ビルド・比較検証のあと」は、成功を確認してから、現行作業に要らない
+旧モデル・旧ランタイム・一時アプリを削除します。
+
+## コントリビュート
+
+3つ以上の Pull Request を出す場合は、コンフリクト解消の負担を減らし開発全体を進めやすくするため、
+すべての修正をまとめた統合 PR も作成してもらいます。2つまでなら、必要に応じてこちらで
+コンフリクトを解消します。
+
+## フォーク独自の挙動
+
+- macOS のテキスト置換を `userdict.txt` に自動同期します。DB/WAL の変更を監視し、変更後は
+  画面スリープ時に辞書を再読込します。macOS の登録が正となり、`userdict.txt` への独自登録も
+  置き換わります。DB の取得・形式エラー時は既存の辞書を保ちます。CLI の変換・テスト実行では同期しません。
+- 入力メニューの「macOSのユーザー辞書を取り込む…」から plist も取り込めます。
+  こちらの登録も次の自動同期で置き換わります。
+
 ## 更新
 
 upstream の更新は Codex に取り込みを依頼します。Codex は upstream の差分と変更意図を

@@ -10,6 +10,7 @@
 
 ## 変更点：
 
+- フォークの手順・コマンドは [docs/FORK.md](docs/FORK.md) にまとめ、`AGENTS.md` は決まりだけにした。`CONTRIBUTING.md`・`docs/USAGE.md`・`docs/MAC-CLI.md`・`docs/MOZC-UT.md` などの upstream の文書は upstream のまま使う（upstream の `AGENTS.md` は適用しない）。
 - 日本語の途中では、かなで読み切れる語の英字学習だけで英語にしない（`プロンプtotoして → プロンプトとして`）。`今日はlineで`など英語の根拠がある語や、単独入力・英文中の学習は維持。
 - `lじ`（`lji`）のデフォルト変換候補を `L字` に固定。
 - 英単語の補完候補を英語判定前でも英字3文字から表示。Mac の候補一覧にも対応し、Tab／Shift+Tab で選択、Enter またはクリックで確定（内蔵の英語辞書を使用）。Windows も3文字から補完。
