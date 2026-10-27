@@ -96,6 +96,7 @@ PR の変更は `docs/ZENZAI-UPDATE.md` の更新候補の記録だけです。�
 説明文だけの更新や xsmall・別量子化形式は通知対象外です。API 障害や必須情報の欠落は実行失敗として扱います。
 ユーザーの確認後、Codex にモデル・エンジン互換性・ライセンスの確認、差し替え、実機へのインストール・動作確認を依頼します。
 モデル更新時は推論上限1回と2回の精度を比較し、低下がなければ1回に減らします。
+測定方法・現行の設定・過去の比較は [ZENZAI-PERFORMANCE.md](ZENZAI-PERFORMANCE.md) にまとめています。
 手動実行もでき、`GITHUB_TOKEN` 以外の追加シークレットは不要です。
 `GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run` で、
 公開 API に対する検知と重複確認を、PR やブランチを作成せずに試せます。
