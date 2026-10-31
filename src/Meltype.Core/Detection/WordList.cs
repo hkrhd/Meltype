@@ -133,13 +133,10 @@ public static class DictionarySource
         }
     }
 
-    public static IEnumerable<string> Load(string name, string? userDirectory)
-    {
-        foreach (var word in WordList.ParseWords(ReadEmbedded(name))) yield return word;
-        foreach (var word in LoadUser(name, userDirectory)) yield return word;
-    }
+    public static IEnumerable<string> Load(string name, string? userDirectory) =>
+        WordList.ParseWords(ReadEmbedded(name)).Concat(LoadUser(name, userDirectory));
 
-    /// <summary>ユーザーが明示的に追加した語。組み込みの語と優先度を区別するときにも使う。</summary>
+    /// <summary>ユーザーの辞書フォルダーに置いた name の語だけ。</summary>
     public static IEnumerable<string> LoadUser(string name, string? userDirectory)
     {
         if (userDirectory is null) yield break;

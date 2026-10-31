@@ -71,9 +71,8 @@ internal static partial class SessionFacadeTests
         var escaped = session.HandleKey(VirtualKeys.Escape, null, false, false, false, false);
         Assert.Equal(typed?.Text, escaped.View?.Text, "Escで元の入力に戻す");
         Assert.Equal(-1, escaped.View?.SelectedPrediction);
-        session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
         var continued = Type(session, "is")[^1];
-        Assert.Equal(-1, continued.View?.SelectedPrediction, "追加入力で選択を解除する");
+        Assert.Equal(-1, continued.View?.SelectedPrediction, "未選択のまま追加入力する");
         Assert.True(continued.View?.Predictions?.Contains("decision") == true, "最新の入力で候補を作り直す");
         var removed = Type(session, "\b\b\b\b")[^1];
         Assert.True(removed.View?.Predictions is null, "1文字に戻ると候補を閉じる");
@@ -90,7 +89,6 @@ internal static partial class SessionFacadeTests
     public static void Fork_ShortEnglishWord_KeepsSupportedJapaneseTail()
     {
         foreach (var live in new[] { false, true })
-        foreach (var scored in new[] { false, true })
         foreach (var (input, expected) in new[]
         {
             ("macnanode", "macなので"), ("macdakara", "macだから"),
@@ -103,13 +101,12 @@ internal static partial class SessionFacadeTests
         {
             var detector = CompositionDetector.CreateDefault();
             detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
-            detector.UseScoredSegmentation = () => scored;
             var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
                 new CompositionOptions { LiveConversion = () => live }, () => new Settings());
             Assert.Equal(expected, Type(session, input)[^1].View?.Text,
-                $"入力中: {input}, live={live}, scored={scored}");
+                $"入力中: {input}, live={live}");
             Assert.Equal(expected, string.Concat(Type(session, "\n").SelectMany(r => r.Commits).Select(e => e.Text)),
-                $"表示どおり確定: {input}, live={live}, scored={scored}");
+                $"表示どおり確定: {input}, live={live}");
         }
     }
 
@@ -117,7 +114,6 @@ internal static partial class SessionFacadeTests
     public static void Fork_ShortEnglishWord_RespectsEnglishEvidence()
     {
         foreach (var live in new[] { false, true })
-        foreach (var scored in new[] { false, true })
         foreach (var (input, before, learned) in new[]
         {
             ("macnanode", "", true), ("macnanode", "I use ", false),
@@ -126,7 +122,6 @@ internal static partial class SessionFacadeTests
         {
             var detector = CompositionDetector.CreateDefault();
             detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
-            detector.UseScoredSegmentation = () => scored;
             var memory = new LanguageMemory(null);
             if (learned) memory.Remember(input, true, explicitChoice: true);
             detector.Memory = memory;
@@ -134,7 +129,7 @@ internal static partial class SessionFacadeTests
                 new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
             Type(session, before);
             Assert.Equal(input, Type(session, input)[^1].View?.Text,
-                $"英語の根拠がある語: {input}, before={before}, learned={learned}, live={live}, scored={scored}");
+                $"英語の根拠がある語: {input}, before={before}, learned={learned}, live={live}");
             Assert.Equal(input, string.Concat(Type(session, "\n").SelectMany(r => r.Commits).Select(e => e.Text)),
                 "英語のまま確定する");
         }
@@ -144,7 +139,6 @@ internal static partial class SessionFacadeTests
     public static void Fork_LearnedReadableWords_KeepJapaneseInJapaneseContext()
     {
         foreach (var live in new[] { false, true })
-        foreach (var scored in new[] { false, true })
         foreach (var explicitChoice in new[] { false, true })
         foreach (var (input, before, expected) in new[]
         {
@@ -158,7 +152,6 @@ internal static partial class SessionFacadeTests
         {
             var detector = CompositionDetector.CreateDefault();
             detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
-            detector.UseScoredSegmentation = () => scored;
             var memory = new LanguageMemory(null);
             memory.Remember("toto", true, explicitChoice);
             memory.Remember("sushi", true, explicitChoice);
@@ -167,7 +160,7 @@ internal static partial class SessionFacadeTests
             var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
                 new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
             Assert.Equal(expected, Type(session, input, before)[^1].View?.Text,
-                $"入力中: {input}, before={before}, live={live}, scored={scored}, explicit={explicitChoice}");
+                $"入力中: {input}, before={before}, live={live}, explicit={explicitChoice}");
             Assert.Equal(expected, string.Concat(Type(session, "\n", before).SelectMany(r => r.Commits).Select(e => e.Text)),
                 "日本語のまま確定する: " + input);
         }
@@ -177,7 +170,6 @@ internal static partial class SessionFacadeTests
     public static void Fork_LearnedReadableWords_PreserveClearEnglishAndEnglishContext()
     {
         foreach (var live in new[] { false, true })
-        foreach (var scored in new[] { false, true })
         foreach (var (input, before, expected) in new[]
         {
             ("toto", "", "toto"), ("toto", "I use ", "toto"),
@@ -195,7 +187,6 @@ internal static partial class SessionFacadeTests
         {
             var detector = CompositionDetector.CreateDefault();
             detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
-            detector.UseScoredSegmentation = () => scored;
             var memory = new LanguageMemory(null);
             foreach (var word in new[] { "toto", "line", "google", "github", "python", "amazon", "feature", "xqtool", "main" })
                 memory.Remember(word, true, explicitChoice: true);
@@ -203,7 +194,7 @@ internal static partial class SessionFacadeTests
             var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
                 new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
             Assert.Equal(expected, Type(session, input, before)[^1].View?.Text,
-                $"入力中: {input}, before={before}, live={live}, scored={scored}");
+                $"入力中: {input}, before={before}, live={live}");
             Assert.Equal(expected, string.Concat(Type(session, "\n", before).SelectMany(r => r.Commits).Select(e => e.Text)),
                 "英語部分を維持して確定する: " + input);
         }
@@ -214,7 +205,6 @@ internal static partial class SessionFacadeTests
     {
         foreach (var learned in new bool?[] { null, false, true })
         foreach (var live in new[] { false, true })
-        foreach (var scored in new[] { false, true })
         foreach (var prefix in new[] { "google\n", "google " })
         foreach (var (raw, kana) in new[] { ("ni", "に"), ("de", "で"), ("wo", "を"), ("ga", "が") })
         {
@@ -222,12 +212,11 @@ internal static partial class SessionFacadeTests
             var memory = new LanguageMemory(null);
             if (learned is { } english) memory.Remember(raw, english, explicitChoice: true);
             detector.Memory = memory;
-            detector.UseScoredSegmentation = () => scored;
             var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
                 new CompositionOptions { LiveConversion = () => live, Languages = memory }, () => new Settings());
             Type(session, prefix);
             Assert.Equal(kana, Type(session, raw)[^1].View?.Text,
-                $"英字確定後の助詞: {raw}, learned={learned}, live={live}, scored={scored}, prefix={prefix.TrimEnd()}");
+                $"英字確定後の助詞: {raw}, learned={learned}, live={live}, prefix={prefix.TrimEnd()}");
             Assert.Equal(kana, Type(session, "\n")[0].Commits.Single().Text, "表示どおり確定する");
         }
     }

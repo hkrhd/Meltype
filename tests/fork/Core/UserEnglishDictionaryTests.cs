@@ -19,10 +19,9 @@ internal static partial class SessionFacadeTests
         try
         {
             foreach (var live in new[] { false, true })
-            foreach (var scored in new[] { false, true })
             foreach (var level in new[] { DetectionLevel.Conservative, DetectionLevel.Balanced, DetectionLevel.Aggressive })
             {
-                new Settings { LiveConversion = live, ScoredSegmentation = scored, DetectionLevel = level }
+                new Settings { LiveConversion = live, DetectionLevel = level }
                     .Save(Path.Combine(directory, "config.json"));
                 foreach (var word in new[] { "sudo", "repo", "no", "e", "c" })
                 foreach (var ending in new[] { "\n", " \n" })

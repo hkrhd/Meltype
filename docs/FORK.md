@@ -1,190 +1,119 @@
 # このフォークの運用
 
-`main` は `upstream/main` の追従用です。独自の変換改善と運用スクリプトは
-`fork_by_hkrhd` に置きます。履歴操作には jj を使います。
+`main` は `upstream/main` の追従用、`fork_by_hkrhd` は独自変更用です。
+GitHub のデフォルトブランチは `fork_by_hkrhd`。履歴操作には jj を使います。
+一般的な開発手順は [DEVELOPMENT.md](DEVELOPMENT.md) を参照してください。
 
-## コマンド
+## 検証・実機適用・コミット
 
-日常の検証・ビルド・適用は次の2つで足ります。
-
-```sh
-bash mac/build-cli.sh --test --build   # Core・Swift のテストとビルド
-bash mac/update.sh                     # 実機へ適用 (コミットしてから実行)
-```
-
-`src/Meltype.Core` だけを確かめるとき (Mac・Linux でも動く) は次を使います。
-ほかのフラグは [DEVELOPMENT.md](DEVELOPMENT.md#テスト) にあります。
+README.md に変更点を追記し、**実機への適用に成功してからコミット・プッシュ**します。
+jj による作業内容の自動保存は、検証後のコミット確定とは区別します。
 
 ```sh
-dotnet run --project src/Meltype.Core.Tests                 # すべてのテスト
-dotnet run --project src/Meltype.Core.Tests -- --eval       # 品質テスト
-dotnet run --project src/Meltype.Core.Tests -- --repro kyouhagoogle enter   # 打ったときの見え方と確定の結果
-node tools/check-dictionaries.mjs                           # 辞書を変えたとき
+bash mac/build-cli.sh --test --build   # 実機へ適用せず、Core・Swift のテストとビルド
+bash mac/update.sh                     # テスト・ビルド・入力検証・実機適用・入力ソース選択
+# 成功後、jj でコミットを確定し、fork_by_hkrhd を進めて push
 ```
 
-「モデル更新・ビルド・比較検証のあと」は、成功を確認してから、現行作業に要らない
-旧モデル・旧ランタイム・一時アプリを削除します。
-
-## コントリビュート
-
-3つ以上の Pull Request を出す場合は、コンフリクト解消の負担を減らし開発全体を進めやすくするため、
-すべての修正をまとめた統合 PR も作成してもらいます。2つまでなら、必要に応じてこちらで
-コンフリクトを解消します。
-
-## フォーク独自の挙動
-
-- macOS のテキスト置換を `userdict.txt` に自動同期します。DB/WAL の変更を監視し、変更後は
-  画面スリープ時に辞書を再読込します。macOS の登録が正となり、`userdict.txt` への独自登録も
-  置き換わります。DB の取得・形式エラー時は既存の辞書を保ちます。CLI の変換・テスト実行では同期しません。
-- 入力メニューの「macOSのユーザー辞書を取り込む…」から plist も取り込めます。
-  こちらの登録も次の自動同期で置き換わります。
-
-## 更新
-
-upstream の更新は Codex に取り込みを依頼します。Codex は upstream の差分と変更意図を
-確認し、フォーク独自の変換・記号入力などの挙動と方針を保つように調整します。
-テキスト上の競合がなくても意味上の衝突があるため、機械的な merge/rebase だけで
-完了としません。既存の作業中の変更は保持します。
-
-取り込みは `fork_by_hkrhd` と `main` を親に持つマージコミットとして記録します。
-squash や rebase で取り込み元の履歴を平坦化せず、Git の履歴から両方の親を追えるようにします。
-`jj new fork_by_hkrhd main` で統合し、調整・検証後に `fork_by_hkrhd` を進めます。
-
-取り込み後は次のコマンドで検証します。
+入力検証には一時的な辞書・設定・学習データを使い、既存のユーザーデータは編集しません。
+Swift のテストには Xcode が必要です。スクリプトは Xcode 本体を起動せず検出します。
+別の場所を使う場合は `DEVELOPER_DIR` で指定します。
 
 ```sh
-bash mac/build-cli.sh --test --build
+dotnet run --project src/Meltype.Core.Tests
+dotnet run --project src/Meltype.Core.Tests -- --eval
+dotnet run --project src/Meltype.Core.Tests -- --repro kyouhagoogle enter
+node tools/check-dictionaries.mjs       # 辞書を変更したとき
 ```
 
-GitHub のデフォルトブランチは `fork_by_hkrhd` です。
-GitHub のブランチ保護で `fork_by_hkrhd` への強制プッシュとブランチ削除を禁止し、
-管理者にも適用しています。通常の push は可能です。必須ステータスチェックや
-PR レビューの必須化は設定せず、検証は上記のローカルコマンドで行います。
-Actions の `upstream-update` が2日に1回（日本時間 21:17）に upstream/main を確認し、`main` を更新します。
-cron では2日間隔を表せないため、毎日 21:17 に起動して、UTC の通算日が偶数の日だけ同期します（手動実行は常に動きます）。
-`main` が upstream から分岐している場合は停止します。未取り込みの更新があれば
-`main` → `fork_by_hkrhd` の Draft PR を1件作成し、開いている同じ PR があれば再利用します。
-専用ブランチは作りません。Actions 画面から手動実行もできます。
+追加テストは `tests/fork/` と `mac/Tests/ForkMacTests/` に置きます。
+成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除します。
+現行モデル、増分ビルド用キャッシュ、取得済み依存、最新アプリ、検証結果は保持します。
+共有のシステムキャッシュやユーザーの学習データは削除しません。
 
-ユーザーが PR を確認して Codex に取り込みを依頼します。PR は作業依頼であり、調整済みの変更ではありません。
-GitHub のマージボタンでそのまま取り込まず、ローカルで独自の挙動・方針を保つ調整と検証を行い、
-両ブランチを親に持つマージコミットを push します。変更点と検証結果は PR に記録します。
-PR 本文には通知時点の両ブランチのコミット・未取り込みコミット数・固定した差分リンクを載せます。
-確認欄やチェックリストは設けず、統合・検証・実機適用・結果記録の依頼を短い文章で載せます（AI 利用の表示は残します）。
-本文は作成時の記録ですが、PR の差分は `main` の更新に伴って増えます。作業開始時に最新の `main` を取得し、追加分も確認します。
-Actions は Codex の起動や独自ブランチへの取り込みを行いません。
-GitHub の Actions 設定では、Actions による PR 作成を有効にします。
+## upstream の取り込み
 
-`main` の同期は、このリポジトリ専用の書き込み用 SSH デプロイキーで行います。
-公開鍵を Settings → Deploy keys に書き込み許可付きで登録します。
-Settings → Environments に `upstream-sync` を作り、Deployment branches and tags を
-Selected branches and tags にして、Branch の `fork_by_hkrhd` だけを許可します。
-秘密鍵はその Environment の `UPSTREAM_SYNC_SSH_KEY` シークレットに登録します。
-リポジトリ全体のシークレットには置かず、同期対象の `main` からキーを使えないようにします。
-標準の `GITHUB_TOKEN` では upstream の `.github/workflows/` の変更を同期できないためです。
-キーが未設定の場合はエラーで停止します。upstream のコードは実行せず、`main` が
-upstream/main の祖先であることを確認して、force なしの push で追従します。
-PR 作成には引き続き `GITHUB_TOKEN` を使います。キーを廃止・交換する際は
-Deploy keys と Environment シークレットの両方を削除・更新してください。
+1. 最新の `upstream/main` を取得し、分岐していないことを確認して `main` を進めます。
+2. 既存の作業中の変更を保持し、`jj new fork_by_hkrhd main` で統合先を作って変更を引き継ぎます。
+3. 差分と変更意図を確認し、Zenzai・半角記号など独自の挙動を維持します。
+   競合がない箇所も意味上の衝突を確認し、判断に迷ったらユーザーに尋ねます。
+   upstream の `AGENTS.md` はフォークの内容で上書きします。
+4. README.md を更新し、`bash mac/update.sh` で検証・実機適用します。
+5. 成功後、`fork_by_hkrhd` と `main` を親に持つマージコミットを確定して push します。
+   squash・rebase で取り込み元の履歴を平坦化せず、更新依頼 PR があれば変更点・検証結果を記録します。
 
-`zenzai-update` も同じ12時間間隔で、Hugging Face の `Miwa-Keita` 配下の
-`zenz-v<数値版>-small-gguf` を確認します。最新系列の `ggml-model-Q5_K_M.gguf` と
-使用中の固定モデルを比べ、新系列または重みの SHA-256 が変わった場合に、候補ごとの
-`automation/zenzai-v<版>-<SHA-256>` ブランチから `fork_by_hkrhd` への Draft PR を作成します。
-PR の変更は `docs/ZENZAI-UPDATE.md` の更新候補の記録だけです。モデル設定の更新・自動マージは行いません。
-同じ配布先・重みの PR があれば、クローズ・マージ済みも含めて再作成しません。
-説明文だけの更新や xsmall・別量子化形式は通知対象外です。API 障害や必須情報の欠落は実行失敗として扱います。
-ユーザーの確認後、Codex にモデル・エンジン互換性・ライセンスの確認、差し替え、実機へのインストール・動作確認を依頼します。
-モデル更新時は推論上限1回と2回の精度を比較し、低下がなければ1回に減らします。
-測定方法・現行の設定・過去の比較は [ZENZAI-PERFORMANCE.md](ZENZAI-PERFORMANCE.md) にまとめています。
-手動実行もでき、`GITHUB_TOKEN` 以外の追加シークレットは不要です。
-`GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run` で、
-公開 API に対する検知と重複確認を、PR やブランチを作成せずに試せます。
+通知の Draft PR は作業依頼です。GitHub のマージボタンでは取り込まず、最新の `main` を使って調整します。
+`fork_by_hkrhd` は管理者を含め強制 push・削除を禁止し、通常の push は許可しています。
+必須 CI・必須レビューは設定せず、ローカルで検証します。
 
-このフォークで利用する Actions は `upstream-update`・`zenzai-update`・Windows 検証と両 OS の配布用の `windows` です。`build`・`linux`・`mac`・
-`bot`・`cla`・`dotnet-update`・`ime-tests`・`notices`・`pr-checks`・`sponsors`・`web`・`winget` は
-リポジトリ設定で無効にしています。ワークフローの定義は残し、必要になった場合は
-Actions 画面または `gh workflow enable <ファイル名> --repo hkrhd/Meltype` で再開できます。
-Mac のローカル検証・ビルド・適用は上記のコマンドで行います。リリース時は `windows` 内の Mac ジョブでも検証・ビルドします。
+## 辞書同期とバージョン
 
-### Windows のクラウド検証と Windows・Mac の配布物
+- macOS のテキスト置換を `userdict.txt` に自動同期します。DB/WAL の変更後、画面スリープ時に再読込します。
+  macOS 側を正とし、独自登録や入力メニューから取り込んだ plist の内容も次の同期で置き換わります。
+  DB の取得・形式エラー時は既存辞書を保ち、CLI・テストでは同期しません。
+- `mac/fork-version.sh` は直近の upstream タグ・以降のコミット数・コミット ID から版番号を作ります
+  （例: `1.2.2-pre.1.hkrhd.2.g0123456789ab`）。実機適用はコミット前なので `.dirty` が付きます。
+  数値ビルド番号は履歴全体のコミット数です。必要なら `MELTYPE_VERSION=... bash mac/update.sh` で指定します。
+- upstream のバージョンファイルは変更しません。フォーク版は自動更新の対象外です。
+  Releases の Mac 版 ZIP または `bash mac/update.sh` で更新します。Homebrew Cask・apt は upstream 版向けです。
 
-`windows` は `fork_by_hkrhd` への push・PR で Windows の Release ビルド、TSF DLL の
-x64・x86 ビルド、共通コアを含む Windows テスト、インストーラー関連の検証を行います。
-Microsoft IME・スペルチェッカーが無い環境の該当テストは upstream と同じくスキップされます。
+## 更新通知の Actions
+
+| ワークフロー | 動作 |
+| --- | --- |
+| `upstream-update` | 2日に1回、日本時間21:17に `main` を同期し、未取り込み分の Draft PR を作成・再利用 |
+| `zenzai-update` | 12時間ごとに Zenzai small / Q5_K_M の新系列・重みの SHA-256 変更を Draft PR で通知 |
+| `windows` | push・PR で Windows を検証。手動実行では Windows・Mac の配布物を作成 |
+
+通知の Actions は取り込み・モデル差し替え・自動マージを行いません。
+upstream の PR は `main` → `fork_by_hkrhd` とし、通知時点のコミットと固定した差分リンクを記録します。
+毎日起動して UTC の通算日が偶数の日だけ同期し、手動実行は常に同期します。
+`main` が upstream から分岐している場合は停止し、force push は行いません。
+
+同期には専用の書き込み可能な SSH デプロイキーを使います。公開鍵は Deploy keys、秘密鍵は
+`upstream-sync` Environment の `UPSTREAM_SYNC_SSH_KEY` に登録します。
+Environment は `fork_by_hkrhd` からだけ利用可能にし、リポジトリ全体のシークレットには置きません。
+標準の `GITHUB_TOKEN` では upstream のワークフロー定義を同期できないためです。
+PR 作成には `GITHUB_TOKEN` を使い、Actions による PR 作成を有効にします。
+キーの廃止・交換時は Deploy keys と Environment シークレットの両方を更新します。
+
+Zenzai は Miwa-Keita の `zenz-v<数値版>-small-gguf` / `ggml-model-Q5_K_M.gguf` を確認し、
+`docs/ZENZAI-UPDATE.md` の候補記録だけを変更します。同じ配布先・重みの PR はクローズ済みも含め再作成しません。
+説明文だけの変更・xsmall・別量子化形式は対象外で、API 障害や必須情報の欠落は失敗として扱います。
+モデル更新では互換性・ライセンスを確認し、推論上限1回・2回の精度を比較して、低下がなければ1回に減らします。
+測定方法と過去の比較は [ZENZAI-PERFORMANCE.md](ZENZAI-PERFORMANCE.md) を参照してください。
+
+```sh
+GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run
+```
+
+upstream の Actions は無効化します。既存の `build`・`linux`・`mac`・`bot`・`cla`・`dotnet-update`・
+`ime-tests`・`notices`・`pr-checks`・`sponsors`・`web`・`winget` はリポジトリ設定で停止しています。
+`code-scanning`・`codeql`・`conflicts`・`quality` など、新しい CI・bot は登録前に `.github/disabled-workflows/` へ移します。
+CI/CD を新設・変更した場合は一度手動実行して成功を確認します。
+
+## Windows の検証と配布物
+
+`windows` は Release ビルド、TSF DLL の x64・x86 ビルド、共通コアを含む Windows テスト、
+インストーラー検証を行います。Microsoft IME・スペルチェッカーがない環境の該当テストはスキップします。
 実際の入力欄への打鍵 E2E は含みません。
-`GitHub no repo` はフォークの `no + Space` 仕様に合わせて英字のまま確定することを、
-Windows のスペルチェッカーを使用する既存のテストでも確認します。
-
-Actions の `windows` を `fork_by_hkrhd` で手動実行すると、Windows のテスト成功後にリリースの下書きを作り、
-Windows・Mac の配布物を並列でビルドします。実行コマンドは次のとおりです。
 
 ```sh
 gh workflow run windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd
 ```
 
-Windows は Mozc をビルドし、通常版 ZIP・ポータブル版 ZIP・インストーラーを作成します。
-通常版・ポータブル版の自己診断と Defender 検査を行います。
-Mac は Apple Silicon（macOS 13.3 以降）向けに Core・Swift テスト、実エンジンの入力検証、
-NativeAOT・Swift 境界テストを行い、Zenzai モデル・Metal ランタイム・インストーラーを同梱した
-`Meltype-<版>-mac.zip` を作成します。展開して `Install Meltype.command` を実行すると導入できます。
-Developer ID の証明書・公証用シークレットがあれば署名・公証し、証明書が無ければ ad-hoc 署名で配布します。
+手動実行では検証成功後にリリースの下書きを作り、両 OS の配布物を並列ビルドします。
+Windows は通常版 ZIP・ポータブル版 ZIP・インストーラーを作り、自己診断と Defender 検査を行います。
+Mac は Apple Silicon / macOS 13.3 以降向けに Core・Swift・実エンジン・NativeAOT 境界を検証し、
+Zenzai・Metal ランタイム・インストーラーを含む ZIP を作ります。展開後 `Install Meltype.command` で導入できます。
+Mac の Developer ID・公証シークレットがなければ ad-hoc 署名、Windows の署名シークレットがなければ未署名です。
 
-同じソースとフォーク版番号の配布物4個がそろったら、`hkrhd-release-<実行ID>-<再実行番号>` の
-プレリリースを公開します。一部でも失敗した場合は下書きのままにし、前の成功分を残します。
-公開済みの旧リリースとタグは自動削除しません。
+同じソース・フォーク版番号の配布物4個がそろうと、`hkrhd-release-<実行ID>-<再実行番号>` をプレリリース公開します。
+失敗時は下書きのままとし、過去の公開リリース・タグは削除しません。
+配布物は Releases に保存し、Actions artifact は使いません。キャッシュは無料枠10 GB内で保持します。
+課金防止には Actions の予算を `$0`、`Stop usage when budget limit is reached` を有効にします。
+Windows も `mac/fork-version.sh` の版番号を使い、upstream の版タグを取得してからビルドします。
 
-配布物は Releases に保存し、Actions の artifact は使いません。Mozc とパッケージは
-同じ Windows VM でビルドし、中間ファイルも artifact にアップロードしません。
-Mac の Swift Package・モデル・Metal ビルドもキャッシュして再利用します。
-公開リポジトリの標準ランナーを使用し、キャッシュ容量は無料枠の 10 GB のままにします。
-ビルドを速くするキャッシュは保持します。
-容量上限内での古いキャッシュの入れ替えは GitHub に任せ、有料の容量拡張は行いません。
-課金防止には GitHub の Settings → Billing and licensing → Budgets and alerts で、
-Actions の予算を `$0`、`Stop usage when budget limit is reached` を有効にします。
-2026-10-24 にアカウント全体の Actions 予算が `$0`・超過利用停止であることを確認済みです。
+## コントリビュート
 
-Windows のアプリにも `mac/fork-version.sh` のフォーク版番号を埋め込み、upstream 版と区別します。
-CI では upstream の版タグも取得し、フォーク側の古いタグを基準にしないようにします。
-更新先は `hkrhd/Meltype` とし、フォーク版番号は自動更新の対象外なので Releases から手動で更新します。
-署名用のシークレットが無ければ未署名で作成します。
-
-upstream で追加された `code-scanning`・`codeql`・`conflicts`・`quality` は、
-GitHub がワークフローとして登録する前に `.github/disabled-workflows/` に移して保管します。
-フォークへの取り込みで新しいCIやコメントbotが自動的に有効になるのを防ぎます。
-開発指示は、大文字小文字を区別しない macOS でも衝突しないよう `AGENTS.md` に統合しています。
-
-取り込んだ `Casks/meltype.rb` と apt 配布手順は upstream 版向けです。
-このフォークの独自変更を使う場合は Releases の Mac 版 ZIP、または `bash mac/update.sh` で更新します。
-
-実機へ適用するときは、変更を jj で保存してから `bash mac/update.sh` を実行します。
-
-ローカルの生成物は必要最低限に保ちます。モデルの取得・SHA-256検証後は
-`mac/.build/models` の旧 `zenz-*.gguf` を、Metalランタイムのビルド成功後は
-`mac/.build/llama-metal` の旧ソース・旧構成を削除します。アプリの組み立て・署名後は
-`mac/build/native` の作業用コピーとデバッグシンボルも削除します。
-現行モデル、Swift・.NET・Metalの増分ビルド、取得済み依存と最新のアプリは保持します。
-比較検証で作った一時アプリ・旧モデル・一時学習データも、検証終了後に整理し、
-比較結果のJSON・ログなどは残します。共有のシステムキャッシュやユーザーの学習データは対象外です。
-
-`mac/update.sh` は Core・Swift テスト、ビルド、実エンジンのフォーク回帰テストと
-既存の入力チェックを通してからアプリを入れ替え、起動して入力ソースを選びます。
-回帰テストは一時ディレクトリの辞書・設定・学習データを使用します。
-既存のユーザー辞書や学習データを編集しません。
-フォーク独自の追加テストは `tests/fork/` と Swift Package 内の `mac/Tests/ForkMacTests/` にまとめています。Core の追加テストは
-既存テストと一緒に実行し、Mac の実入力ケースは upstream 由来の入力例と分けて検証します。
-Swift の既存テストには Xcode (XCTest) が必要です。単体の Command Line Tools が
-選択されている場合は、`/Applications/Xcode.app/Contents/Developer` をプロセス内で選びます。
-Xcode本体は起動しないため、場所の検出で追加コンポーネントのインストール画面は開きません。
-別の場所の Xcode を使う場合は `DEVELOPER_DIR` で指定します。
-
-## バージョン
-
-`mac/fork-version.sh` で履歴上の直近の upstream タグにフォーク識別子・タグ以降のコミット数・
-コミット ID を付けます。例: `1.2.2-pre.1.hkrhd.2.g0123456789ab`。
-作業中の変更があれば `.dirty` が付きます。upstream のバージョンファイルは変更しません。
-アプリの数値ビルド番号には、履歴全体のコミット数を使います。
-意図的に指定するときは `MELTYPE_VERSION=... bash mac/update.sh` を使います。
-
-リリースの Mac ジョブも同じバージョンでビルドし、実エンジンの辞書回帰テストを行います。
-フォーク版は upstream の自動更新ではなく、このリポジトリから更新してください。
+3つ以上の PR を出す場合は統合 PR も作成します。2つまでなら必要に応じて競合を解消します。
