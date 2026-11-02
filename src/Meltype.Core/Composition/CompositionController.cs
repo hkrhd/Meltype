@@ -1376,7 +1376,7 @@ public sealed class CompositionController
     private bool SpaceCommitsAlphanumeric() =>
         _text.IsAlphanumericAt(final: true) && !(_text.Mode == DisplayMode.Auto && _text.IsNumeric && _text.Raw.All(char.IsAsciiDigit) && _text.PrecedingEnglish != true);
 
-    private bool SpaceCommitsAutoEnglish() => _text.Mode == DisplayMode.Auto && _detector.IsEnglishAtWordEnd(_text.Raw, _options.Level());
+    private bool SpaceCommitsAutoEnglish() => _text.Mode == DisplayMode.Auto && !_text.KanaInput && _detector.IsEnglishAtWordEnd(_text.Raw, _options.Level());
 
     /// <summary>
     /// Space の分岐で変換を始める (StartConversion に行く) 場面か。Tab で始めるときも同じ場面に限る (issue #219)。

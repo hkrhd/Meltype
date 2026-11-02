@@ -105,6 +105,48 @@ internal static partial class CompositionTests
     }
 
     [Test]
+    public static void Fork_ReadableEnglishWord_SpaceCommitsTheWholeWord()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var before in new[] { "", "English ", "I use ", "日本語" })
+        foreach (var word in new[] { "auto", "make" })
+        {
+            var k = new Keyboard(live: live);
+            k.Host.PrecedingText = before;
+            k.Type(word + " ");
+            Assert.Equal(word + " ", k.Host.Document, $"Space で単独の英単語と空白を確定する: {word}, live={live}, before={before}");
+        }
+
+        foreach (var live in new[] { false, true })
+        foreach (var (input, expected) in new[]
+        {
+            ("auto", "あうと"), ("autogadeta", "あうとがでた"),
+            ("site", "して"), ("made", "まで"), ("sushi", "すし"), ("kana", "かな"),
+        })
+        {
+            var k = new Keyboard(live: live);
+            k.Type(input);
+            if (input != "auto") k.Type(" ");
+            Assert.Equal(expected, k.Showing, "かな表示と日本語の変換を維持する: " + input);
+        }
+
+        var manual = new Keyboard { Level = DetectionLevel.Manual };
+        manual.Type("auto ");
+        Assert.Equal("あうと", manual.Showing, "手動判定では日本語を変換する");
+
+        var separate = new Keyboard { SeparateKeyRoles = true };
+        separate.Type("auto ");
+        Assert.True(separate.Host.View?.Converting == true, "キーの役割を分ける設定では候補を開く");
+
+        var shifted = new Keyboard();
+        shifted.Type("auto");
+        shifted.Key(VirtualKeys.LShift);
+        shifted.Press(VirtualKeys.Space);
+        shifted.Key(VirtualKeys.LShift, up: true);
+        Assert.Equal("あうと", shifted.Showing, "Shift+Space では日本語を変換できる");
+    }
+
+    [Test]
     public static void Fork_No_UsesSpaceToChooseEnglish()
     {
         foreach (var learned in new bool?[] { null, false, true })

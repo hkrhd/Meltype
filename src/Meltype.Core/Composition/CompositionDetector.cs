@@ -205,16 +205,20 @@ public sealed partial class CompositionDetector
     }
 
     /// <summary>
-    /// Space を押した時点で、かなにならない子音が残る英単語か (my, by, meeting)。日本語として変換しても子音が残るだけなので、
-    /// 英語として確定して空白を入れる。
+    /// Space で区切った単独の英単語か。子音が残る語 (my, meeting) と、かなでも読める 4 文字以上の語 (auto, make) は、
+    /// 英語として確定して空白を入れる。日本語由来の語・よく使う日本語・ユーザーが日本語として登録した語は変換する。
     /// </summary>
     public bool IsEnglishAtWordEnd(string raw, DetectionLevel level)
     {
         if (level == DetectionLevel.Manual || raw.Length < 2 || !raw.All(char.IsAsciiLetter)) return false;
         var lower = raw.ToLowerInvariant();
         var analysis = _romaji.Analyze(lower);
-        if (!analysis.IsValid || analysis.Partial.Length == 0 || analysis.Partial is "n" or "nn") return false;
-        return _english.Words.ContainsWord(lower) || IsSpellWord(lower);
+        if (!analysis.IsValid) return false;
+        if (analysis.Partial.Length > 0 && analysis.Partial is not ("n" or "nn"))
+            return _english.Words.ContainsWord(lower) || IsSpellWord(lower);
+        var kana = _romaji.ConvertLenient(lower, final: true);
+        return lower.Length >= 4 && _english.Words.ContainsWord(lower) && Memory?.Get(lower) != false &&
+            !IsJapaneseOriginWord(lower) && !IsNounParticle(kana) && _kana?.IsJapaneseWord(kana) != true && !_userJapanese.Contains(kana);
     }
 
     /// <summary>スペルチェッカーが正しいと言う英単語か、よくある打ち間違い (teh、recieve) か。</summary>
