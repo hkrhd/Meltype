@@ -45,8 +45,8 @@ final class DictionarySyncTests: XCTestCase {
         if !values.isEmpty { try execute("INSERT INTO ZTEXTREPLACEMENTENTRY VALUES " + values) }
     }
 
-    private func synchronizer(reload: @escaping () -> Void = {}) -> MacUserDictionarySync {
-        MacUserDictionarySync(directory: directory.path, database: database, reload: reload)
+    private func synchronizer() -> MacUserDictionarySync {
+        MacUserDictionarySync(directory: directory.path, database: database)
     }
 
     private func words() throws -> Set<String> {
@@ -145,7 +145,7 @@ final class DictionarySyncTests: XCTestCase {
         sqlite3_close(connection)
         connection = nil
         let deferred = root.appendingPathComponent("KeyboardServices/TextReplacements.db")
-        let sync = MacUserDictionarySync(directory: directory.path, database: deferred, reload: {})
+        let sync = MacUserDictionarySync(directory: directory.path, database: deferred)
         sync.start()
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
         try FileManager.default.createDirectory(at: deferred.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -155,49 +155,43 @@ final class DictionarySyncTests: XCTestCase {
         withExtendedLifetime(sync) {}
     }
 
-    func testScreenSleepFlushesChangesAndReloadsOnlyWhenPending() throws {
+    func testSystemChangesReloadWithoutScreenSleep() throws {
+        let sync = synchronizer()
+        try sync.sync()
         var reloads = 0
-        let reloaded = expectation(description: "スリープ時の再読込")
-        reloaded.assertForOverFulfill = true
-        let observer = NotificationCenter.default.addObserver(
-            forName: Notification.Name("MeltypeUserDictionaryChanged"), object: nil, queue: .main
-        ) { _ in
+        var expectedReload: XCTestExpectation? = expectation(description: "起動時の辞書反映")
+        let watcher = MacDictionaryWatcher(directory: directory.path) {
+            XCTAssertTrue(Thread.isMainThread)
             reloads += 1
-            reloaded.fulfill()
+            expectedReload?.fulfill()
         }
-        defer { NotificationCenter.default.removeObserver(observer) }
-        let sync = MacUserDictionarySync(directory: directory.path, database: database)
+        watcher.start()
+        wait(for: [expectedReload!], timeout: 3)
         sync.start()
-        waitForWords([])
-        try replace("('ちょくぜん', 'スリープ直前の変更', 0)")
-        XCTAssertEqual(reloads, 0)
-        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
-        wait(for: [reloaded], timeout: 5)
-        XCTAssertEqual(try words(), ["ちょくぜん\tスリープ直前の変更"])
-        XCTAssertEqual(reloads, 1)
-        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
-        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
-        XCTAssertEqual(reloads, 1)
-        withExtendedLifetime(sync) {}
+        expectedReload = expectation(description: "テキスト置換をスリープなしで反映")
+        try replace("('ついか', '追加した単語', 0)")
+        wait(for: [expectedReload!], timeout: 3)
+        XCTAssertEqual(try words(), ["ついか\t追加した単語"])
+        expectedReload = expectation(description: "空辞書も即時反映")
+        try replace("")
+        wait(for: [expectedReload!], timeout: 3)
+        XCTAssertEqual(try words(), [])
+        expectedReload = nil
+        let count = reloads
+        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.8))
+        XCTAssertEqual(reloads, count, "変更がなければ復帰時にも再読込しない")
+        withExtendedLifetime((sync, watcher)) {}
     }
 
-    func testPendingReloadSurvivesRestart() throws {
+    func testExistingDictionaryIsLoadedAfterRestartWithoutPendingMarker() throws {
         try replace("('よみ', '再起動前の変更', 0)")
         try synchronizer().sync()
-        var reloads = 0
-        let reloaded = expectation(description: "再起動後の再読込")
-        let restarted = synchronizer {
-            DispatchQueue.main.async {
-                reloads += 1
-                reloaded.fulfill()
-            }
-        }
-        restarted.start()
-        XCTAssertEqual(reloads, 0)
-        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
-        wait(for: [reloaded], timeout: 5)
-        XCTAssertEqual(reloads, 1)
+        let reloaded = expectation(description: "既存辞書を起動時に反映")
+        let watcher = MacDictionaryWatcher(directory: directory.path) { reloaded.fulfill() }
+        watcher.start()
+        wait(for: [reloaded], timeout: 3)
         XCTAssertEqual(try words(), ["よみ\t再起動前の変更"])
-        withExtendedLifetime(restarted) {}
+        withExtendedLifetime(watcher) {}
     }
 }

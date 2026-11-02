@@ -90,6 +90,22 @@ public static unsafe class Exports
         if (handle != IntPtr.Zero) GCHandle.FromIntPtr(handle).Free();
     }
 
+    /// <summary>辞書だけを更新する。既存の入力欄は確定・取消後にフロントで作り直す。</summary>
+    [UnmanagedCallersOnly(EntryPoint = "meltype_reload_dictionaries")]
+    public static int ReloadDictionaries()
+    {
+        try
+        {
+            MeltypeSession.ReloadDictionaries(Config.AppPaths.DataDirectory);
+            return 1;
+        }
+        catch (Exception ex)
+        {
+            Diagnostics.Log.Error($"Mac: 辞書を再読込できませんでした: {ex}");
+            return 0;
+        }
+    }
+
     /// <summary>
     /// キーを 1 つ処理して、結果を JSON で返す (<see cref="SessionResult.ToJson"/>)。
     /// vk は Windows の仮想キーコード、ch は入力する Unicode スカラー (無ければ 0)、

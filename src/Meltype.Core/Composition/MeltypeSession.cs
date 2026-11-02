@@ -196,6 +196,30 @@ public sealed class MeltypeSession
     // #123 の候補で調べた GitHub のタイトル (設定「#番号で GitHub の Issue・PR のタイトルを候補に出す」)。セッションの間だけ覚える
     private static readonly GitHubIssueTitles s_githubTitles = new();
 
+    /// <summary>次に作る入力欄の辞書を更新する。入力中の欄と共有の学習データは保持する。</summary>
+    public static void ReloadDictionaries(string dataDirectory)
+    {
+        if (s_shared is not { } shared || shared.Directory != dataDirectory) return;
+        var userDirectory = Path.Combine(dataDirectory, "dictionaries");
+        var detector = CompositionDetector.CreateDefault(userDirectory);
+        var typos = RomajiTypoCorrector.Load(detector.Romaji);
+        detector.Memory = shared.Options.Languages;
+        var options = shared.Options with
+        {
+            Candidates = CandidateDictionary.Load(userDirectory),
+            ContextRules = ContextRules.Load(userDirectory),
+            Misspellings = MisspellingDictionary.Load(userDirectory),
+            RomajiTypos = typos,
+        };
+        if (options.Languages is { } languages)
+        {
+            // 学習内容は保ち、判定用の参照だけ新しい辞書へ切り替える。
+            languages.IsCommonJapanese = typos.IsCommonJapanese;
+            languages.IsReadableRomaji = word => detector.Romaji.AnalyzeFragment(word) is { IsValid: true, Partial: "" };
+        }
+        s_shared = (dataDirectory, detector, options);
+    }
+
     /// <summary>dataDirectory に置いた設定・辞書・学習データで作る (テストでは一時フォルダーを渡す)。</summary>
     internal static MeltypeSession CreateDefault(string dataDirectory, IKanjiConverter converter, Func<string, IReadOnlyList<string>>? moreCandidates, IWordChecker? wordChecker, bool autoSpacing = false, bool supportsPredictions = false)
     {

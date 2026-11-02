@@ -23,6 +23,7 @@ export MELTYPE_VERSION="${MELTYPE_VERSION:-$(bash "$here/fork-version.sh")}"
 export MELTYPE_BUILD_NUMBER="${MELTYPE_BUILD_NUMBER:-$(git -C "$here/.." rev-list --count HEAD)}"
 bash "$here/build-cli.sh" --test --build
 bash "$here/../tests/fork/mac/check-inputs.sh" "$here/build/Meltype.app"
+bash "$here/../tests/fork/mac/check-dictionary-reload.sh" "$here/build/Meltype.app"
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 MELTYPE_DATA_DIR="$temporary" "$here/build/Meltype.app/Contents/MacOS/Meltype" --check-inputs "$here/Resources/InputChecks.tsv"

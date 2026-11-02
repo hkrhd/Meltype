@@ -21,6 +21,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     private var suggestionPanel: NSPanel?
     private var displayedSuggestion: String?
     private var dictionaryObserver: NSObjectProtocol?
+    private var dictionaryReloadPending = false
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
@@ -44,12 +45,22 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             forName: Notification.Name("MeltypeUserDictionaryChanged"), object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            self.commitComposition(self.client())
-            NativeCore.shared.destroySession(self.session)
-            self.session = NativeCore.shared.createSession()
-            NativeCore.shared.setDirect(self.session, self.directInput)
-            NativeCore.shared.setCodeInput(self.session, self.codeInput)
+            self.dictionaryReloadPending = true
+            self.reloadDictionaryIfIdle()
         }
+    }
+
+    private func reloadDictionaryIfIdle() {
+        guard dictionaryReloadPending, !hasMarkedText else { return }
+        guard let replacement = NativeCore.shared.createSession() else {
+            NSLog("Meltype: 辞書更新後の入力欄を作成できませんでした")
+            return
+        }
+        NativeCore.shared.setDirect(replacement, directInput)
+        NativeCore.shared.setCodeInput(replacement, codeInput)
+        NativeCore.shared.destroySession(session)
+        session = replacement
+        dictionaryReloadPending = false
     }
 
     deinit {
@@ -261,7 +272,6 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         do {
             let count = try MacUserDictionary.importFile(source, directory: directory)
             alert.messageText = "ユーザー辞書に\(count)語を追加しました"
-            NotificationCenter.default.post(name: Notification.Name("MeltypeUserDictionaryChanged"), object: nil)
         } catch {
             alert.messageText = "ユーザー辞書を取り込めませんでした"
             alert.informativeText = error.localizedDescription
@@ -294,6 +304,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     private func apply(_ result: SessionResult?, to client: IMKTextInput) {
         guard let result else { return }
+        defer { reloadDictionaryIfIdle() }
         for edit in result.commits {
             var range = NSRange(location: NSNotFound, length: 0)
             if edit.deleteBefore > 0 {

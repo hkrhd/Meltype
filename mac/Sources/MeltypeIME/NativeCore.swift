@@ -11,6 +11,7 @@ typealias IsWordCallback = @convention(c) (UnsafePointer<CChar>?) -> Int32
 
 private typealias InitFunction = @convention(c) (ClausesCallback, CandidatesCallback, IsWordCallback) -> Int32
 private typealias CreateFunction = @convention(c) () -> UnsafeMutableRawPointer?
+private typealias ReloadDictionariesFunction = @convention(c) () -> Int32
 private typealias DestroyFunction = @convention(c) (UnsafeMutableRawPointer?) -> Void
 private typealias HandleKeyFunction = @convention(c) (UnsafeMutableRawPointer?, Int32, Int32, Int32, UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>?
 private typealias CommitFunction = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutablePointer<CChar>?
@@ -108,6 +109,7 @@ final class NativeCore {
     private let library: UnsafeMutableRawPointer?
     private let initFunction: InitFunction?
     private let createFunction: CreateFunction?
+    private let reloadDictionariesFunction: ReloadDictionariesFunction?
     private let destroyFunction: DestroyFunction?
     private let handleKeyFunction: HandleKeyFunction?
     private let commitFunction: CommitFunction?
@@ -133,6 +135,7 @@ final class NativeCore {
         }
         initFunction = symbol("meltype_init", as: InitFunction.self)
         createFunction = symbol("meltype_create", as: CreateFunction.self)
+        reloadDictionariesFunction = symbol("meltype_reload_dictionaries", as: ReloadDictionariesFunction.self)
         destroyFunction = symbol("meltype_destroy", as: DestroyFunction.self)
         handleKeyFunction = symbol("meltype_handle_key", as: HandleKeyFunction.self)
         commitFunction = symbol("meltype_commit", as: CommitFunction.self)
@@ -152,6 +155,15 @@ final class NativeCore {
     func createSession() -> UnsafeMutableRawPointer? { createFunction?() }
 
     func destroySession(_ session: UnsafeMutableRawPointer?) { destroyFunction?(session) }
+
+    /// 共有辞書の更新に成功してから、入力欄へ安全なタイミングでの再作成を依頼する。
+    func reloadDictionaries() {
+        guard reloadDictionariesFunction?() == 1 else {
+            NSLog("Meltype: 辞書を再読込できませんでした")
+            return
+        }
+        NotificationCenter.default.post(name: Notification.Name("MeltypeUserDictionaryChanged"), object: nil)
+    }
 
     func handleKey(_ session: UnsafeMutableRawPointer?, vk: Int32, character: Int32, modifiers: Int32, before: String?, after: String?) -> SessionResult? {
         guard let handleKeyFunction else { return nil }
