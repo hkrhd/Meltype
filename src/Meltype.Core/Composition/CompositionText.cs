@@ -90,6 +90,9 @@ public sealed class CompositionText
     /// <param name="textBeforePeriod">句点キーを押す直前の表示文字列。省略時はこの未確定入力の表示を使う。</param>
     public void Append(char c, string? textBeforePeriod = null)
     {
+        // ホームディレクトリの表記は、日本語の波線ではなく半角の ~/ にする。
+        if (c == '/' && _pending.Length == 0 && _units.Count > 0 && _units[^1].Kana is "～" or "〜")
+            _units[^1] = _units[^1] with { Kana = "~", Raw = "~" };
         // ショートカット表記の英字をローマ字や z 系の記号に読まない (c-a → C-a、c-zh → C-zh)。
         // 修飾キーの大小も入力時にそろえ、英数表示・確定のどちらでも同じ表記を使う。
         if (!KanaInput && (char.IsAsciiLetter(c) || c == '-') && CompositionDetector.FormatShortcutNotation(Raw + c) is { } shortcut)

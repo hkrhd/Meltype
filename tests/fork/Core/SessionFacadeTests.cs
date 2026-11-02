@@ -248,6 +248,22 @@ internal static partial class SessionFacadeTests
     }
 
     [Test]
+    public static void Fork_TildeBeforeSlash_StaysAscii()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var raw in new[] { "~/", "~/docs", "z-/" })
+        {
+            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live }, () => new Settings());
+            var results = Type(session, raw);
+            var text = string.Concat(results.SelectMany(r => r.Commits).Select(c => c.Text)) + results[^1].View?.Text;
+            Assert.True(text.StartsWith("~/"), $"{raw}, live={live}: {text}");
+            var committed = Type(session, "\n")[0];
+            Assert.True(committed.Commits.All(c => !c.Text.Contains('～') && !c.Text.Contains('〜')), "確定後も半角を保つ");
+        }
+    }
+
+    [Test]
     public static void Fork_LiteralSymbols_StayAsciiThroughConversion()
     {
         foreach (var symbol in "$\"`_/")
