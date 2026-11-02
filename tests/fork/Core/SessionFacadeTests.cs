@@ -222,6 +222,32 @@ internal static partial class SessionFacadeTests
     }
 
     [Test]
+    public static void Fork_HyphenRules_StayAsciiDuringTypingConversionAndCommit()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var marker in new[] { "---", "----", "------" })
+        foreach (var prefix in new[] { "", "kyouha" })
+        foreach (var convert in new[] { false, true })
+        {
+            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
+                new CompositionOptions { LiveConversion = () => live,
+                    MoreCandidates = _ => ["ーーー", "－－－", "—"] }, () => new Settings());
+            var typed = Type(session, prefix + marker)[^1];
+            Assert.True(typed.View?.Text.EndsWith(marker) == true, "入力中から半角を表示する");
+            if (convert)
+                for (var i = 0; i < 4; i++)
+                {
+                    var converted = session.HandleKey(VirtualKeys.Convert, null, false, false, false, false);
+                    Assert.True(converted.View?.Text.EndsWith(marker) == true, "繰り返し変換しても半角を保つ");
+                }
+            var committed = Type(session, "\n")[0];
+            Assert.True(string.Concat(committed.Commits.Select(c => c.Text)).EndsWith(marker), "Enter確定も半角");
+        }
+        var japanese = Create();
+        Assert.Equal("こーひー", Type(japanese, "ko-hi-")[^1].View?.Text, "通常の長音入力は維持する");
+    }
+
+    [Test]
     public static void Fork_SymbolMarkers_SpaceCommitsAsciiWithoutConversion()
     {
         foreach (var marker in new[] { "#", "##", "###", "####", "#####", "######", "-", "--", "---", "~", "~~~", "+", "++", "&", "&&" })

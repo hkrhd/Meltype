@@ -187,6 +187,19 @@ public sealed class CompositionText
         Normalize(final: true);
         // 数字の前では打ち間違いを直さない (rta2026・ps5・win11 の英字は略語)。数字の後ろの単位を英字のままにするのは FixTypos の中
         if (!char.IsAsciiDigit(c)) FixTypos();
+        // 3 個以上連続するハイフンは区切り線として半角を保つ。通常の長音入力は変えない。
+        if (c == '-')
+        {
+            var run = 0;
+            while (run < _units.Count && _units[^(run + 1)].Raw == "-") run++;
+            if (run >= 2)
+            {
+                for (var i = _units.Count - run; i < _units.Count; i++)
+                    _units[i] = _units[i] with { Kana = "-" };
+                _units.Add(new CompositionUnit("-", "-"));
+                return;
+            }
+        }
         // 数字の後の . と , は小数点・桁区切り (GPL3.0、1,000)。句点・読点にしない。
         if (c is ',' or '.' && _units.Count > 0 && _units[^1].Raw is [var previous] && char.IsAsciiDigit(previous))
         {

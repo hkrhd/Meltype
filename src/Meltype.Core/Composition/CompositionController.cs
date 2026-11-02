@@ -1741,7 +1741,8 @@ public sealed class CompositionController
             {
                 clause.Raw = _text.RawForReading(s, offset, clause.Reading.Length);
                 offset += clause.Reading.Length;
-                if (clause.Reading.All(CompositionText.IsLiteralSymbol)) continue;
+                if (clause.Reading.All(CompositionText.IsLiteralSymbol) ||
+                    clause.Reading.Length >= 3 && clause.Reading.All(c => c == '-')) continue;
                 AddOldKana(clause);
                 AddTranslations(clause);
                 AddRawCandidates(clause);
@@ -1872,6 +1873,23 @@ public sealed class CompositionController
     /// </summary>
     private List<Clause> ConvertJapanese(string kana)
     {
+        // 入力時に区切り線と判定したハイフン列は、辞書や変換候補でも置き換えない。
+        if (kana.Contains("---", StringComparison.Ordinal))
+        {
+            var markers = new List<Clause>();
+            var start = 0;
+            while (kana.IndexOf("---", start, StringComparison.Ordinal) is var at && at >= 0)
+            {
+                if (at > start) markers.AddRange(ConvertJapanese(kana[start..at]));
+                var end = at + 3;
+                while (end < kana.Length && kana[end] == '-') end++;
+                var marker = kana[at..end];
+                markers.Add(new Clause(marker, false, [marker]) { Expanded = true });
+                start = end;
+            }
+            if (start < kana.Length) markers.AddRange(ConvertJapanese(kana[start..]));
+            return markers;
+        }
         // 独立した「なん」＋英字は数量を尋ねる「何」を優先する。
         // 語中の なん・ユーザー辞書・選び直した表記は維持する。
         if (kana == "なん" && HasQuestionBeforeEnglish && _options.UserDictionary?.IsUserReading(kana) != true)
