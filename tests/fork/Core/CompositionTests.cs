@@ -11,6 +11,19 @@ namespace Meltype.Tests;
 internal static partial class CompositionTests
 {
     [Test]
+    public static void Fork_LongVowel_KeepsFormatterReadingJapanese()
+    {
+        foreach (var live in new[] { false, true })
+        {
+            var k = new Keyboard(live: live);
+            k.Type("fo-matta");
+            Assert.Equal("ふぉーまった", k.Showing, "長音を含む読みを英語に分断しない");
+            k.Type(" \n");
+            Assert.Equal("ふぉーまった", k.Host.Document, "変換器に日本語の読みを渡して確定する");
+        }
+    }
+
+    [Test]
     public static void Fork_LShape_DefaultsToCapitalLAndKanji()
     {
         foreach (var live in new[] { false, true })

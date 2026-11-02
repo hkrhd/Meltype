@@ -18,6 +18,7 @@ for live in false true; do
     printf 'motatsukukanjihaaru \tもたつく感じはある\nsukoshimotatsukukanjigasuru \t少しもたつく感じがする\n' >> "$temporary/checks.tsv"
     printf 'shijisuru \t支持する\n' >> "$temporary/checks.tsv"
     printf 'lji \tL字\n' >> "$temporary/checks.tsv"
+    printf 'fo-matta \tフォーマッタ\nfor\tfor\ne-mail\te-mail\nco-op\tco-op\nx-ray\tx-ray\n' >> "$temporary/checks.tsv"
     printf 'mainno\tmainの\nmainno \tmainの\nmainde\tmainで\nmainde \tmainで\nmainwo\tmainを\nmainwo \tmainを\n' >> "$temporary/checks.tsv"
     printf 'mainnoyousuwomite \tmainの様子を見て\n' >> "$temporary/checks.tsv"
     printf '1niti1kai \t1日1回\n1nichi1kai \t1日1回\n1nitini1kai \t1日に1回\n' >> "$temporary/checks.tsv"
@@ -33,6 +34,7 @@ for live in false true; do
     if [[ "$live" == true ]]; then
         printf 'puronputotoshite\tプロンプトとして\npuronputotosite\tプロンプトとして\nkyouhalinede\t今日はlineで\n' >> "$temporary/checks.tsv"
         printf 'lji\tL字\n' >> "$temporary/checks.tsv"
+        printf 'fo-matta\tフォーマッタ\n' >> "$temporary/checks.tsv"
         printf 'ataranaiyouni\t当たらないように\nfurenaiyouni\t触れないように\nnaiyouni\t内容に\n' >> "$temporary/checks.tsv"
         printf '1niti1kai\t1日1回\n' >> "$temporary/checks.tsv"
         printf 'kankisen\t換気扇\nmotatsukukanjihaaru\tもたつく感じはある\n' >> "$temporary/checks.tsv"

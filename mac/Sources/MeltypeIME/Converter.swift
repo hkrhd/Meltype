@@ -148,6 +148,18 @@ final class MeltypeConverter {
             })
         }
         // Keep the engine's previous lattice for incremental conversion; bound retained results.
+        // 英語の直接入力は Core が区間を分けて保持する。日本語の読みから辞書が作った
+        // 小文字英単語 (フォー → for) は候補に残すが、日本語候補より後にする。
+        // 大文字の略語と、ユーザー辞書・学習による明示的な表記は優先順位を変えない。
+        if hiragana.unicodeScalars.allSatisfy({ !(65...90).contains($0.value) && !(97...122).contains($0.value) }) {
+            func hasPhoneticEnglish(_ candidate: Candidate) -> Bool {
+                candidate.data.contains { element in
+                    !element.metadata.contains(.isFromUserDictionary) && !element.metadata.contains(.isLearned)
+                        && element.word.unicodeScalars.contains { (97...122).contains($0.value) }
+                }
+            }
+            candidates = candidates.filter { !hasPhoneticEnglish($0) } + candidates.filter { hasPhoneticEnglish($0) }
+        }
         if count <= 256 {
             if cacheOrder.count >= 64 {
                 resultCache.removeValue(forKey: cacheOrder.removeFirst())
