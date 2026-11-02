@@ -2119,10 +2119,10 @@ public sealed class CompositionController
             {
                 // 文の一部としてかなのまま残った箇所は、文全体を見た判断を保つ。
                 // 「ないように → 内容に」の学習で「当たらないように」を壊さない。
-                // 学習した語は選択できるように残し、単独入力では従来どおり優先する。
+                // 読み全体の学習は、直前の確定文があっても入力中から優先する。
                 if (!clauses[i].Candidates.Contains(learned)) clauses[i].Candidates.Insert(1, learned);
                 var keepKana = clauses[i].Text == reading && reading.Any(KanaChars.IsHiragana)
-                    && (kana != reading || context is not null);
+                    && kana != reading;
                 if (!keepKana) preferred ??= learned;
             }
             // 変換エンジンは、文節が「から」だけだと記号 (～) にしてしまう。記号だけの変換結果は、ひらがなの後ろに回す。

@@ -474,11 +474,36 @@ internal static partial class CompositionTests
             k.Type(input + " \n");
             Assert.Equal("計算", k.Host.Document, "分割に関係なく読み全体の学習を優先する");
 
-            var enter = new Keyboard(live: true, history: history, converter: converter, userDictionary: dictionary);
-            enter.Type("keisann");
-            Assert.Equal("計算", enter.Showing, "ライブ変換にも読み全体の学習を使う");
-            enter.Type("\n");
-            Assert.Equal("計算", enter.Host.Document);
+            foreach (var before in new[] { "", "日本語", "English " })
+            {
+                var enter = new Keyboard(live: true, history: history, converter: converter, userDictionary: dictionary);
+                enter.Host.PrecedingText = before;
+                enter.Type("keisann");
+                Assert.Equal("計算", enter.Showing, "直前の文に関係なく、Space・Enterの前から読み全体の学習を使う: " + before);
+                enter.Type("\n");
+                Assert.Equal("計算", enter.Host.Document);
+            }
+        }
+    }
+
+    [Test]
+    public static void Fork_WholeReadingHistory_KeepsKanaInsideALongerInput()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var before in new[] { "", "日本語" })
+        {
+            var history = new ConversionHistory(null);
+            history.Remember("ないように", "内容に");
+            var converter = new SplitConverter(new()
+            {
+                ["あたらないように"] = [new("あたら", "当たら"), new("ないように", "ないように")],
+            });
+            var k = new Keyboard(live: live, history: history, converter: converter);
+            k.Host.PrecedingText = before;
+            k.Type("ataranaiyouni");
+            if (live) Assert.Equal("当たらないように", k.Showing, "文の途中は入力中もかなを保つ");
+            k.Type(" \n");
+            Assert.Equal("当たらないように", k.Host.Document, "読みの一部に一致する学習はかなを上書きしない");
         }
     }
 
