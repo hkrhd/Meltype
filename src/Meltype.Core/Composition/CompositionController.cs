@@ -1930,7 +1930,10 @@ public sealed class CompositionController
             }
             return result;
         }
-        if (_options.UserDictionary?.Split(kana) is not { } split) return ConvertWithEngine(kana);
+        // 読み全体を選び直した学習は、短い登録語で再分割しない。
+        // けい → 径 があっても、けいさん → 計算 の学習を使う。
+        if (_options.History?.Get(kana) is not null || _options.UserDictionary?.Split(kana) is not { } split)
+            return ConvertWithEngine(kana);
         var pieces = AlignUserWords(kana, split);
         if (pieces.All(p => p.Word is null && p.Engine is null)) return ConvertWithEngine(kana);
         var clauses = new List<Clause>();
@@ -2045,8 +2048,13 @@ public sealed class CompositionController
                 if (offset < end && end < stop)
                 {
                     var suffix = kana[end..stop];
-                    return CandidateDictionary.Endings.Any(ending => ending.Length > 0 && suffix.StartsWith(ending, StringComparison.Ordinal))
-                        && engine[i].Text.EndsWith(suffix, StringComparison.Ordinal);
+                    if (!engine[i].Text.EndsWith(suffix, StringComparison.Ordinal)) return false;
+                    // 終助詞の「さ・ね・よ・な」は後続の語を導かない。
+                    // 「さん」などの先頭だけを助詞と見なして語を途中分割しない。
+                    // 「をしています」「には」など、ほかの助詞で続く読みは維持する。
+                    return CandidateDictionary.Endings.Any(ending => ending.Length > 0
+                        && suffix.StartsWith(ending, StringComparison.Ordinal)
+                        && (ending is not ("さ" or "ね" or "よ" or "な") || suffix.Length == ending.Length));
                 }
             }
             return false;
@@ -2079,8 +2087,9 @@ public sealed class CompositionController
             ? ConvertWithContext(kana, context)
             : _converter.ConvertClauses(kana, kana.Length >= 3 && kana[0] == 'に' ? "これ" : null));
         parts ??= [new ConversionClause(kana, _converter.Convert(kana) ?? kana)];
-        // 読み全体が補助辞書・絵文字の辞書の語 (かんがえるかお → 🤔) なら、文節に分けずに 1 つの文節にして候補を出す。
-        if (parts.Count > 1 && _options.Candidates?.Contains(kana) == true)
+        // 読み全体が補助辞書・絵文字の辞書の語 (かんがえるかお → 🤔)、または学習済みなら、
+        // 文節に分けずに 1 つの文節にして候補を出す。
+        if (parts.Count > 1 && (_options.Candidates?.Contains(kana) == true || _options.History?.Get(kana) is not null))
         {
             parts = [new ConversionClause(kana, string.Concat(parts.Select(p => p.Text)))];
         }

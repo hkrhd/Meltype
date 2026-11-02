@@ -421,6 +421,68 @@ internal static partial class CompositionTests
     }
 
     [Test]
+    public static void Fork_UserDictionary_ParticlePrefixDoesNotSplitAWholeWord()
+    {
+        foreach (var live in new[] { false, true })
+        {
+            var dictionary = new UserDictionary(null, builtIn: false);
+            dictionary.Add("けい", "径");
+            var history = new ConversionHistory(null);
+            history.Remember("けい", "計");
+            var converter = new SplitConverter(new()
+            {
+                ["けいさん"] = [new("けいさん", "けいさん")],
+                ["けいには"] = [new("けいには", "けいには")],
+            });
+            var k = new Keyboard(live: live, history: history, converter: converter, userDictionary: dictionary,
+                moreCandidates: reading => reading == "けいさん" ? ["計算"] : []);
+            k.Type("keisann ");
+            Assert.Equal("けいさん", k.Showing, "「さん」は助詞「さ」で始まるだけなので、登録語で分割しない");
+            var index = k.Host.View!.Candidates.ToList().IndexOf("計算");
+            Assert.True(index >= 0, "読み全体の候補を選べる");
+            k.Controller.SelectCandidate(index);
+            k.Type("\n");
+            Assert.Equal("計算", k.Host.Document);
+            Assert.Equal("計算", history.Get("けいさん"), "読み全体として学習する");
+
+            foreach (var (input, expected) in new[] { ("kei", "計"), ("keiniha", "計には") })
+            {
+                var registered = new Keyboard(live: live, history: history, converter: converter, userDictionary: dictionary);
+                registered.Type(input + " \n");
+                Assert.Equal(expected, registered.Host.Document, "単独の登録語と助詞の連続は維持する");
+            }
+        }
+    }
+
+    [Test]
+    public static void Fork_WholeReadingHistory_PrevailsOverShortUserWordsAndEngineSplits()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var split in new[] { false, true })
+        foreach (var input in new[] { "keisann", "keisan" })
+        {
+            var dictionary = new UserDictionary(null, builtIn: false);
+            dictionary.Add("けい", "径");
+            var history = new ConversionHistory(null);
+            history.Remember("けい", "計");
+            history.Remember("けいさん", "計算");
+            var converter = new SplitConverter(new()
+            {
+                ["けいさん"] = split ? [new("けい", "系"), new("さん", "さん")] : [new("けいさん", "けいさん")],
+            });
+            var k = new Keyboard(live: live, history: history, converter: converter, userDictionary: dictionary);
+            k.Type(input + " \n");
+            Assert.Equal("計算", k.Host.Document, "分割に関係なく読み全体の学習を優先する");
+
+            var enter = new Keyboard(live: true, history: history, converter: converter, userDictionary: dictionary);
+            enter.Type("keisann");
+            Assert.Equal("計算", enter.Showing, "ライブ変換にも読み全体の学習を使う");
+            enter.Type("\n");
+            Assert.Equal("計算", enter.Host.Document);
+        }
+    }
+
+    [Test]
     public static void Fork_UserDictionary_WordCuttingAnEngineClause_IsNotSplitOut()
     {
         // かん → 燗 を登録すると、かんきせん (換気|扇 と区切る) の頭の かん で区切って 燗|汽船 になっていた。

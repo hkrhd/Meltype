@@ -50,6 +50,21 @@ for live in false true; do
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-candidates "$here/CandidateChecks.tsv"
     echo "英単語補完の表示・選択・確定テスト (LiveConversion=$live)"
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-predictions
+
+    echo "短い登録語がある場合の読み全体の選択・学習テスト (LiveConversion=$live)"
+    learned="$temporary/whole-$live"
+    mkdir "$learned"
+    printf '{"LiveConversion":%s}\n' "$live" > "$learned/config.json"
+    printf 'けい\t径\n' > "$learned/userdict.txt"
+    printf '{"けい":{"Text":"計","Used":"2026-11-03T00:00:00Z"}}\n' > "$learned/conversions.json"
+    printf 'keisann\t計算\n' > "$learned/candidates.tsv"
+    MELTYPE_DATA_DIR="$learned" "$app/Contents/MacOS/Meltype" --check-candidates "$learned/candidates.tsv"
+    # 別プロセスでも読み全体の学習が残り、途中の登録語・学習で再分割されない。
+    printf 'keisann \t計算\nkeisan \t計算\nkei \t計\n' > "$learned/inputs.tsv"
+    if [[ "$live" == true ]]; then
+        printf 'keisann\t計算\nkeisan\t計算\n' >> "$learned/inputs.tsv"
+    fi
+    MELTYPE_DATA_DIR="$learned" "$app/Contents/MacOS/Meltype" --check-inputs "$learned/inputs.tsv"
 done
 
 echo "フォーク独自の入力チェック"
