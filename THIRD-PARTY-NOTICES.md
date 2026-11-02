@@ -411,7 +411,6 @@ Mozc の変換エンジンに同梱される Mozc 本体の辞書 (IPAdic (NAIST
 
 UT 辞書を有効にしてビルドしたバイナリは、**あなた自身のビルド**です。Meltype の公式な配布物ではなく、Meltype のサポートや動作保証の対象でもありません。
 
-### README の画像
+### ロゴ
 
-- `docs/meltype.jpg`・`docs/images/logo.png` (Meltype のロゴ) は [@Crysta1221](https://github.com/Crysta1221) さんの作品です。
-- `docs/images/headings/` の画像 (README と docs/ の見出し) と `docs/images/demo.svg`・`docs/images/features.svg` の文字は、M PLUS Rounded 1c (Copyright 2016 The M+ Project Authors、SIL Open Font License 1.1) の字形を図形にしたものです。
+`web/public/assets/img/logo.png`・`web/public/assets/img/logo-small.png` (Meltype のロゴ) は [@Crysta1221](https://github.com/Crysta1221) さんの作品です。

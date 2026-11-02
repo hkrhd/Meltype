@@ -1,9 +1,5 @@
-<p align="center">
-  <img src="../docs/images/logo.png" alt="Meltype" width="360">
-</p>
-
 <a name="meltype-for-linux"></a>
-<p align="center"><img src="../docs/images/headings/linux/title.svg" alt="Meltype for Linux" height="80"></p>
+# Meltype for Linux
 
 <p align="center"><b>雪解けのように、半角/全角の壁を溶かす日本語入力。</b></p>
 
@@ -21,11 +17,7 @@
   <a href="https://github.com/yksr-melt/Meltype/issues/new/choose">不具合の報告・提案</a>
 </p>
 
-<p align="center">
-  <a href="../docs/WINDOWS.md"><img src="../docs/images/cards/os-windows.svg" alt="Windows" width="30%"></a>
-  <a href="../mac/README.md"><img src="../docs/images/cards/os-mac.svg" alt="Mac" width="30%"></a>
-  <a href="README.md"><img src="../docs/images/cards/os-linux.svg" alt="Linux" width="30%"></a>
-</p>
+[Windows](https://github.com/yksr-melt/Meltype/blob/main/docs/WINDOWS.md) · [Mac](../mac/README.md) · [Linux](README.md)
 
 Meltype は Linux では「入力ソース」(日本語入力) として動きます。IBus のエンジンと fcitx5 のアドオンの両方があります。
 Windows 版と同じく、日本語を打っている途中の英単語は英字のまま出ます！
@@ -35,7 +27,7 @@ Windows 版と同じく、日本語を打っている途中の英単語は英字
 <br>
 
 <a name="動く環境"></a>
-<img src="../docs/images/headings/linux/01.svg" alt="動く環境" height="53"><br>
+## 動く環境
 
 - Ubuntu 24.04 など (x86_64 / ARM64)
 - 入力の仕組みが IBus (GNOME、Ubuntu の標準) か fcitx5 (KDE など) のもの
@@ -45,7 +37,7 @@ fcitx5 のアドオンは、Ubuntu 24.04 の fcitx5 5.1 で作っています。
 <br>
 
 <a name="インストール"></a>
-<img src="../docs/images/headings/linux/02.svg" alt="インストール" height="53"><br>
+## インストール
 
 1. [Releases](https://github.com/yksr-melt/Meltype/releases/latest) から `Meltype-<version>-linux.zip` (ARM64 のパソコンは `Meltype-<version>-linux-arm64.zip`) をダウンロードして展開する
 2. 「端末」(ターミナル) を開いて、展開したフォルダーで次を実行する (管理者のパスワードを聞かれます。足りない部品があれば自動で入れます)
@@ -113,14 +105,14 @@ sudo dnf install meltype
 ```
 
 <a name="ibus-のとき"></a>
-<img src="../docs/images/headings/linux/s01.svg" alt="IBus のとき" height="40">
+### IBus のとき
 
 1. いったんログアウトしてログインし直す
 2. 設定 → キーボード → 入力ソース →「+ 入力ソースを追加」→ 日本語 → Meltype を追加
 3. 画面右上の入力ソースのメニュー (または <kbd>Super</kbd> + <kbd>Space</kbd>) で Meltype を選ぶ
 
 <a name="fcitx5-のとき"></a>
-<img src="../docs/images/headings/linux/s02.svg" alt="fcitx5 のとき" height="40">
+### fcitx5 のとき
 
 fcitx5 が入っていれば、`install.sh` が fcitx5 にも入れます (fcitx5 だけに入れるなら `bash install.sh --fcitx5`)。
 
@@ -134,7 +126,7 @@ KDE Plasma の Wayland では fcitx5 を KWin が起動しているため、ロ�
 <br>
 
 <a name="使い方"></a>
-<img src="../docs/images/headings/linux/03.svg" alt="使い方" height="53"><br>
+## 使い方
 
 ふつうにローマ字で打つと日本語、英単語 (google、github …) は英字のまま！
 
@@ -164,7 +156,7 @@ fcitx5 の固定の操作ガイドを隠すには、`config.json` に `"ShowGuid
 <br>
 
 <a name="困ったとき"></a>
-<img src="../docs/images/headings/linux/04.svg" alt="困ったとき" height="53"><br>
+## 困ったとき
 
 不具合を報告するときは、どのアプリで・何と打って・どうなったか (できればスクリーンショットも) を教えてください。
 
@@ -174,12 +166,12 @@ fcitx5 の固定の操作ガイドを隠すには、`config.json` に `"ShowGuid
 ibus restart; sleep 2; pkill -f ibus-engine-meltype; /opt/meltype/ibus-engine-meltype
 ```
 
-入力ソースに出てこないときは、[WSL / Linux でビルドする](../docs/WSL.md#入力ソースに出てこないとき) の「入力ソースに出てこないとき」も見てください。
+入力ソースに出てこないときは、[WSL / Linux でビルドする](https://github.com/yksr-melt/Meltype/blob/main/docs/WSL.md#入力ソースに出てこないとき) の「入力ソースに出てこないとき」も見てください。
 
 <br>
 
 <a name="アンインストール"></a>
-<img src="../docs/images/headings/linux/05.svg" alt="アンインストール" height="53"><br>
+## アンインストール
 
 展開したフォルダーで次を実行します。
 
@@ -194,7 +186,7 @@ bash uninstall.sh --data
 <br>
 
 <a name="開発者向け"></a>
-<img src="../docs/images/headings/linux/06.svg" alt="開発者向け" height="53"><br>
+## 開発者向け
 
 | 部分 | 中身 |
 | --- | --- |
@@ -203,5 +195,5 @@ bash uninstall.sh --data
 | 判定の本体 (`libMeltypeNative.so`) | Windows 版と共通の C# の部分 (`src/Meltype.Core`) を NativeAOT で Linux 用のライブラリにしたもの |
 | 漢字変換 | Mozc の変換ヘルパー (`native/mozc`) |
 
-- ビルドとインストール → [docs/WSL.md](../docs/WSL.md) (`linux/build.sh`)
-- 全体の仕組み・テスト → [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md)
+- ビルドとインストール → [docs/WSL.md](https://github.com/yksr-melt/Meltype/blob/main/docs/WSL.md) (`linux/build.sh`)
+- 全体の仕組み・テスト → [docs/DEVELOPMENT.md](https://github.com/yksr-melt/Meltype/blob/main/docs/DEVELOPMENT.md)

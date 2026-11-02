@@ -11,6 +11,55 @@ namespace Meltype.Tests;
 internal static partial class CompositionTests
 {
     [Test]
+    public static void Fork_QuestionBeforeEnglish_PrefersKanjiAndKeepsKanaSelectable()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var suffix in new[] { "m", "cm", "mm", "kg", "GB", "px", "fps", "J" })
+        foreach (var prefix in new[] { "nan", "nann" })
+        {
+            var k = new Keyboard(live: live);
+            k.Type(prefix + suffix);
+            if (live) Assert.Equal("何" + suffix, k.Showing, "ライブ変換で数量の疑問詞にする: " + prefix + suffix);
+            k.Type(" ");
+            Assert.Equal("何" + suffix, k.Showing, "Space で変換し、空白を勝手に確定しない: " + prefix + suffix);
+            var kana = k.Host.View!.Candidates.ToList().IndexOf("なん");
+            Assert.True(kana >= 0, "固有名詞などに使う「なん」も選べる");
+            k.Type("\n");
+            Assert.Equal("何" + suffix, k.Host.Document, "表示どおり確定する");
+
+            var alternative = new Keyboard(live: live);
+            alternative.Type(prefix + suffix + " ");
+            alternative.Controller.SelectCandidate(alternative.Host.View!.Candidates.ToList().IndexOf("なん"));
+            alternative.Type("\n");
+            Assert.Equal("なん" + suffix, alternative.Host.Document, "かなの候補も確定できる");
+            alternative.Type(prefix + suffix + " ");
+            Assert.True(alternative.Host.View!.Candidates.Contains("何"), "かなを学習した後も「何」を選び直せる");
+        }
+    }
+
+    [Test]
+    public static void Fork_QuestionBeforeEnglish_KeepsWordsAndExplicitAlphabet()
+    {
+        foreach (var live in new[] { false, true })
+        foreach (var (input, expected) in new[]
+        {
+            ("konnnannAPI", "こんなんAPI"), ("sonnnannAPI", "そんなんAPI"),
+            ("nandemoAPI", "なんでもAPI"), ("nanteAPI", "なんてAPI"),
+            ("nanny", "nanny"), ("Nancy", "Nancy"),
+        })
+        {
+            var k = new Keyboard(live: live);
+            k.Type(input + "\n");
+            Assert.Equal(expected, k.Host.Document, "語中の「なん」や英単語を置き換えない: " + input);
+        }
+        var alphabet = new Keyboard(live: true);
+        alphabet.Type("nanmm");
+        alphabet.Press(VirtualKeys.F10);
+        alphabet.Type("\n");
+        Assert.Equal("nanmm", alphabet.Host.Document, "明示した英字入力を維持する");
+    }
+
+    [Test]
     public static void Fork_LongVowel_KeepsFormatterReadingJapanese()
     {
         foreach (var live in new[] { false, true })

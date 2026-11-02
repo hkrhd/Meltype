@@ -103,7 +103,7 @@ jobs:
             cat <<'BODY'
 
           作業開始時に最新の main を取得し、既存の作業中の変更を保持して `jj new fork_by_hkrhd main` で統合してください。
-          競合がない箇所も意味上の衝突を確認し、AGENTS.md・README.md・docs/FORK.md に沿って調整してください。
+          競合がない箇所も意味上の衝突を確認し、AGENTS.md・README.md に沿って調整してください。
           `bash mac/update.sh` でテスト・ビルド・実機への適用を行い、両ブランチを親に持つマージコミットを push して、変更点と検証結果をこの PR に記録してください。
 
           - [x] AI を使った（使った部分: この取り込み依頼文の作成）

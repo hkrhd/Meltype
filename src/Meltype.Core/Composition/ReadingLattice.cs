@@ -184,7 +184,11 @@ public sealed partial class CompositionDetector
                 (japanese && edge.Kana == "っ" && DoubledAt(edge.Start) && state.Side != Side.Japanese ? DanglingSokuonCost : 0);
             if (edge.English)
             {
-                step = cost + EnglishTieBreak + englishBias;
+                // 疑問詞の直後の子音列は単位・略語としてまとまりを保つ。
+                // 母音を含む綴りは通常どおり比べ、「なんでも」を なんdemo に分断しない。
+                var questionAbbreviation = state.Side == Side.Japanese && from.Edge.Kana == "なん" &&
+                    text[edge.Start..edge.End].All(c => char.IsAsciiLetter(c) && !"aeiou".Contains(char.ToLowerInvariant(c)));
+                step = (questionAbbreviation ? Math.Min(cost, KnownEnglishCost) : cost) + EnglishTieBreak + englishBias;
                 if (state.Side == Side.Japanese && edge.Start > 0 && char.IsAsciiLetter(text[edge.Start - 1]) && char.IsAsciiLetter(text[edge.Start]))
                 {
                     // 英字 → 日本語 → 英字 と、英字のあいだで区切りなしに戻る (procras|ち|cle)。あいだが付属語を含むとき (excel|と|ppt) は除く
@@ -193,7 +197,9 @@ public sealed partial class CompositionDetector
                     while (run.Previous is { } previous && !run.Edge.English && !run.Edge.Neutral) { if (previous.Edge.English || previous.Edge.Neutral) break; run = previous; particle |= run.Edge.Particle; }
                     if (!particle && run.Previous is { Edge.English: true } before && before.Edge.End == run.Edge.Start && run.Edge.Start > 0 && char.IsAsciiLetter(text[run.Edge.Start - 1])) step += SandwichCost;
                 }
-                if (state.Side == Side.Japanese && !state.Particle) step += SwitchCost;
+                // 「なん」には英字の単位・略語が直接続く (なんmm・なんpx)。
+                // 切り替えの重みで なんっm・なnpx に分断しない。
+                if (state.Side == Side.Japanese && !state.Particle && !questionAbbreviation) step += SwitchCost;
                 if (state.IsEnglish && edge.Start > 0 && char.IsAsciiLetter(text[edge.Start - 1]) && char.IsAsciiLetter(text[edge.Start])) step += AdjacentEnglishCost;
                 // 英文の続きの強さは、最初の英語の語までで使い終わる (英文の中の記号では使い終わらない)
                 var sentence = state.Side == Side.Sentence && !char.IsAsciiLetter(text[edge.Start]);

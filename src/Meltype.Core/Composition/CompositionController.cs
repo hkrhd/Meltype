@@ -1872,6 +1872,14 @@ public sealed class CompositionController
     /// </summary>
     private List<Clause> ConvertJapanese(string kana)
     {
+        // 独立した「なん」＋英字は数量を尋ねる「何」を優先する。
+        // 語中の なん・ユーザー辞書・選び直した表記は維持する。
+        if (kana == "なん" && HasQuestionBeforeEnglish && _options.UserDictionary?.IsUserReading(kana) != true)
+        {
+            var question = new Clause(kana, false, JapaneseCandidates(kana, "何"));
+            if (_options.History?.Get(kana) is { } preferred) Prefer(question, preferred);
+            return [question];
+        }
         // ローマ字として読めずに残った英字 (こほぃc の c) と半角の記号 (... @)、入力時に選んだ句点は、変換エンジンに渡すと別の記号 (© ．．． ＠) にされるので、
         // そのままの文節にする。数字は、記号・英字とつながっていればそのまま (3.0 の 3 を 1 文字だけ渡すと ❸ にされる)、
         // それ以外は変換エンジンに渡す (2026ねん → 2026年)。
@@ -2741,7 +2749,8 @@ public sealed class CompositionController
     private string LiveConvert(string kana)
     {
         // 記号 (～ ! ? …) は数えない。かなが短いうちに記号を足しただけで、的外れな漢字にしない (な～～～ が 名～～～ になっていた: issue #505)
-        if (kana.Count(c => c is (>= 'ぁ' and <= 'ゖ') or (>= 'ァ' and <= 'ヺ') or 'ー') < LiveConversionMinLength) return kana;
+        if (!(kana == "なん" && HasQuestionBeforeEnglish) &&
+            kana.Count(c => c is (>= 'ぁ' and <= 'ゖ') or (>= 'ァ' and <= 'ヺ') or 'ー') < LiveConversionMinLength) return kana;
         return string.Concat(LiveClauses(kana).Select(c => c.Text));
     }
 
@@ -3190,7 +3199,21 @@ public sealed class CompositionController
 
     /// <summary>変換ボックスの最後が英語の区間か (Space を空白として扱うか)。</summary>
     private bool EndsWithEnglish() =>
-        _text.Mode == DisplayMode.Auto && _text.Segments() is { Count: > 0 } segments && segments[^1].IsEnglish;
+        _text.Mode == DisplayMode.Auto && _text.Segments() is { Count: > 0 } segments && segments[^1].IsEnglish && !HasQuestionBeforeEnglish;
+
+    /// <summary>日本語区間全体が「なん」で、その直後に英字が続くか。こんなんAPI などの語中は含めない。</summary>
+    private bool HasQuestionBeforeEnglish
+    {
+        get
+        {
+            if (_text.Mode != DisplayMode.Auto) return false;
+            var segments = _text.ConversionSegments();
+            for (var i = 0; i + 1 < segments.Count; i++)
+                if (!segments[i].IsEnglish && segments[i].Kana == "なん" &&
+                    segments[i + 1] is { IsEnglish: true, IsProtected: false, Raw: [var first, ..] } && char.IsAsciiLetter(first)) return true;
+            return false;
+        }
+    }
 
     private void ReplayDown(KeyEvent e)
     {

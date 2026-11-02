@@ -1,5 +1,5 @@
 <a name="セキュリティについて"></a>
-<img src="docs/images/headings/security/title.svg" alt="セキュリティについて" height="80">
+# セキュリティについて
 
 
 Meltype はキーボードの入力を扱うソフトです。安心して使ってもらえるように、次の方針で作っています。
@@ -7,7 +7,7 @@ Meltype はキーボードの入力を扱うソフトです。安心して使っ
 <br>
 
 <a name="meltype-がすることしないこと"></a>
-<img src="docs/images/headings/security/01.svg" alt="Meltype がすること・しないこと" height="53"><br>
+## Meltype がすること・しないこと
 
 
 - **打った文字を外部に送りません。** 判定・変換・学習はすべて PC の中で行います。通信するのは次の 2 つだけです。
@@ -38,7 +38,7 @@ Meltype はキーボードの入力を扱うソフトです。安心して使っ
 <br>
 
 <a name="脆弱性の報告"></a>
-<img src="docs/images/headings/security/02.svg" alt="脆弱性の報告" height="53"><br>
+## 脆弱性の報告
 
 
 悪用できそうな問題 (打った文字が漏れる・ほかのアプリに勝手に入力される・権限が上がる など) を見つけたら、
@@ -54,7 +54,7 @@ Meltype はキーボードの入力を扱うソフトです。安心して使っ
 <br>
 
 <a name="対象の版"></a>
-<img src="docs/images/headings/security/03.svg" alt="対象の版" height="53"><br>
+## 対象の版
 
 
 直すのは最新の版だけです (テスト版の期間は、最新のテスト版)。古い版を使っている場合は、最新の版で起きるかを確かめてください。
@@ -62,7 +62,7 @@ Meltype はキーボードの入力を扱うソフトです。安心して使っ
 <br>
 
 <a name="配布物の確かめ方"></a>
-<img src="docs/images/headings/security/04.svg" alt="配布物の確かめ方" height="53"><br>
+## 配布物の確かめ方
 
 
 - 配布しているのは GitHub のリリース (公開後) と、作者が直接渡すテスト版だけです。ほかの場所の Meltype は使わないでください。

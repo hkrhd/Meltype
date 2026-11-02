@@ -1,5 +1,5 @@
 <a name="行動規範"></a>
-<img src="docs/images/headings/code-of-conduct/title.svg" alt="行動規範" height="80">
+# 行動規範
 
 
 Meltype は、日本語と英語を混ぜて打つ人のための道具です。使う人・報告する人・直す人の誰もが、安心して参加できる場にしたいと考えています。
@@ -8,7 +8,7 @@ Meltype は、日本語と英語を混ぜて打つ人のための道具です。
 <br>
 
 <a name="大切にすること"></a>
-<img src="docs/images/headings/code-of-conduct/01.svg" alt="大切にすること" height="53"><br>
+## 大切にすること
 
 
 - 相手を尊重し、ていねいに話す。経験・年齢・国籍・性別・性自認・性的指向・障害・見た目・人種・宗教・使っている OS や日本語入力の違いで扱いを変えない
@@ -21,7 +21,7 @@ Meltype は、日本語と英語を混ぜて打つ人のための道具です。
 <br>
 
 <a name="してはいけないこと"></a>
-<img src="docs/images/headings/code-of-conduct/02.svg" alt="してはいけないこと" height="53"><br>
+## してはいけないこと
 
 
 - 侮辱・嘲笑・人格攻撃、差別的な発言や画像
@@ -35,7 +35,7 @@ Meltype は、日本語と英語を混ぜて打つ人のための道具です。
 <br>
 
 <a name="守られなかったとき"></a>
-<img src="docs/images/headings/code-of-conduct/03.svg" alt="守られなかったとき" height="53"><br>
+## 守られなかったとき
 
 
 管理する人 (作者と、Discord サーバーの管理者) は、この行動規範に沿わない発言・コメント・コード・Issue などを、編集・非表示・削除することがあります。
@@ -49,7 +49,7 @@ Meltype は、日本語と英語を混ぜて打つ人のための道具です。
 <br>
 
 <a name="報告の窓口"></a>
-<img src="docs/images/headings/code-of-conduct/04.svg" alt="報告の窓口" height="53"><br>
+## 報告の窓口
 
 
 行動規範に沿わない行為を見かけたり、受けたりしたときは、作者に知らせてください。
@@ -63,7 +63,7 @@ Meltype は、日本語と英語を混ぜて打つ人のための道具です。
 <br>
 
 <a name="由来"></a>
-<img src="docs/images/headings/code-of-conduct/05.svg" alt="由来" height="53"><br>
+## 由来
 
 
 この行動規範は [Contributor Covenant](https://www.contributor-covenant.org/) 2.1 (CC BY 4.0) を参考に、Meltype に合わせて日本語で書いたものです。

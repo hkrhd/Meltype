@@ -1,5 +1,5 @@
 <a name="meltype-への貢献"></a>
-<img src="docs/images/headings/contributing/title.svg" alt="Meltype への貢献" height="80">
+# Meltype への貢献
 
 
 不具合の報告・辞書の追加・改善の提案を歓迎します。
@@ -8,7 +8,7 @@
 <br>
 
 <a name="運営の方針"></a>
-<img src="docs/images/headings/contributing/08.svg" alt="運営の方針" height="53"><br>
+## 運営の方針
 
 
 提案・Pull Request は、この方針に合うかで判断します。
@@ -18,7 +18,7 @@
 **使う人**: 最終的には、一般の社会人もプログラマーも、だれでも。
 
 <a name="原則"></a>
-<img src="docs/images/headings/contributing/s07.svg" alt="原則" height="40">
+### 原則
 
 
 1. 何もしなくても正しく動く (入れたらすぐ使える)
@@ -29,7 +29,7 @@
 5. IME が主役。でも、おしゃれさも大事にする
 
 <a name="やらないこと"></a>
-<img src="docs/images/headings/contributing/s08.svg" alt="やらないこと" height="40">
+### やらないこと
 
 
 - 変換エンジンを一から作らない (MS IME・Mozc の上で動かす)
@@ -39,7 +39,7 @@
 <br>
 
 <a name="不具合の報告"></a>
-<img src="docs/images/headings/contributing/01.svg" alt="不具合の報告" height="53"><br>
+## 不具合の報告
 
 
 GitHub のアカウントが無い場合は、Meltype のトレイのメニュー「不具合の報告・提案...」から開くフォームで送れます (送った内容は Issue になります。仕組みは [tools/report-form](tools/report-form/README.md))。
@@ -59,7 +59,7 @@ Mac 版・Linux 版はプレビュー版です。気づいたことは小さな�
 <br>
 
 <a name="辞書の追加"></a>
-<img src="docs/images/headings/contributing/02.svg" alt="辞書の追加" height="53"><br>
+## 辞書の追加
 
 
 `dictionaries/` の辞書 (英単語・固有名詞・同音異義語の候補・文脈の手がかり) への追加は、Pull Request か Issue でお送りください。
@@ -67,7 +67,7 @@ Mac 版・Linux 版はプレビュー版です。気づいたことは小さな�
 <br>
 
 <a name="issuepull-request-の扱い"></a>
-<img src="docs/images/headings/contributing/09.svg" alt="Issue・Pull Request の扱い" height="53"><br>
+## Issue・Pull Request の扱い
 
 
 以下の件数確認・期限管理は、[PR #1150](https://github.com/yksr-melt/Meltype/pull/1150) の bot を導入した後に有効になります。
@@ -81,7 +81,7 @@ Mac 版・Linux 版はプレビュー版です。気づいたことは小さな�
 <br>
 
 <a name="pull-request-を送る場合"></a>
-<img src="docs/images/headings/contributing/07.svg" alt="Pull Request を送る場合" height="53"><br>
+## Pull Request を送る場合
 
 Issue を直す Pull Request を送るつもりの場合は、その Issue のコメントに自分が対応することを書いてから、修正に取りかかってください。
 同じ Issue を何人もが同時に直してしまうのを防ぐためです。
@@ -109,7 +109,7 @@ Draft は作業中の下書きにだけ使ってください。Draft にして�
 <br>
 
 <a name="コードの貢献と貢献者ライセンス同意-cla"></a>
-<img src="docs/images/headings/contributing/03.svg" alt="コードの貢献と貢献者ライセンス同意 (CLA)" height="53"><br>
+## コードの貢献と貢献者ライセンス同意 (CLA)
 
 
 Meltype は GNU GPL v3 で公開していますが、GPL v3 の条件で使えない方 (非公開で利用したい方) には、作者が個別に相談して利用を認めることがあります。
@@ -127,7 +127,7 @@ Pull Request を作ると bot がこの文面をコメントするので、同�
 同意のない Pull Request は取り込めません。
 
 <a name="ソースファイルの先頭の表記"></a>
-<img src="docs/images/headings/contributing/s01.svg" alt="ソースファイルの先頭の表記" height="40">
+### ソースファイルの先頭の表記
 
 
 新しく作ったソースファイルの先頭には、ライセンスと著作権の行を入れてください。著作権は書いた人に残るので (上の 3)、名前は **自分の名前** (GitHub のユーザー名など) にしてください。既存のファイルをまねて作者の名前 (Yukishiro) のままにしないよう気をつけてください。
@@ -143,14 +143,14 @@ Pull Request を作ると bot が確かめ、抜けや名前の間違いがあ�
 <br>
 
 <a name="ai-の利用について"></a>
-<img src="docs/images/headings/contributing/04.svg" alt="AI の利用について" height="53"><br>
+## AI の利用について
 
 
 Meltype の開発には AI (Claude Code など) を使っています (コミットの `Co-Authored-By` に書いています)。
 貢献でも、AI を使うこと自体は歓迎します。そのうえで、次のことをお願いします。
 
 <a name="pull-request"></a>
-<img src="docs/images/headings/contributing/s02.svg" alt="Pull Request" height="40">
+### Pull Request
 
 
 - **中身を理解して、責任を持てるものだけを送ってください。** 何をなぜ変えたかを自分の言葉で説明でき、質問に答えられること。
@@ -164,7 +164,7 @@ Meltype の開発には AI (Claude Code など) を使っています (コミッ
 - 大量の機械的な変更 (全体の書き換え・文体だけの直し) は、先に Issue で相談してください。
 
 <a name="辞書"></a>
-<img src="docs/images/headings/contributing/s03.svg" alt="辞書" height="40">
+### 辞書
 
 
 - **ほかの辞書・IME の辞書を AI に書き出させて追加しないでください。** 市販の IME (ATOK・Microsoft IME など) や、ライセンスが合わない辞書の内容を写したものは取り込めません。
@@ -172,14 +172,14 @@ Meltype の開発には AI (Claude Code など) を使っています (コミッ
 - 大きな辞書を作るときは、元にしたデータとライセンスを Pull Request に書き、作るためのスクリプト (`tools/`) も一緒に送ってください (今の辞書も JMdict・ウィクショナリー・Unicode CLDR から、出典を明記して作っています)。
 
 <a name="issue報告"></a>
-<img src="docs/images/headings/contributing/s04.svg" alt="Issue・報告" height="40">
+### Issue・報告
 
 
 - AI に文章を整えてもらうのはかまいませんが、**実際に起きたことを書いてください。** 打ったもの・出たもの・期待した結果は、AI に推測させずにそのまま書いてください。
 - ログや打った文章を AI のサービスに貼る前に、見られて困るもの (パスワード・個人的な文章) が入っていないか確かめてください。
 
 <a name="meltype-自体と-ai"></a>
-<img src="docs/images/headings/contributing/s05.svg" alt="Meltype 自体と AI" height="40">
+### Meltype 自体と AI
 
 
 Meltype の日英判定・変換は手元の端末の中で行い、クラウド変換は使いません。外部サービスと連携する機能では、その機能に必要な最小限の情報だけを送ります (例: GitHub の Issue・PR のタイトルを取得するための、リポジトリと番号)。学習データ・診断ログは上の「原則」に従って扱います。
@@ -187,7 +187,7 @@ Meltype の日英判定・変換は手元の端末の中で行い、クラウド
 <br>
 
 <a name="bot-のコマンド"></a>
-<img src="docs/images/headings/contributing/05.svg" alt="bot のコマンド" height="53"><br>
+## bot のコマンド
 
 
 Issue・Pull Request のコメントの行の先頭に書くと、bot が GitHub Actions で実行して結果をコメントします。1 つのコメントに書けるコマンドは 1 つです。`/repro` だけは 1 行に 1 つずつ、10 個まで書けます。
@@ -210,7 +210,7 @@ Issue・Pull Request のコメントの行の先頭に書くと、bot が GitHub
 `要トリアージ` が付いている Issue (メンテナーがまだ見ていないもの) では、メンテナー以外は割り当てず、「対応したいことをコメントで残し、メンテナーが進めると決めてから `/self-assign` する」ように案内します。
 
 <a name="自動の仕分け"></a>
-<img src="docs/images/headings/contributing/s06.svg" alt="自動の仕分け" height="40">
+### 自動の仕分け
 
 
 新しい報告には、bot が次のラベルを自動で付けます (どれも見当なので、作者が確認して直します)。
@@ -224,7 +224,7 @@ Issue・Pull Request のコメントの行の先頭に書くと、bot が GitHub
 <br>
 
 <a name="pull-request-のチェック"></a>
-<img src="docs/images/headings/contributing/06.svg" alt="Pull Request のチェック" height="53"><br>
+## Pull Request のチェック
 
 
 Pull Request を作ると、変わったものに合わせて次のチェックが自動で流れます。

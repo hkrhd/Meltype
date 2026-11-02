@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 const Base = 'fork_by_hkrhd';
 const ModelFile = 'ggml-model-Q5_K_M.gguf';
 const ModelPattern = /^Miwa-Keita\/zenz-v([0-9]+(?:\.[0-9]+)*)-small-gguf$/;
-const ReportPath = 'docs/ZENZAI-UPDATE.md';
+const ReportPath = '.github/ZENZAI-UPDATE.md';
 
 function compareVersions(a, b) {
   const left = a.split('.').map(BigInt);

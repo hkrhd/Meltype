@@ -1,6 +1,6 @@
 # Meltype（個人フォーク）
 
-[yksr-melt/Meltype](https://github.com/yksr-melt/Meltype) に、Mac の変換精度と記号入力を調整した変更を加えたフォーク。独自変更は `fork_by_hkrhd` に置く。ビルドと実機適用は [docs/FORK.md](docs/FORK.md) を参照。
+[yksr-melt/Meltype](https://github.com/yksr-melt/Meltype) に、Mac の変換精度と記号入力を調整した変更を加えたフォーク。独自変更は `fork_by_hkrhd` に置く。
 
 ## 主な変更
 
@@ -11,6 +11,7 @@
 - 日英の区切り判定、最後の文節からの予測、あいさつの補完、括弧・8桁の日付の候補を追加。
 - かなのまま残った部分は学習で自動上書きしない。単独入力の学習と候補の選び直しは維持する。
 - 日数・回数を英字にしない（`1niti1kai → 1日1回`）。`2kani` などには「日に」の候補も出す。
+- 独立した「なん」の直後が英字なら「何」を優先する（`nancm → 何cm`、`nanmm → 何mm`）。単位を個別登録せず扱い、「なん」も候補に残す。
 
 ### 英語入力
 
@@ -32,5 +33,48 @@
 
 - テキスト置換をユーザー辞書へ自動同期し、変更後の画面スリープ時に再読込する。macOS 側を正として、Meltype 側の独自登録も置き換える。
 - 画面移動後の候補表示、矢印キー、辞書取込画面を修正する。
+
+## ビルドと実機適用
+
+Mac は Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK、Xcode、CMake が必要です。
+
+```sh
+bash mac/build-cli.sh --test --build   # Core・Swift のテストとビルド
+bash mac/update.sh                    # 入力検証・実機適用・入力ソース選択まで実行
+```
+
+入力検証は一時的な辞書・設定・学習データで実行します。Xcode の場所を変える場合は `DEVELOPER_DIR` を指定します。
+
+```sh
+dotnet run --project src/Meltype.Core.Tests
+dotnet run --project src/Meltype.Core.Tests -- --eval
+dotnet run --project src/Meltype.Core.Tests -- --repro kyouhagoogle enter
+node tools/check-dictionaries.mjs       # 辞書を変更したとき
+bash mac/benchmark-conversion.sh        # Zenzai の速度・精度比較
+```
+
+Zenzai のモデル・Metal ランタイムはビルドスクリプトで取得します。モデル更新時は推論上限1回・2回を比較します。
+`--convert` と `--benchmark-conversion` の `--inference-limit 1`〜`5` で比較でき、測定結果は `mac/.build/benchmarks/` に残ります。
+
+版番号は `mac/fork-version.sh` が upstream のタグとコミットから生成します。実機適用はコミット前なので `.dirty` が付きます。
+必要なら `MELTYPE_VERSION=... bash mac/update.sh` で指定できます。upstream のバージョンファイルは変更しません。
+
+## 更新と配布
+
+フォーク版は自動更新の対象外です。[Releases](https://github.com/hkrhd/Meltype/releases) の ZIP、または上記の実機適用コマンドで更新します。
+Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
+
+- `upstream-update`: 2日に1回、日本時間21:17に `main` を同期し、更新依頼の Draft PR を作成します。
+- `zenzai-update`: 12時間ごとに small / Q5_K_M の更新を Draft PR で通知します。取り込み・モデル差し替え・自動マージはしません。
+- `windows`: push・PR で Windows を検証します。手動実行では Windows・Mac の配布物を作成します。
+
+```sh
+gh workflow run windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd
+GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run
+```
+
+Windows の通常版 ZIP・ポータブル版 ZIP・インストーラーと Mac の ZIP がそろうとプレリリースを公開し、失敗時は下書きに残します。
+署名の設定がない場合、Mac は ad-hoc 署名、Windows は未署名です。配布物は Releases に保存します。
+開発ルールは [AGENTS.md](AGENTS.md) に集約し、旧 `docs/` の説明・画像は削除しました。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。
