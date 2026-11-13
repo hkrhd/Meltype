@@ -108,6 +108,19 @@ public sealed partial class CompositionDetector
 
     public ProperNouns ProperNouns => _proper;
 
+    /// <summary>拡張子が続く固有名詞の登録表記。ドメイン・保護区間・長い英単語の一部には適用しない。</summary>
+    internal string? CanonicalFileStem(IReadOnlyList<CompositionSegment> segments, int index)
+    {
+        if (index + 2 >= segments.Count ||
+            segments[index] is not { IsEnglish: true, IsProtected: false } stem ||
+            segments[index + 1] is not { IsEnglish: true, IsProtected: false, Raw: "." } ||
+            segments[index + 2] is not { IsEnglish: true, IsProtected: false } suffix ||
+            !suffix.Raw.All(char.IsAsciiLetterOrDigit) || DomainSuffixes.Contains(suffix.Raw.ToLowerInvariant())) return null;
+        if (index > 0 && segments[index - 1] is { IsEnglish: true, Raw.Length: > 0 } previous &&
+            char.IsAsciiLetterOrDigit(previous.Raw[^1])) return null;
+        return _proper.Canonical(stem.Raw.ToLowerInvariant());
+    }
+
     /// <summary>
     /// 英字のすぐ後ろの , . も句読点にするか (設定「英字の後ろの , . も句読点にする」、issue #416)。
     /// null か false なら今までどおり、変換ボックスの中が英字だけなら半角のまま。

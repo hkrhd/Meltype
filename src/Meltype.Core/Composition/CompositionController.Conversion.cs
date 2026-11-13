@@ -146,7 +146,8 @@ public sealed partial class CompositionController
                     clauses.Add(new Clause(segment.Raw, true, [segment.Raw]));
                     continue;
                 }
-                var english = Distinct([.. _services.UserDictionary?.Lookup(segment.Raw.ToLowerInvariant()) ?? [], .. EnglishCandidates(segment.Raw)]);
+                var english = Distinct([.. _services.UserDictionary?.Lookup(segment.Raw.ToLowerInvariant()) ?? [],
+                    _detector.CanonicalFileStem(segments, s), .. EnglishCandidates(segment.Raw)]);
                 // 子音の略入力 (ast → 明日): 英字のまま見える語にも、candidates.txt の英字の読みの候補を足す (issue #62)
                 if (_settings().ConsonantAbbreviations && segment.Raw.Length >= 2 && segment.Raw.All(char.IsAsciiLetter) && _services.Candidates is { } abbreviations)
                 {
