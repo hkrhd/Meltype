@@ -1410,9 +1410,9 @@ internal static partial class CompositionTests
         k.Type("goog");
         Assert.Equal("goog", k.Showing, "固有名詞 (Google) の先頭と分かった時点で英字");
         k.Type("le");
-        Assert.Equal("google", k.Showing, "英単語と分かった時点で英字に切り替わる (ごおｇぇ にならない)");
+        Assert.Equal("Google", k.Showing, "固有名詞と分かった時点で登録表記になる (ごおｇぇ にならない)");
         k.Type("\n");
-        Assert.Equal("google", k.Host.Output.Single());
+        Assert.Equal("Google", k.Host.Output.Single());
     }
 
     [Test]
@@ -1421,11 +1421,11 @@ internal static partial class CompositionTests
         // 前に日本語があっても、英単語の部分だけが英字になる。
         var cases = new Dictionary<string, string>
         {
-            ["kyouhagoogle"] = "きょうはgoogle",
+            ["kyouhagoogle"] = "きょうはGoogle",
             ["kyouhanikonha"] = "きょうはにこんは",
-            ["googlede"] = "googleで",
-            ["kyouhagoogledekensaku"] = "きょうはgoogleでけんさく",
-            ["githubnipush"] = "githubにpush",
+            ["googlede"] = "Googleで",
+            ["kyouhagoogledekensaku"] = "きょうはGoogleでけんさく",
+            ["githubnipush"] = "GitHubにpush",
             ["repo"] = "repo",
             ["who"] = "who",
             ["koreha"] = "これは",
@@ -1446,7 +1446,7 @@ internal static partial class CompositionTests
         {
             var k = new Keyboard(live);
             k.Type("tokorodegooglette\n");
-            Assert.Equal("ところでgoogleって", string.Concat(k.Host.Output), $"live={live}");
+            Assert.Equal("ところでGoogleって", string.Concat(k.Host.Output), $"live={live}");
 
             k = new Keyboard(live);
             k.Type("yaayaa,watashidayo\n");
@@ -1622,7 +1622,7 @@ internal static partial class CompositionTests
         // 2 文字の英単語 (so・ma・in・an) の後ろは日本語のまま
         foreach (var (typed, expected) in new[]
         {
-            ("javanoko", "javaのこ"), ("javadekaku", "javaでかく"), ("pythonnokoto", "pythonのこと"),
+            ("javanoko", "Javaのこ"), ("javadekaku", "Javaでかく"), ("pythonnokoto", "Pythonのこと"),
             ("sodesuka", "そですか"), ("manonaka", "まのなか"), ("inochi", "いのち"), ("anone", "あのね"),
         })
         {
@@ -1633,9 +1633,9 @@ internal static partial class CompositionTests
         // 打っている途中に javaの から じゃゔぁのこ に変わらない
         var typing = new Keyboard();
         typing.Type("javano");
-        Assert.Equal("javaの", typing.Showing);
+        Assert.Equal("Javaの", typing.Showing);
         typing.Type("ko");
-        Assert.Equal("javaのこ", typing.Showing);
+        Assert.Equal("Javaのこ", typing.Showing);
     }
 
     [Test]
@@ -1797,11 +1797,17 @@ internal static partial class CompositionTests
     {
         // #1541・#1637・#1530・#1638: IME や OS の名前がかなに割れる
         // #1615: 国名 / #1651: アーティスト名
-        foreach (var word in new[] { "fcitx5", "iGPU", "iCloud", "AsahiLinux", "azooKey", "hazkey", "mozkey", "Benin", "Panama", "Tonga", "Madagascar", "picco", "nqrse" })
+        // 固有名詞辞書にある語は登録表記 (Hazkey, Mozkey など) で確定する。
+        foreach (var (word, expected) in new[]
+        {
+            ("fcitx5", "fcitx5"), ("iGPU", "iGPU"), ("iCloud", "iCloud"), ("AsahiLinux", "AsahiLinux"),
+            ("azooKey", "azooKey"), ("hazkey", "Hazkey"), ("mozkey", "Mozkey"), ("Benin", "Benin"),
+            ("Panama", "Panama"), ("Tonga", "Tonga"), ("Madagascar", "Madagascar"), ("picco", "picco"), ("nqrse", "nqrse"),
+        })
         {
             var k = new Keyboard();
             k.Type(word + "\n");
-            Assert.Equal(word, k.Host.Document);
+            Assert.Equal(expected, k.Host.Document);
         }
 
         // #1607・#1557・#1556・#1487・#1625・#1389: 英字のまま打つ語
@@ -1832,12 +1838,12 @@ internal static partial class CompositionTests
 
         k = new Keyboard();
         k.Type("kaggle\n");
-        Assert.Equal("kaggle", k.Host.Document);
+        Assert.Equal("Kaggle", k.Host.Document);
 
         // 逆向き: 語の後ろに続く日本語は日本語のまま
         k = new Keyboard();
         k.Type("kaggleno\n");
-        Assert.Equal("kaggleの", k.Host.Document);
+        Assert.Equal("Kaggleの", k.Host.Document);
 
         // #1390: stat の後ろに続く日本語は日本語のまま
         foreach (var word in new[] { "stat", "stats" })
@@ -1887,7 +1893,7 @@ internal static partial class CompositionTests
         foreach (var (typed, expected) in new[]
         {
             ("pixiv", "pixiv"),
-            ("sbisinnseiginnkou", "sbiしんせいぎんこう"),
+            ("sbisinnseiginnkou", "SBIしんせいぎんこう"),
         })
         {
             var e = new Keyboard();
@@ -1899,7 +1905,7 @@ internal static partial class CompositionTests
         foreach (var (typed, expected) in new[]
         {
             ("pixivno", "pixivの"),
-            ("sbini", "sbiに"),
+            ("sbini", "SBIに"),
         })
         {
             var e = new Keyboard();
@@ -2576,7 +2582,7 @@ internal static partial class CompositionTests
             var k = new Keyboard { FunctionKeysAffectSelectedClause = true };
             k.Type("tanniwogoogleto ");
             k.Press(VirtualKeys.Right);
-            Assert.Equal("たんいを|google|と", string.Join("|", k.Host.View!.Clauses!), "2 番目の英語の文節を選ぶ");
+            Assert.Equal("たんいを|Google|と", string.Join("|", k.Host.View!.Clauses!), "2 番目の英語の文節を選ぶ");
             k.Press(vk);
             Assert.True(k.Host.View!.Converting, "変換は続く");
             Assert.Equal($"たんいを|{expected}|と", string.Join("|", k.Host.View!.Clauses!), "選んだ英語の文節だけが変わる");
@@ -3420,7 +3426,7 @@ internal static partial class CompositionTests
         Assert.Equal("あるていどは", k.Host.Document);
         k = new Keyboard();
         k.Type("doha\n");
-        Assert.Equal("doha", k.Host.Document, "単独なら固有名詞のまま");
+        Assert.Equal("Doha", k.Host.Document, "単独なら固有名詞のまま (登録表記 Doha)");
     }
 
     /// <summary>判定を待たずにアプリへ送った英字 (down) を、ローマ字と分かった時点で同じ数だけ BackSpace で消している。</summary>
@@ -3502,8 +3508,8 @@ internal static partial class CompositionTests
     {
         var cases = new Dictionary<string, string>
         {
-            ["amazon"] = "amazon", ["adobe"] = "adobe", ["netflix"] = "netflix", ["spotify"] = "spotify",
-            ["kyouhaamazondekaimono"] = "きょうはamazonでかいもの",
+            ["amazon"] = "Amazon", ["adobe"] = "Adobe", ["netflix"] = "Netflix", ["spotify"] = "Spotify",
+            ["kyouhaamazondekaimono"] = "きょうはAmazonでかいもの",
             ["nihongonobenkyou"] = "にほんごのべんきょう", // 短い名前 (Ben) は文の途中で英語にしない
             ["suzuki"] = "すずき", // 日本語で書くことが多い名前は固有名詞辞書に入れていない
         };
@@ -3518,12 +3524,15 @@ internal static partial class CompositionTests
     [Test]
     public static void ProperNouns_OfferCanonicalCasing()
     {
+        // 打った時点で登録表記 (iPhone) で見え、Space で候補を巡回すると打った綴り (iphone) も選べる。
         var k = new Keyboard();
         k.Type("iphonede");
+        Assert.Equal("iPhoneで", k.Showing, "打った時点で登録表記になる");
         k.Press(VirtualKeys.Left); // 最後の文節 (で)
-        k.Press(VirtualKeys.Left); // iphone
+        k.Press(VirtualKeys.Left); // iPhone
+        Assert.Equal("iPhone", k.Host.View!.Clauses![0], "変換する前から登録表記");
         k.Type(" ");
-        Assert.Equal("iPhone", k.Host.View!.Clauses![0], "候補に正しい大文字小文字の形がある");
+        Assert.Equal("iphone", k.Host.View!.Clauses![0], "候補を巡回すると打った綴りも選べる");
     }
 
     [Test]
@@ -4285,7 +4294,7 @@ internal static partial class CompositionTests
         // 報告: 今日はAutoIMEnotesutowosimasu が全部英字になる。大文字で始まる語の後ろの日本語は日本語にする。
         var cases = new Dictionary<string, string>
         {
-            ["AutoIMEnotesuto"] = "AutoIMEのてすと", ["Githubdekaku"] = "Githubでかく", ["OKdesu"] = "OKです",
+            ["AutoIMEnotesuto"] = "AutoIMEのてすと", ["Githubdekaku"] = "GitHubでかく", ["OKdesu"] = "OKです",
             ["Tokyo"] = "Tokyo", ["Hello"] = "Hello",
             // 報告: I don't → どん't。短縮形は英語。
             ["don't"] = "don't", ["I'm"] = "I'm",
@@ -5079,12 +5088,12 @@ internal static partial class CompositionTests
 
         k = new Keyboard();
         k.Type("tanniGithubde ");
-        Assert.Equal("単位|Github|で", string.Join("|", k.Host.View!.Clauses!));
+        Assert.Equal("単位|GitHub|で", string.Join("|", k.Host.View!.Clauses!));
         k.Key(VirtualKeys.LShift);
         k.Press(VirtualKeys.Left);
-        Assert.Equal("たん|い|Github|で", string.Join("|", k.Host.View.Clauses!), "縮めて空いた分は、後ろの英語の文節を変えずに新しい文節にする");
+        Assert.Equal("たん|い|GitHub|で", string.Join("|", k.Host.View.Clauses!), "縮めて空いた分は、後ろの英語の文節を変えずに新しい文節にする");
         k.Press(VirtualKeys.Right);
-        Assert.Equal("単位|Github|で", string.Join("|", k.Host.View.Clauses!), "伸ばして戻す");
+        Assert.Equal("単位|GitHub|で", string.Join("|", k.Host.View.Clauses!), "伸ばして戻す");
         k.Key(VirtualKeys.LShift, up: true);
     }
 
@@ -5143,11 +5152,11 @@ internal static partial class CompositionTests
     {
         var k = new Keyboard(live: true);
         k.Type("kyouhagoogle ");
-        Assert.Equal("今日はgoogle ", k.Host.Output.Single(), "英単語で終わっていれば、変換ではなく確定して空白");
+        Assert.Equal("今日はGoogle ", k.Host.Output.Single(), "英単語で終わっていれば、変換ではなく確定して空白");
         // 報告: ライブ変換を OFF にしても漢字になる。OFF なら見えているかなのまま確定する。
         k = new Keyboard();
         k.Type("kyouhagoogle ");
-        Assert.Equal("きょうはgoogle ", k.Host.Output.Single(), "ライブ変換 OFF なら かなのまま");
+        Assert.Equal("きょうはGoogle ", k.Host.Output.Single(), "ライブ変換 OFF なら かなのまま (英単語は登録表記)");
     }
 
     [Test]
@@ -5175,9 +5184,9 @@ internal static partial class CompositionTests
         k.Type("ha");
         Assert.Equal("今日は", k.Showing, "4 文字以上になったら Space を押さなくても漢字で表示");
         k.Type("google");
-        Assert.Equal("今日はgoogle", k.Showing, "英語の部分は変換しない");
+        Assert.Equal("今日はGoogle", k.Showing, "英語の部分は変換しない (固有名詞は登録表記)");
         k.Type("dekensaku\n");
-        Assert.Equal("今日はgoogleで検索", k.Host.Output.Single());
+        Assert.Equal("今日はGoogleで検索", k.Host.Output.Single());
     }
 
     [Test]
@@ -5216,11 +5225,17 @@ internal static partial class CompositionTests
     [Test]
     public static void EnglishWords_AreShownAsEnglish()
     {
-        foreach (var word in new[] { "github", "hello", "typescript", "npm", "localhost", "zoom", "git", "test", "iphone", "stackoverflow" })
+        // 固有名詞辞書にある語は登録表記 (GitHub, TypeScript, Zoom, iPhone) で見える。
+        foreach (var (word, expected) in new[]
+        {
+            ("github", "GitHub"), ("hello", "hello"), ("typescript", "TypeScript"), ("npm", "npm"),
+            ("localhost", "localhost"), ("zoom", "Zoom"), ("git", "git"), ("test", "test"),
+            ("iphone", "iPhone"), ("stackoverflow", "stackoverflow"),
+        })
         {
             var k = new Keyboard();
             k.Type(word);
-            Assert.Equal(word, k.Showing, $"「{word}」");
+            Assert.Equal(expected, k.Showing, $"「{word}」");
         }
     }
 
@@ -5656,9 +5671,9 @@ internal static partial class CompositionTests
             ("ファイルを", "dlshite", "ファイルをdlして"),
             ("", "fairuwodlshite", "ふぁいるをdlして"),
             ("", "DLshite", "DLして"),
-            ("", "dlsite", "dlsite"),
-            ("", "dlsitede", "dlsiteで"),
-            ("", "dlsitenokaiin", "dlsiteのかいいん"),
+            ("", "dlsite", "DLsite"),
+            ("", "dlsitede", "DLsiteで"),
+            ("", "dlsitenokaiin", "DLsiteのかいいん"),
         })
         {
             var k = new Keyboard();
@@ -5674,7 +5689,7 @@ internal static partial class CompositionTests
         // 英単語 + する の活用の打ちかけの子音が 2 回出ていた (googleしまss)。Space で変換する読みも同じ
         foreach (var (typed, expected, converted) in new[]
         {
-            ("googleshimasen", "googleしませn", "googleしません"),
+            ("googleshimasen", "Googleしませn", "Googleしません"),
         })
         {
             Detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
@@ -5826,7 +5841,7 @@ internal static partial class CompositionTests
         // google を Space で確定した (google + 空白) 後の /help も名前として通す。
         var k = new Keyboard { Code = true };
         k.Type("google /help");
-        Assert.Equal("google ", string.Concat(k.Host.Output));
+        Assert.Equal("Google ", string.Concat(k.Host.Output));
         Assert.True(!k.Captured, "/help は変換ボックスに入れない");
         // Enter (送信・改行) の後の行の先頭も。
         k.Press(VirtualKeys.Return);
@@ -5969,7 +5984,7 @@ internal static partial class CompositionTests
         foreach (var (typed, expected) in new[]
         {
             ("suityoku", "すいちょく"),
-            ("githubya", "githubや"),
+            ("githubya", "GitHubや"),
             ("edityo", "editよ"),
         })
         {

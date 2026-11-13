@@ -31,8 +31,8 @@ internal static class ReportedMisdetectionTests
     public static void Dictionary_EnglishWords()
     {
         // english.txt (metadata・mega・pre・eq)・propernouns.txt (America・American・Megatrends・iZotope・Neovide)
-        Check(("metadata", "metadata"), ("Metadata", "Metadata"), ("american megatrends", "american megatrends"),
-            ("sasuganipredasu", "さすがにpreだす"), ("eqgatyottonigate", "eqがちょっとにがて"), ("iZotope", "iZotope"), ("neovide", "neovide"),
+        Check(("metadata", "metadata"), ("Metadata", "Metadata"), ("american megatrends", "American Megatrends"),
+            ("sasuganipredasu", "さすがにpreだす"), ("eqgatyottonigate", "eqがちょっとにがて"), ("iZotope", "iZotope"), ("neovide", "Neovide"),
             // 似た綴りの日本語は今までどおり
             ("amerikanijyuusyo", "あめりかにじゅうしょ"), ("megane", "めがね"));
     }

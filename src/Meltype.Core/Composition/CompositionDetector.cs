@@ -108,17 +108,20 @@ public sealed partial class CompositionDetector
 
     public ProperNouns ProperNouns => _proper;
 
-    /// <summary>拡張子が続く固有名詞の登録表記。ドメイン・保護区間・長い英単語の一部には適用しない。</summary>
-    internal string? CanonicalFileStem(IReadOnlyList<CompositionSegment> segments, int index)
+    /// <summary>英語区間の固有名詞の登録表記。ドメイン・保護区間・長い英単語の一部には適用しない。</summary>
+    internal string? CanonicalEnglish(IReadOnlyList<CompositionSegment> segments, int index)
     {
-        if (index + 2 >= segments.Count ||
-            segments[index] is not { IsEnglish: true, IsProtected: false } stem ||
-            segments[index + 1] is not { IsEnglish: true, IsProtected: false, Raw: "." } ||
-            segments[index + 2] is not { IsEnglish: true, IsProtected: false } suffix ||
-            !suffix.Raw.All(char.IsAsciiLetterOrDigit) || DomainSuffixes.Contains(suffix.Raw.ToLowerInvariant())) return null;
-        if (index > 0 && segments[index - 1] is { IsEnglish: true, Raw.Length: > 0 } previous &&
-            char.IsAsciiLetterOrDigit(previous.Raw[^1])) return null;
-        return _proper.Canonical(stem.Raw.ToLowerInvariant());
+        if (segments[index] is not { IsEnglish: true, IsProtected: false } word) return null;
+        if (index > 0 && segments[index - 1] is { Raw.Length: > 0 } previous &&
+            (previous.IsEnglish && (char.IsAsciiLetterOrDigit(previous.Raw[^1]) || previous.Raw == ".") ||
+             previous.Raw.All(char.IsAsciiDigit))) return null;
+        // 数字を含む識別子 (arm64) のように、次の区間が英語でなくても数字なら一部とみなす。
+        // 日本語区間の Raw は打ったローマ字 (google|de) なので、Raw だけでは英数字の続きと区別できない。
+        if (index + 1 < segments.Count && segments[index + 1] is { Raw.Length: > 0 } next &&
+            (next.IsEnglish && char.IsAsciiLetterOrDigit(next.Raw[0]) || next.Raw.All(char.IsAsciiDigit))) return null;
+        if (index + 2 < segments.Count && segments[index + 1].Raw == "." &&
+            DomainSuffixes.Contains(segments[index + 2].Raw.ToLowerInvariant())) return null;
+        return _proper.Canonical(word.Raw.ToLowerInvariant());
     }
 
     /// <summary>

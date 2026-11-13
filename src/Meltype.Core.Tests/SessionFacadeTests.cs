@@ -184,7 +184,7 @@ internal static partial class SessionFacadeTests
     {
         foreach (var (input, expected) in new[] {
             ("wsldeshell", "wslでshell"),
-            ("kyouhagoogledekensaku", "今日はgoogleで検索"),
+            ("kyouhagoogledekensaku", "今日はGoogleで検索"),
             ("seeyouagain", "see you again"),
             ("I want to go to the park", "I want to go to the park"),
             ("Zorgblax", "Zorgblax"),
@@ -192,8 +192,8 @@ internal static partial class SessionFacadeTests
             ("https://example.com", "https://example.com"),
             ("alice@example.com", "alice@example.com"),
             ("getUserName", "getUserName"),
-            ("google  shell", "google  shell"),
-            ("google\u3000shell", "google\u3000shell"),
+            ("google  shell", "Google  shell"),
+            ("google\u3000shell", "Google\u3000shell"),
             ("get_user_name", "get_user_name") })
         {
             var session = new MeltypeSession(CompositionDetector.CreateDefault(), new CompositionTests.FakeConverter(),
@@ -265,7 +265,7 @@ internal static partial class SessionFacadeTests
     {
         var session = Create();
         var results = Type(session, "google ");
-        Assert.Equal("google ", results[^1].Commits.Single().Text);
+        Assert.Equal("Google ", results[^1].Commits.Single().Text);
     }
 
     [Test]
@@ -828,7 +828,7 @@ internal static partial class SessionFacadeTests
         var session = Create();
         Type(session, "kyouhagoogledekensaku ");
         var result = Type(session, "\n")[0];
-        Assert.Equal("今日はgoogleで検索", result.Commits.Single().Text);
+        Assert.Equal("今日はGoogleで検索", result.Commits.Single().Text);
     }
 
     [Test]
@@ -910,13 +910,13 @@ internal static partial class SessionFacadeTests
             foreach (var (steps, expected) in new (string[] Steps, string Expected)[]
             {
                 // 報告された例: 打って、すべて消して、同じものを打つ
-                (["githubnipushsuru\n", new string('\b', "github に push する".Length), "githubnipushsuru\n"], "github に push する"),
-                (["pushsuru\n", "\n", "github\n"], "push する\ngithub"),
-                (["github\n", " ", "ni\n"], "github に"),
-                (["pushsuru\n", " ", "github\n"], "push する github"),
+                (["githubnipushsuru\n", new string('\b', "github に push する".Length), "githubnipushsuru\n"], "GitHub に push する"),
+                (["pushsuru\n", "\n", "github\n"], "push する\nGitHub"),
+                (["github\n", " ", "ni\n"], "GitHub に"),
+                (["pushsuru\n", " ", "github\n"], "push する GitHub"),
                 // 続けて確定したときは、前に確定した文字との間に入れる
-                (["github\n", "ni\n", "push\n", "suru\n"], "github に push する"),
-                (["pushsuru\n", "github\n"], "push する github"),
+                (["github\n", "ni\n", "push\n", "suru\n"], "GitHub に push する"),
+                (["pushsuru\n", "github\n"], "push する GitHub"),
             })
             {
                 var detector = CompositionDetector.CreateDefault();

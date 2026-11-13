@@ -871,7 +871,7 @@ public sealed class CompositionText
             var segment = segments[i];
             if (segment.IsEnglish)
             {
-                builder.Append(_detector.CanonicalFileStem(segments, i) ?? segment.Raw);
+                builder.Append(_detector.CanonicalEnglish(segments, i) ?? segment.Raw);
                 continue;
             }
             var isLast = i == segments.Count - 1;

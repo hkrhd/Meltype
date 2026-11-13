@@ -26,7 +26,7 @@ internal static class InputCoverageTests
     [Test]
     public static void AutomaticSpaces_AreAppliedWhenCommitting()
     {
-        foreach (var (input, expected) in new[] { ("seeyouagain", "see you again"), ("kyouhagoogledekensaku", "きょうは google でけんさく"), ("nice to meet you", "nice to meet you") })
+        foreach (var (input, expected) in new[] { ("seeyouagain", "see you again"), ("kyouhagoogledekensaku", "きょうは Google でけんさく"), ("nice to meet you", "nice to meet you") })
         {
             var detector = CompositionDetector.CreateDefault();
             detector.SpellChecker = Meltype.Detection.BuiltInWordChecker.Shared;
@@ -51,13 +51,22 @@ internal static class InputCoverageTests
     [Test]
     public static void GreetingsAndWords_RemainEnglish()
     {
-        foreach (var phrase in new[] {
-            "hello", "google", "github", "meeting", "keyboard", "message", "computer", "coffee", "camera",
-            "feature", "remote", "seeyouagain", "seeyou", "seeyoulater", "seeyoutomorrow", "thankyou",
-            "thankyouverymuch", "thanks", "goodbye", "goodmorning", "goodafternoon", "goodevening", "goodnight",
-            "nicetomeetyou", "howareyou", "imfine", "iloveyou", "takecare", "welcomehome",
-            "see you again", "thank you very much", "good morning", "nice to meet you", "how are you",
-            "I want to go to the park", "I am going home", "my name is Taro" })
+        foreach (var (phrase, expected) in new[]
+        {
+            // 固有名詞辞書 (propernouns.txt) にある語は、辞書の登録表記で確定する (google → Google)。
+            ("hello", "hello"), ("google", "Google"), ("github", "GitHub"), ("meeting", "meeting"),
+            ("keyboard", "keyboard"), ("message", "message"), ("computer", "computer"), ("coffee", "coffee"), ("camera", "camera"),
+            ("feature", "feature"), ("remote", "remote"), ("seeyouagain", "seeyouagain"), ("seeyou", "seeyou"),
+            ("seeyoulater", "seeyoulater"), ("seeyoutomorrow", "seeyoutomorrow"), ("thankyou", "thankyou"),
+            ("thankyouverymuch", "thankyouverymuch"), ("thanks", "thanks"), ("goodbye", "goodbye"),
+            ("goodmorning", "goodmorning"), ("goodafternoon", "goodafternoon"), ("goodevening", "goodevening"),
+            ("goodnight", "goodnight"), ("nicetomeetyou", "nicetomeetyou"), ("howareyou", "howareyou"),
+            ("imfine", "imfine"), ("iloveyou", "iloveyou"), ("takecare", "takecare"), ("welcomehome", "welcomehome"),
+            ("see you again", "see you again"), ("thank you very much", "thank you very much"),
+            ("good morning", "good morning"), ("nice to meet you", "nice to meet you"), ("how are you", "how are you"),
+            ("I want to go to the park", "I want to go to the park"), ("I am going home", "I am going home"),
+            ("my name is Taro", "my name is Taro"),
+        })
         {
             var detector = CompositionDetector.CreateDefault();
             detector.SpellChecker = Meltype.Detection.BuiltInWordChecker.Shared;
@@ -75,7 +84,7 @@ internal static class InputCoverageTests
                 }
                 if (!result.Consumed) output += character;
             }
-            Assert.Equal(phrase, output);
+            Assert.Equal(expected, output, phrase);
         }
     }
 }

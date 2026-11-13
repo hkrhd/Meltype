@@ -204,9 +204,9 @@ func runChecks(inputPath: String?, candidatePath: String?, predictions: Bool) ->
             return 1
         }
     }
-    for (input, expected) in [("kyouhagoogledekensaku \n", "今日はgoogleで検索"),
+    for (input, expected) in [("kyouhagoogledekensaku \n", "今日はGoogleで検索"),
                                ("I want to go to the park\n", "I want to go to the park"),
-                               ("google github hello\n", "google github hello"),
+                               ("google github hello\n", "Google GitHub hello"),
                                ("seeyouagain\n", "see you again")] {
         let document = Document()
         _ = type(input, into: document)

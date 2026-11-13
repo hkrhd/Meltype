@@ -62,7 +62,7 @@ internal static class FeedbackTests
         foreach (var (typed, expected) in new[]
         {
             ("Wiz Khalifa", "Wiz Khalifa"), ("Ariana Grande", "Ariana Grande"), ("Ed Sheeran", "Ed Sheeran"),
-            ("Marshmello", "Marshmello"), ("beabadoobee", "beabadoobee"), ("The Chainsmokers", "The Chainsmokers"),
+            ("Marshmello", "Marshmello"), ("beabadoobee", "Beabadoobee"), ("The Chainsmokers", "The Chainsmokers"),
             ("999dobby", "999dobby"),
             ("B.o.B", "B.o.B"), ("U.S.A.", "U.S.A."), ("Chri$tian Gate$", "Chri$tian Gate$"), ("Ke$ha", "Ke$ha"),
             // 大文字の語 + 助詞は今までどおり区切る
@@ -79,7 +79,7 @@ internal static class FeedbackTests
     public static void Issue369_Huihui_StaysEnglish()
     {
         // Issue #369: huihui (AI のモデルを出している huihui-ai) が ふいふい (→ 回回) になっていた。ふいふい は日本語の語ではない
-        foreach (var (typed, expected) in new[] { ("huihui", "huihui"), ("huihuino", "huihuiの"), ("fuifui", "ふいふい") })
+        foreach (var (typed, expected) in new[] { ("huihui", "Huihui"), ("huihuino", "Huihuiの"), ("fuifui", "ふいふい") })
         {
             var k = new CompositionTests.Keyboard();
             k.Type(typed + "\n");
@@ -393,10 +393,10 @@ internal static class FeedbackTests
         Assert.Equal("Tab → google (英字に)　Space 変換　←→ 文節　Enter 確定　F7 カタカナ　F10 英字", k.Host.View.Hint, "従来の案内は変えない");
         Assert.True(k.Host.View.Suggestion is null, "英字の提案は書き間違いの修正ではない");
         k.Press(VirtualKeys.Tab);
-        Assert.Equal("google", k.Showing, "Tab で提案どおり英字");
+        Assert.Equal("Google", k.Showing, "Tab で提案どおり英字 (辞書の登録表記)");
         Assert.True(k.Host.View!.ContextHint is null, "提案を受け入れたら案内を消す");
         k.Type("\n");
-        Assert.Equal("google", k.Host.Document);
+        Assert.Equal("Google", k.Host.Document);
 
         Assert.Equal("Google", Showing("Google", manual: true), "Shift で打った大文字始まりは手動でも英語");
     }
@@ -461,9 +461,9 @@ internal static class KanaInputTests
     {
         var k = Kana();
         k.TypeKanaKeys("google");
-        Assert.Equal("google", k.Showing, "打ったキーが英単語で、かなとしては日本語にならない");
+        Assert.Equal("Google", k.Showing, "打ったキーが英単語で、かなとしては日本語にならない");
         k.Type("\n");
-        Assert.Equal("google", k.Host.Document);
+        Assert.Equal("Google", k.Host.Document);
 
         var japanese = Kana();
         japanese.TypeKanaKeys("byiaf");
@@ -512,7 +512,7 @@ internal static class KanaInputTests
         k.Type("\n");
         k.TypeKanaKeys("byiaf");
         k.Type("\n");
-        Assert.Equal("google こんにちは", k.Host.Document);
+        Assert.Equal("Google こんにちは", k.Host.Document);
     }
 
     [Test]
@@ -534,13 +534,13 @@ internal static class KanaInputTests
         k.TypeKanaKeys("google");
         k.TypeKeys(KanaQualityTests.KeysFor("でけんさく"));
         k.Type("\n");
-        Assert.Equal("きょうはgoogleでけんさく", k.Host.Document);
+        Assert.Equal("きょうはGoogleでけんさく", k.Host.Document);
 
         var after = Kana();
         after.Host.PrecedingText = "今日は";
         after.TypeKanaKeys("google");
         after.Type("\n");
-        Assert.Equal("google", after.Host.Document, "確定済みの日本語の後ろ");
+        Assert.Equal("Google", after.Host.Document, "確定済みの日本語の後ろ");
     }
 
     [Test]
@@ -752,7 +752,7 @@ internal static class LanguageLearningTests
             ("adbyuukounisuru", "adbゆうこうにする"), // #1131
             ("dive into summer", "dive into summer"), // #1125
             ("imagenzai", "いまげんざい"), ("imagewohiraku", "imageをひらく"), // #1175
-            ("pa-thisyon", "ぱーてぃしょん"), ("applenoiphonehakanaritakai", "appleのiphoneはかなりたかい"),
+            ("pa-thisyon", "ぱーてぃしょん"), ("applenoiphonehakanaritakai", "AppleのiPhoneはかなりたかい"),
             ("erroraru", "errorある"),
             // issue を いっ|すえ と読まない。っ で終わる語の後ろの す (いいっす) は日本語のまま
             ("issuearu", "issueある"), ("issueyomu", "issueよむ"), ("issuetaberu", "issueたべる"),
@@ -1340,7 +1340,7 @@ internal static class LanguageLearningTests
         {
             foreach (var (typed, expected) in new[]
             {
-                ("koreareka", "これあれか"), ("koreade", "koreaで"),
+                ("koreareka", "これあれか"), ("koreade", "Koreaで"),
                 ("\"uchiagebanashihaGo Through!\"", "\"うちあげばなしはGo Through!\""), ("(Ooh Let's Think wow...) ", "(Ooh Let's Think wow...) "),
                 ("(chuui)", "(ちゅうい)"), ("\"kyouhaGo!\"tteitta", "\"きょうはGo!\"っていった"),
                 ("1. Ah! Ah!", "1. Ah! Ah!"), ("ahoka", "あほか"),
@@ -1368,7 +1368,7 @@ internal static class LanguageLearningTests
                 // 笑いの w (文末の w が消えていた、ww が っw になっていた)。英単語の最後の w はそのまま
                 ("kiyagattaw", "きやがったw"), ("daneww", "だねww"), ("toottawwwww", "とおったwwwww"), ("wwww", "wwww"), ("kitaww!", "きたww！"), ("new", "new"), ("aww", "aww"),
                 // 読めない略語の最後の c + は・や (vrc|ya が vr|ちゃ になっていた)。読める語 (まち) と大文字の略語の後ろ (EDちゃう) は分けない
-                ("vrcyaranai", "vrcやらない"), ("vchairu", "vcはいる"), ("pcha", "pcは"), ("machi", "まち"), ("ochaire", "おちゃいれ"), ("EDchau", "EDちゃう"),
+                ("vrcyaranai", "VRCやらない"), ("vchairu", "vcはいる"), ("pcha", "pcは"), ("machi", "まち"), ("ochaire", "おちゃいれ"), ("EDchau", "EDちゃう"),
                 ("everyonenohatsugen", "everyoneのはつげん"),
                 // 英語の歌詞: 行の始めの I'll の後ろ (I'll ご になっていた)、riverside, (river しで、 になっていた)
                 ("I'll go to see you again tomorrow", "I'll go to see you again tomorrow"), ("by the riverside, I'm sitting", "by the riverside, I'm sitting"),
@@ -1382,7 +1382,7 @@ internal static class LanguageLearningTests
                 // Issue #1216: not|とっている になっていた。Issue #1193: えんv になっていた
                 ("nottotteiru", "のっとっている"), ("env", "env"),
                 // 略語 + 日本語 + 記号は今までどおり (BE|かな？ が BEkana？ になっていた)
-                ("tougouhandakaraBEkana?", "とうごうはんだからBEかな？"), ("fubusangaXshisuginadakenanda!!", "ふぶさんがXしすぎなだけなんだ！！"), ("tsubemyunorevancedtsukatteru", "つべみゅのrevancedつかってる"),
+                ("tougouhandakaraBEkana?", "とうごうはんだからBEかな？"), ("fubusangaXshisuginadakenanda!!", "ふぶさんがXしすぎなだけなんだ！！"), ("tsubemyunorevancedtsukatteru", "つべみゅのReVancedつかってる"),
                 // テスターの報告 (2026-10-05): 英語のユーザー名が打てない。@ の後ろ (メンション)・_ の入った語は英字のまま
                 ("@kuraido", "@kuraido"), ("@una08142009 arigatou", "@una08142009 ありがとう"), ("upah_setu", "upah_setu"), ("cafely_latte", "cafely_latte"),
                 // メールアドレスは @ の前も英字のまま (issue #59。前は たろ@... だった。例には example.com を使う)
@@ -1601,7 +1601,7 @@ internal static class LanguageLearningTests
         {
             foreach (var (typed, shown, afterBackspace) in new[]
             {
-                ("pythonno", "pythonの", "python"), // 単位は nn|o、ラティスは python|no
+                ("pythonno", "Pythonの", "Python"), // 単位は nn|o、ラティスは python|no
                 ("soredemedalsha", "それでmedalsは", "それでmedals"), // 単位は sha、ラティスは medals|ha
             })
             {
@@ -1647,7 +1647,7 @@ internal static class RawCandidateTests
     [Test]
     public static void EnglishWordEndingInN_BeforeParticle()
     {
-        foreach (var (typed, expected) in new[] { ("pythonnobug", "pythonのbug"), ("kotlinnihenkou", "kotlinにへんこう"), ("kannji", "かんじ"), ("konnnichiha", "こんにちは") })
+        foreach (var (typed, expected) in new[] { ("pythonnobug", "Pythonのbug"), ("kotlinnihenkou", "Kotlinにへんこう"), ("kannji", "かんじ"), ("konnnichiha", "こんにちは") })
         {
             var k = new CompositionTests.Keyboard();
             k.Type(typed);
@@ -1716,7 +1716,7 @@ internal static class RomajiTypoTests
         foreach (var (typed, expected) in new[]
         {
             ("oknotasuku", "okのたすく"),
-            ("googlede", "googleで"),
+            ("googlede", "Googleで"),
             ("kyouhamtgdesu", "きょうはmtgです"),
             ("sdakega", "sだけが"),
             ("htmlnokaisetu", "htmlのかいせつ"),

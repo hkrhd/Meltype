@@ -18,7 +18,7 @@
 
 - 英単語の補完候補を、英語判定前でも英字3文字から表示。Tab／Shift+Tab で選び、Enter か続けての入力で確定する（Mac はクリックも可）。
 - 英語辞書に登録した単独の語は英字を優先し、日本語の語の途中は分断しない。短い読みで長い語や送り仮名を分断する誤変換も抑える。
-- 固有名詞辞書に登録した表記をファイル名の拡張子の前にも適用する（`AGENTS` を登録すると `agents.md → AGENTS.md`）。
+- 固有名詞辞書の登録表記を通常入力の表示・確定と、ファイル名の拡張子の前に自動適用する（`github → GitHub`、`AGENTS` を登録すると `agents → AGENTS`・`agents.md → AGENTS.md`）。URL・パス等の保護範囲と F9/F10 で明示した表記は維持する。
 - 英字の後ろの助詞や、短い英単語に続く日本語を保つ（`mainno → mainの`、`macnanode → macなので`）。小文字の `no` は「の」と表示し、Space で英語の `no ` を確定する。
 - `auto` など、かなでも読める4文字以上の単独の英単語は Space で英字と空白を確定する。日本語由来の語や、よく使う日本語は変換を優先する。
 - 日本語の途中では、かなで読める語を英字学習だけで分断しない（`プロンプtotoして → プロンプトとして`）。英単語・英文中の学習は維持する。
@@ -54,8 +54,11 @@ dotnet run --project src/Meltype.Core.Tests
 dotnet run --project src/Meltype.Core.Tests -- --eval
 dotnet run --project src/Meltype.Core.Tests -- --repro kyouhagoogle enter
 node tools/check-dictionaries.mjs       # 辞書を変更したとき
+python3 tools/mcfly-terms.py --min-count 3  # 英語辞書に足す語をシェル履歴から探す（履歴本文は出さない）
 bash mac/benchmark-conversion.sh        # Zenzai の速度・精度比較
 ```
+
+McFly の集計結果は自動で辞書に追加されません。簡易解析のため、個人情報や不要な語が混ざっていないか公開・登録前に確認してください。
 
 Zenzai のモデル・Metal ランタイムはビルドスクリプトで取得します。モデル更新時は推論上限1回・2回を比較します。
 `--convert` と `--benchmark-conversion` の `--inference-limit 1`〜`5` で比較でき、測定結果は `mac/.build/benchmarks/` に残ります。

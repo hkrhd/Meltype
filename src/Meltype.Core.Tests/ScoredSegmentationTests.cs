@@ -87,7 +87,7 @@ internal static class ScoredSegmentationTests
     public static void DoubledConsonantSokuon_IsBetweenKana()
     {
         // 子音を重ねて打った っ は、前後をかなに挟まれているときだけ (excelとっpt・pythonとっfmpeg にしない)
-        foreach (var (typed, expected) in new[] { ("exceltoppt", "excelとppt"), ("pythontoffmpeg", "pythonとffmpeg"), ("mottekita", "もってきた") })
+        foreach (var (typed, expected) in new[] { ("exceltoppt", "Excelとppt"), ("pythontoffmpeg", "Pythonとffmpeg"), ("mottekita", "もってきた") })
             Assert.Equal(expected, Type(typed), typed);
     }
 }

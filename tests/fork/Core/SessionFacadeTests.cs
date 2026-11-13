@@ -94,7 +94,7 @@ internal static partial class SessionFacadeTests
         {
             ("macnanode", "macなので"), ("macdakara", "macだから"),
             ("macnanodetsukau", "macなのでつかう"), ("macde", "macで"),
-            ("googlenanode", "googleなので"), ("pcnanode", "pcなので"),
+            ("googlenanode", "Googleなので"), ("pcnanode", "pcなので"),
             ("macabre", "macabre"), ("macaroni", "macaroni"), ("machi", "まち"),
             ("procrasticle", "procrasticle"), ("macpapipupepo", "macpapipupepo"),
             ("macnanode_value", "macnanode_value"),
@@ -174,12 +174,12 @@ internal static partial class SessionFacadeTests
         foreach (var (input, before, expected) in new[]
         {
             ("toto", "", "toto"), ("toto", "I use ", "toto"),
-            ("linede", "今日は", "lineで"),
-            ("kyouhalinede", "", live ? "今日はlineで" : "きょうはlineで"),
-            ("korewogooglede", "", "これをgoogleで"),
-            ("korewogithubde", "", "これをgithubで"),
-            ("korewopythonde", "", "これをpythonで"),
-            ("korewoamazonde", "", "これをamazonで"),
+            ("linede", "今日は", "LINEで"),
+            ("kyouhalinede", "", live ? "今日はLINEで" : "きょうはLINEで"),
+            ("korewogooglede", "", "これをGoogleで"),
+            ("korewogithubde", "", "これをGitHubで"),
+            ("korewopythonde", "", "これをPythonで"),
+            ("korewoamazonde", "", "これをAmazonで"),
             ("korewofeaturede", "", "これをfeatureで"),
             ("korewoxqtoolde", "", "これをxqtoolで"),
             ("korewomainno", "", "これをmainの"),

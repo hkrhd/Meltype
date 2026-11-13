@@ -15,12 +15,12 @@ internal static class WordJudgeTests
         var output = WordJudge.JudgeAll(detector, ["kyou", "github", "kyou", "x", "あ", "mata"]);
         var now = WordJudge.Parse(output);
         Assert.Equal("きょう", now["kyou"]);
-        Assert.Equal("github", now["github"]);
+        Assert.Equal("GitHub", now["github"]);
         Assert.True(!now.ContainsKey("x") && !now.ContainsKey("あ"), "英字 2 文字以上だけ");
         Assert.Equal(3, now.Count, "同じ語は 1 回");
 
         // 新しい版で見え方が変わった語だけを出す。新しい版が判定しなかった語は出さない
-        var next = new Dictionary<string, string>(now) { ["mata"] = "mata", ["github"] = "github" };
+        var next = new Dictionary<string, string>(now) { ["mata"] = "mata", ["github"] = "GitHub" };
         next.Remove("kyou");
         var changes = WordJudge.Changes(now, next);
         Assert.Equal(1, changes.Count);

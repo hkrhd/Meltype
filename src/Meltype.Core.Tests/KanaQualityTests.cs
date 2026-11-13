@@ -75,6 +75,9 @@ internal static class KanaQualityTests
         var tails = new[] { "でけんさく", "がおちた", "をみた", "のはなし", "です" };
         var okMixed = 0; var totalMixed = 0;
         foreach (var w in english)
+        {
+            // 表示は固有名詞辞書の登録表記 (google → Google)。大小文字を無視して比べず、登録表記と完全一致で見る。
+            var shown = CompositionTests.Detector.ProperNouns.Canonical(w) ?? w;
             foreach (var h in heads.Take(2))
                 foreach (var t in tails.Take(2))
                 {
@@ -84,8 +87,9 @@ internal static class KanaQualityTests
                     k.TypeKanaKeys(w);
                     k.TypeKeys(KeysFor(t));
                     k.Type("\n");
-                    if (k.Host.Document == h + w + t) okMixed++; else mixed.Add($"{h}+{w}+{t} → {k.Host.Document}");
+                    if (k.Host.Document == h + shown + t) okMixed++; else mixed.Add($"{h}+{w}+{t} → {k.Host.Document} (期待: {h + shown + t})");
                 }
+        }
         CompositionTests.Detector.SpellChecker = null;
         var total = japanese.Count(sentence => !sentence.Contains('ゔ'));
         Console.WriteLine($"  かな入力: 日本語 {total - fails.Count}/{total}、混在 {okMixed}/{totalMixed}");
