@@ -15,7 +15,6 @@ public sealed class ProperNouns
     public static ProperNouns Load(string? userDirectory)
     {
         var nouns = new ProperNouns();
-        nouns.AddText(DictionarySource.ReadEmbedded("propernouns.txt"));
         if (userDirectory is not null)
         {
             var path = Path.Combine(userDirectory, "propernouns.txt");
@@ -28,6 +27,8 @@ public sealed class ProperNouns
                 Diagnostics.Log.Warn($"ユーザーの固有名詞辞書を読めませんでした: {ex.Message}");
             }
         }
+        // 先に登録した綴りを使うので、ユーザーの表記を同梱辞書より優先する。
+        nouns.AddText(DictionarySource.ReadEmbedded("propernouns.txt"));
         return nouns;
     }
 

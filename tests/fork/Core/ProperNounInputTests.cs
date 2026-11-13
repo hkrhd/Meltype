@@ -15,7 +15,7 @@ internal static partial class SessionFacadeTests
         var directory = Path.Combine(Path.GetTempPath(), "meltype-proper-input-" + Guid.NewGuid().ToString("N"));
         var dictionaries = Path.Combine(directory, "dictionaries");
         Directory.CreateDirectory(dictionaries);
-        File.WriteAllText(Path.Combine(dictionaries, "propernouns.txt"), "AGENTS\n");
+        File.WriteAllText(Path.Combine(dictionaries, "propernouns.txt"), "AGENTS\nclaude\n");
         try
         {
             foreach (var live in new[] { false, true })
@@ -25,6 +25,8 @@ internal static partial class SessionFacadeTests
                 foreach (var (input, expected) in new[]
                 {
                     ("agents", "AGENTS"), ("github", "GitHub"), ("iphone", "iPhone"),
+                    ("claude", "claude"), ("Claude", "claude"), ("CLAUDE", "claude"),
+                    ("Claude.md", "claude.md"),
                     ("kyouhagithubde", live ? "今日はGitHubで" : "きょうはGitHubで"),
                     ("github.com", "github.com"), ("https://github.com/agents", "https://github.com/agents"),
                     ("./agents.md", "./agents.md"), ("@github", "@github"), ("github_user", "github_user"),
