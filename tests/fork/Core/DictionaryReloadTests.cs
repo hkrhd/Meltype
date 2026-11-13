@@ -18,7 +18,8 @@ internal static partial class SessionFacadeTests
         try
         {
             new Settings { LiveConversion = false }.Save(Path.Combine(directory, "config.json"));
-            MeltypeSession Create() => MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
+            using var runtime = new MeltypeRuntime(directory);
+            MeltypeSession Create() => runtime.CreateSession(new CompositionTests.FakeConverter());
             var old = Create();
             var unregistered = Type(old, "papitto")[^1].View?.Text;
             Assert.True(unregistered is not null and not "papitto", "未登録の語を比較の基準にする");
@@ -30,7 +31,7 @@ internal static partial class SessionFacadeTests
             var before = Type(old, "mos")[^1].View?.Text;
             File.WriteAllText(Path.Combine(dictionaries, "english.txt"), "mosh\nrepo\npapitto\n");
             File.WriteAllText(Path.Combine(directory, "userdict.txt"), "よみ\t新しい登録語\n");
-            MeltypeSession.ReloadDictionaries(directory);
+            runtime.ReloadDictionaries();
             Assert.True(old.IsComposing, "辞書更新で未確定文字を確定しない");
             var committed = string.Concat(Type(old, "\n").SelectMany(r => r.Commits).Select(e => e.Text));
             Assert.Equal(before, committed, "入力途中の表示を保って確定する");
@@ -46,7 +47,7 @@ internal static partial class SessionFacadeTests
                 Assert.Equal("新しい登録語", Type(session, " ")[^1].View?.Text, "ユーザー辞書も更新する");
             }
             File.Delete(Path.Combine(dictionaries, "english.txt"));
-            MeltypeSession.ReloadDictionaries(directory);
+            runtime.ReloadDictionaries();
             var removed = Create();
             Assert.Equal(unregistered, Type(removed, "papitto")[^1].View?.Text, "削除した登録語を辞書から除く");
         }

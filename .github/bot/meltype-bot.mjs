@@ -212,7 +212,7 @@ async function releaseCommand(issue, command, version) {
   await react('eyes');
   const read = async file => Buffer.from((await gh('GET', `/contents/${file}?ref=main`)).content, 'base64').toString('utf8');
   const mismatches = [];
-  for (const file of ['src/Meltype/Meltype.csproj', 'src/Meltype.Core/Meltype.Core.csproj']) {
+  for (const file of ['src/Meltype.Windows/Meltype.Windows.csproj', 'src/Meltype.Core/Meltype.Core.csproj']) {
     const found = (await read(file)).match(/<Version>([^<]+)<\/Version>/)?.[1];
     if (found !== version) mismatches.push(`${file}: ${found ?? '(版なし)'}`);
   }
@@ -230,19 +230,13 @@ async function releaseCommand(issue, command, version) {
   const sha = (await gh('GET', '/git/ref/heads/main')).object.sha;
   await gh('POST', '/git/refs', { ref: `refs/tags/${tag}`, sha });
   await gh('POST', '/releases', { tag_name: tag, name: `Meltype ${version}`, draft: true, prerelease: pre, body: notes });
-  const started = [], failed = [];
-  for (const workflow of ['build.yml', 'mac.yml', 'linux.yml']) {
-    try {
-      await gh('POST', `/actions/workflows/${workflow}/dispatches`, { ref: tag }, dispatchToken);
-      started.push(workflow);
-    } catch (error) {
-      failed.push(`${workflow}: ${error.message.slice(0, 120)}`);
-    }
-  }
+  const failed = await gh('POST', '/actions/workflows/release.yml/dispatches', { ref: tag }, dispatchToken)
+    .then(() => null, error => error.message.slice(0, 120));
   await reply([
     `✅ タグ \`${tag}\` (${sha.slice(0, 7)}) とリリースの下書き (${pre ? 'プレリリース' : '通常'}、本文は \`${notesFile}\`) を作りました。`,
-    started.length > 0 ? `\nビルドを始めました: ${started.join('・')}。終わると下書きに配布物が付くので、中身を確かめてから公開してください。` : '',
-    failed.length > 0 ? `\n⚠ 始められなかったビルド (Actions の画面から ${tag} で手で実行してください):\n${failed.map(f => `- ${f}`).join('\n')}` : '',
+    failed === null
+      ? '\nビルド (release.yml) を始めました。終わると下書きに配布物を付けて公開します。'
+      : `\n⚠ ビルド (release.yml) を始められませんでした (Actions の画面から ${tag} で手で実行してください): ${failed}`,
   ].join('\n'));
 }
 

@@ -39,7 +39,7 @@
 
 ## ビルドと実機適用
 
-Mac は Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK、Xcode、CMake が必要です。
+Mac は Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK（10.0.403 以降）、Xcode、CMake が必要です。
 
 ```sh
 bash mac/build-cli.sh --test --build   # Core・Swift のテストとビルド
@@ -63,6 +63,10 @@ Zenzai のモデル・Metal ランタイムはビルドスクリプトで取得�
 必要なら `MELTYPE_VERSION=... bash mac/update.sh` で指定できます。upstream のバージョンファイルは変更しません。
 
 ## 更新と配布
+
+2026-11-13 に upstream の 1.5.0 系列（`c67c1aae`、696コミット）を統合しました。
+共通化された入力処理と辞書の共有構造に合わせて独自機能を移植し、upstream 単体で合格した日数・回数などの修正は外しました。
+基準測定はフォークの Core テスト35件中7件合格（失敗28件中2件はAPI未対応）。統合後は Core 909件・Swift 43件が合格しています。
 
 フォーク版は自動更新の対象外です。[Releases](https://github.com/hkrhd/Meltype/releases) の ZIP、または上記の実機適用コマンドで更新します。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。

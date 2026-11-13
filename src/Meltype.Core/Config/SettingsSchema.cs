@@ -14,8 +14,9 @@ namespace Meltype.Config;
 
 /// <summary>
 /// config.json の JSON Schema。config.json と同じフォルダーに config.schema.json として書き、config.json の "$schema" から指す
-/// (設定画面の無い Mac・Linux 版で config.json を手で書くとき、エディターが補完・説明・値の検査を出す)。
-/// Settings の型と、設定画面に出す名前・説明 (DisplayName・Description) から、起動のたびに作る。
+/// (Mac・Linux 版で config.json を手で書くとき、エディターが補完・説明・値の検査を出す)。
+/// Linux 版の設定画面 (linux/meltype-settings) も、この schema から画面を組み立てる。
+/// Settings の型と、設定画面に出す名前・説明・分類 (DisplayName・Description・Category) から、起動のたびに作る。
 /// </summary>
 public static class SettingsSchema
 {
@@ -54,7 +55,7 @@ public static class SettingsSchema
     // 選択肢の説明 (列挙型のフィールドの Description) は reflection で読む。Mac・Linux 版 (NativeAOT) では Meltype.Core の型を削らない
     // (Meltype.Mac.Native.csproj の TrimmerRootAssembly) ので読める。削られても説明が空になるだけで、選択肢の名前は Enum.GetNames から入る。
     [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Meltype.Core は TrimmerRootAssembly。読めなくても説明が空になるだけ")]
-    private static JsonNode Transform(JsonSchemaExporterContext context, JsonNode node, JsonObject defaults)
+    private static JsonObject Transform(JsonSchemaExporterContext context, JsonNode node, JsonObject defaults)
     {
         // 何でもよい値の schema は true で来るので、説明を足せるように {} にする
         var schema = node as JsonObject ?? new JsonObject();
@@ -89,8 +90,16 @@ public static class SettingsSchema
         {
             if (property.AttributeProvider?.GetCustomAttributes(typeof(DisplayNameAttribute), false).FirstOrDefault() is DisplayNameAttribute { DisplayName.Length: > 0 } title)
                 schema["title"] = title.DisplayName;
-            if (property.AttributeProvider?.GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() is DescriptionAttribute { Description.Length: > 0 } description)
-                schema["description"] = description.Description;
+            var description = property.AttributeProvider?.GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() is DescriptionAttribute d ? d.Description : "";
+            var platforms = property.AttributeProvider?.GetCustomAttributes(typeof(PlatformsAttribute), false).FirstOrDefault() is PlatformsAttribute p
+                ? Enum.GetValues<Platform>().Where(platform => p.Platforms.HasFlag(platform)).Select(platform => platform.ToString()).ToArray()
+                : null;
+            if (platforms is not null) description = $"{string.Join("・", platforms)} のみ。{description}";
+            if (description.Length > 0) schema["description"] = description;
+            // x- で始まるのは JSON Schema の標準には無いキーワード (エディターは無視する)。Linux 版の設定画面が、分類ごとに並べ、使わない OS の項目を隠すのに使う
+            if (property.AttributeProvider?.GetCustomAttributes(typeof(CategoryAttribute), false).FirstOrDefault() is CategoryAttribute { Category.Length: > 0 } category)
+                schema["x-category"] = category.Category;
+            if (platforms is not null) schema["x-platforms"] = new JsonArray(platforms.Select(name => (JsonNode?)name).ToArray());
             if (property.DeclaringType == typeof(Settings) && defaults.TryGetPropertyValue(property.Name, out var value))
                 schema["default"] = value?.DeepClone();
         }

@@ -26,13 +26,13 @@ struct DictionaryReloadCheck {
         typealias Create = @convention(c) () -> UnsafeMutableRawPointer?
         typealias Destroy = @convention(c) (UnsafeMutableRawPointer?) -> Void
         typealias Reload = @convention(c) () -> Int32
-        typealias Key = @convention(c) (UnsafeMutableRawPointer?, Int32, Int32, Int32, UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>?
+        typealias Key = @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>?
         typealias Free = @convention(c) (UnsafeMutablePointer<CChar>?) -> Void
         let initialize = symbol("meltype_init", Init.self)
-        let create = symbol("meltype_create", Create.self)
-        let destroy = symbol("meltype_destroy", Destroy.self)
+        let create = symbol("meltype_ime_create", Create.self)
+        let destroy = symbol("meltype_ime_destroy", Destroy.self)
         let reload = symbol("meltype_reload_dictionaries", Reload.self)
-        let key = symbol("meltype_handle_key", Key.self)
+        let key = symbol("meltype_ime_handle", Key.self)
         let free = symbol("meltype_free", Free.self)
         precondition(initialize({ _, _ in nil }, { _ in nil }, { _ in 0 }) == 1)
         try "{\"LiveConversion\":false}".write(to: root.appendingPathComponent("config.json"), atomically: true, encoding: .utf8)
@@ -46,9 +46,13 @@ struct DictionaryReloadCheck {
             for character in text {
                 let code = Int32(String(character).utf16.first!)
                 let vk: Int32 = character == "\n" ? 0x0D : Int32(character.uppercased().utf16.first!)
-                guard let result = key(session, vk, code, 0, nil, nil) else { fatalError("キー入力に失敗しました") }
+                let event: [String: Any] = ["version": 1, "instance": "reload-check", "type": "KeyPressed",
+                    "key": ["vk": vk, "ch": character == "\n" ? 0 : code]]
+                let encoded = String(data: try JSONSerialization.data(withJSONObject: event), encoding: .utf8)!
+                guard let result = encoded.withCString({ key(session, $0) }) else { fatalError("キー入力に失敗しました") }
                 defer { free(result) }
-                let json = try JSONSerialization.jsonObject(with: Data(String(cString: result).utf8)) as! [String: Any]
+                let envelope = try JSONSerialization.jsonObject(with: Data(String(cString: result).utf8)) as! [String: Any]
+                let json = envelope["result"] as! [String: Any]
                 shown = (json["view"] as? [String: Any])?["text"] as? String
                 committed += (json["commits"] as! [[String: Any]]).map { $0["text"] as! String }.joined()
             }

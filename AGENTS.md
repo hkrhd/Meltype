@@ -1,8 +1,7 @@
 # このフォークの開発
 
 - upstream の `AGENTS.md` はこの内容で上書きする。運用手順は [README.md](README.md#ビルドと実機適用) に集約し、`docs/` は復活させない。
-- 回答・コミットメッセージは日本語。変更点を README.md に簡潔に記載する。
-- 履歴操作には jj を使う。`main` は `upstream/main` の追従用、独自変更とデフォルトブランチは `fork_by_hkrhd`。
+- `main` は `upstream/main` の追従用、独自変更とデフォルトブランチは `fork_by_hkrhd`。
 - **`bash mac/update.sh` による検証・実機適用に成功してからコミットを確定し、`fork_by_hkrhd` を進めて push する。** jj の作業内容の自動保存はコミット確定と区別する。
 - 追加テストは `tests/fork/` と `mac/Tests/ForkMacTests/` に置き、ユーザーが求める振る舞い・E2E を検証する。
 - 辞書個別対応は最終手段とする。記号は種類が少ないので可。
@@ -10,15 +9,9 @@
 
 ## upstream の取り込み
 
-1. 最新の `upstream/main` を取得し、分岐していないことを確認して `main` を進める。
-2. 作業中の変更を保持し、`jj new fork_by_hkrhd main` で統合先を作って変更を引き継ぐ。
-3. 競合がない箇所も変更意図を確認し、Zenzai・半角記号など独自の挙動を維持する。削除済みのドキュメントは復活させない。判断に迷ったら質問する。
-4. README.md を更新して実機に適用する。成功後、`fork_by_hkrhd` と `main` を親に持つマージコミットを確定して push する。squash・rebase で取り込み元の履歴を平坦化しない。
-
-通知の Draft PR は作業依頼として扱い、GitHub のマージボタンでは取り込まず、最新の `main` を使って調整する。
-`main` が upstream から分岐していたら停止し、force push は行わない。`fork_by_hkrhd` も強制 push・削除は禁止。
-必須 CI・必須レビューは設定せずローカルで検証し、更新依頼 PR があれば変更点・検証結果を記録する。
-3つ以上の PR を出す場合は統合 PR も作成する。
+1. 最新の `upstream/main` を取得. まず純粋なupstreamのコードでどの程度フォークのテストに合格するか見る。
+2. 合格になった項目を修正するフォークの内容は破棄。テストはそのまま残す。不合格の内容を修正する内容を取り込んだfork_by_hkrhd と `main` を親に持つマージコミットを作成し全てのテストに合格を確認する。squashで履歴圧縮しない。first principal thinkingで. フォークとupstreamで矛盾する要件ならフォークを優先する。
+3. README.md を更新して実機に適用する。成功後push する。
 
 ## Actions とモデル更新
 

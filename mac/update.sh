@@ -28,12 +28,7 @@ temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 MELTYPE_DATA_DIR="$temporary" "$here/build/Meltype.app/Contents/MacOS/Meltype" --check-inputs "$here/Resources/InputChecks.tsv"
 bash "$here/install-app.sh" "$here/build/Meltype.app" "$app"
-"$app/Contents/MacOS/Meltype" --register-input-source
-"$app/Contents/MacOS/MeltypeRegisterInputSource" "$app"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
-# 未登録のビルド用コピーを解除すると -10814 になる。導入済みIMEの起動は妨げない。
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$here/build/Meltype.app" 2>/dev/null || true
-bash "$here/start-input-method.sh" "$app"
+# 登録・起動と失敗時の復旧は upstream のインストーラーで完結させる。
 swift "$here/select-input-source.swift"
 "$app/Contents/MacOS/Meltype" --version
 echo "Meltype update and input checks completed."

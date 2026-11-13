@@ -20,6 +20,11 @@ namespace Meltype.Config;
 [JsonSerializable(typeof(Settings))]
 internal sealed partial class SettingsJsonContext : JsonSerializerContext;
 
+/// <summary>Meltype が覚えておく状態 (state.json) の JSON の読み書き。</summary>
+[JsonSourceGenerationOptions(WriteIndented = true, ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true)]
+[JsonSerializable(typeof(AppState))]
+internal sealed partial class AppStateJsonContext : JsonSerializerContext;
+
 /// <summary>
 /// 列挙型を名前で読み書きし、前の版で選べた今は無い選択肢 (removed) は replacement として読む。
 /// 知らない名前があると config.json 全体を読めず、設定がすべて既定値に戻る。
@@ -37,7 +42,7 @@ internal abstract class RemovedChoiceJsonConverter<T>(string removed, T replacem
     private static JsonConverter<T> Names(JsonSerializerOptions options) => (JsonConverter<T>)new JsonStringEnumConverter<T>().CreateConverter(typeof(T), options);
 }
 
-/// <summary>動作モードの IME 自動切替 (消した) は、初期値の Meltype IME として読む (使えない PC では、起動したときに Meltype キーボードに戻す)。</summary>
+/// <summary>動作モードの IME 自動切替 (消した) は、初期値の Meltype IME として読む (使えない PC では Meltype キーボードで動かす)。</summary>
 internal sealed class InputModeJsonConverter() : RemovedChoiceJsonConverter<InputMode>("AutoSwitch", InputMode.Tsf);
 
 /// <summary>入力方式の「両方を判定」(IME 自動切替でしか効かなかったので消した) は、ローマ字入力として読む。</summary>

@@ -17,7 +17,6 @@ on:
       - 'Install-Meltype.ps1'
       - 'packaging/**'
       - 'Casks/**'
-      - 'docs/**'
       - '.github/workflows/windows.yml'
       - 'mac/fork-version.sh'
   pull_request:
@@ -33,7 +32,6 @@ on:
       - 'Install-Meltype.ps1'
       - 'packaging/**'
       - 'Casks/**'
-      - 'docs/**'
       - '.github/workflows/windows.yml'
       - 'mac/fork-version.sh'
   workflow_dispatch:
@@ -77,7 +75,7 @@ jobs:
 
       # Microsoft IME (日本語) や英語のスペルチェッカーが無い環境では、それらを使うテストは飛ばされる。
       - name: Test
-        run: dotnet run --project src/Meltype.Tests/Meltype.Tests.csproj -c Release --no-build
+        run: dotnet run --project src/Meltype.Windows.Tests/Meltype.Windows.Tests.csproj -c Release --no-build
 
   # インストーラーの台本 (packaging/Meltype.iss) が Inno Setup で通るか。中身はダミーのファイルで確かめる (本物は package で作る)。
   installer-script:

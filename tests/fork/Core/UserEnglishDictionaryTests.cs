@@ -19,14 +19,14 @@ internal static partial class SessionFacadeTests
         try
         {
             foreach (var live in new[] { false, true })
-            foreach (var level in new[] { DetectionLevel.Conservative, DetectionLevel.Balanced, DetectionLevel.Aggressive })
             {
-                new Settings { LiveConversion = live, DetectionLevel = level }
+                new Settings { LiveConversion = live, AutoDetection = true }
                     .Save(Path.Combine(directory, "config.json"));
+                using var runtime = new MeltypeRuntime(directory);
                 foreach (var word in new[] { "sudo", "repo", "no", "e", "c" })
                 foreach (var ending in new[] { "\n", " \n" })
                 {
-                    var session = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
+                    var session = runtime.CreateSession(new CompositionTests.FakeConverter());
                     var shown = word == "no" ? "の" : word;
                     Assert.Equal(shown, Type(session, word)[^1].View?.Text, "登録語の表示: " + word);
                     var results = Type(session, ending);
@@ -38,16 +38,19 @@ internal static partial class SessionFacadeTests
             new Settings { LiveConversion = false }.Save(Path.Combine(directory, "config.json"));
             foreach (var (input, expected) in new[] { ("sudou", "すどう"), ("nihongo", "にほんご"), ("nekono", "ねこの") })
             {
-                var session = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
+                using var runtime = new MeltypeRuntime(directory);
+                var session = runtime.CreateSession(new CompositionTests.FakeConverter());
                 Assert.Equal(expected, Type(session, input)[^1].View?.Text, "日本語の途中を分断しない: " + input);
             }
 
-            new Settings { LiveConversion = false, DetectionLevel = DetectionLevel.Manual }.Save(Path.Combine(directory, "config.json"));
-            var manual = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
+            new Settings { LiveConversion = false, AutoDetection = false }.Save(Path.Combine(directory, "config.json"));
+            using var manualRuntime = new MeltypeRuntime(directory);
+            var manual = manualRuntime.CreateSession(new CompositionTests.FakeConverter());
             Assert.Equal("すど", Type(manual, "sudo")[^1].View?.Text, "手動判定を維持する");
 
             new Settings { LiveConversion = false }.Save(Path.Combine(directory, "config.json"));
-            var remembered = MeltypeSession.CreateDefault(directory, new CompositionTests.FakeConverter(), null, null);
+            using var rememberedRuntime = new MeltypeRuntime(directory);
+            var remembered = rememberedRuntime.CreateSession(new CompositionTests.FakeConverter());
             Type(remembered, "sudo");
             remembered.HandleKey(VirtualKeys.F6, null, false, false, false, false);
             Type(remembered, "\n");

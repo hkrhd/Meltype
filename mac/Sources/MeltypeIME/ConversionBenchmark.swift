@@ -69,7 +69,7 @@ enum ConversionBenchmark {
         var outputs: [[String: String]] = []
         for round in 0..<5 {
             for example in examples {
-                let session = keyEvents ? NativeCore.shared.createSession() : nil
+                let session = keyEvents ? NativeCore.shared.createHost() : nil
                 var prefix = ""
                 var output = ""
                 var committed = ""
@@ -80,13 +80,11 @@ enum ConversionBenchmark {
                     let start = DispatchTime.now().uptimeNanoseconds
                     autoreleasepool {
                         if keyEvents {
-                            let result = NativeCore.shared.handleKey(session,
-                                vk: Int32(character.uppercased().utf16.first ?? 0),
-                                character: Int32(String(character).utf16.first ?? 0),
-                                modifiers: 0, before: nil, after: nil)
+                            let result = NativeCore.shared.send(session, ["version": 1, "instance": "benchmark", "type": "KeyPressed",
+                                "field": ["before": committed], "key": ["ch": character.unicodeScalars.first!.value]])?.result
                             for edit in result?.commits ?? [] {
                                 let previous = committed as NSString
-                                committed = previous.substring(to: max(0, previous.length - edit.deleteBefore)) + edit.text
+                                committed = previous.substring(to: max(0, previous.length - ((edit.removeBefore ?? "") as NSString).length)) + edit.text
                             }
                             output = committed + (result?.view?.text ?? "")
                         } else {
@@ -108,13 +106,13 @@ enum ConversionBenchmark {
                 let preview = output
                 if keyEvents {
                     autoreleasepool {
-                        let result = NativeCore.shared.commit(session)
+                        let result = NativeCore.shared.send(session, ["version": 1, "instance": "benchmark", "type": "CommitRequested", "field": ["before": committed]])?.result
                         for edit in result?.commits ?? [] {
                             let previous = committed as NSString
-                            committed = previous.substring(to: max(0, previous.length - edit.deleteBefore)) + edit.text
+                            committed = previous.substring(to: max(0, previous.length - ((edit.removeBefore ?? "") as NSString).length)) + edit.text
                         }
                         output = committed
-                        NativeCore.shared.destroySession(session)
+                        NativeCore.shared.destroyHost(session)
                     }
                 }
                 if round == 0 { outputs.append(["input": input, "preview": preview, "output": output]) }

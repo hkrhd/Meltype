@@ -55,16 +55,19 @@ final class MeltypeConverter {
     }
 
     private init() {
-        let model = (Bundle.main.resourceURL ?? Bundle.main.bundleURL)
-            .appendingPathComponent("zenz-v3.2-small-Q5_K_M.gguf")
+        let configuredModel = NativeCore.shared.zenzaiModelSetting
+        let configuredPath = configuredModel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let model = (configuredPath.isEmpty
+            ? (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appendingPathComponent("zenz-v3.2-small-Q5_K_M.gguf")
+            : URL(fileURLWithPath: (configuredPath as NSString).expandingTildeInPath))
             // エンジンに渡すパスが相対にならないよう、Bundle の基底URLも解決する。
             .absoluteURL
         // 通常入力の従来変換は計測時の比較用だけ。モデル不在を黙って従来変換に戻さない。
-        let classicBenchmark = CommandLine.arguments.contains("--benchmark-conversion")
-            && CommandLine.arguments.contains("--classic")
-        precondition(classicBenchmark || FileManager.default.isReadableFile(atPath: model.path),
+        let zenzaiDisabled = configuredModel == nil || (CommandLine.arguments.contains("--benchmark-conversion")
+            && CommandLine.arguments.contains("--classic"))
+        precondition(zenzaiDisabled || FileManager.default.isReadableFile(atPath: model.path),
             "Zenzai small model is missing: rebuild Meltype.app")
-        expectedZenzaiStatus = classicBenchmark ? nil : "load \(model.absoluteString)"
+        expectedZenzaiStatus = zenzaiDisabled ? nil : "load \(model.absoluteString)"
         // azooKey の学習データ・ユーザー辞書の置き場所 (Meltype では学習しない設定にしているので、ほぼ使わない)。
         let directory = (NativeCore.shared.dataDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) }
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -80,7 +83,7 @@ final class MeltypeConverter {
             sharedContainerURL: directory,
             textReplacer: TextReplacer(emojiDataProvider: { MeltypeConverter.emojiDictionary() }),
             specialCandidateProviders: KanaKanjiConverter.defaultSpecialCandidateProviders,
-            zenzaiMode: classicBenchmark ? .off : .on(
+            zenzaiMode: zenzaiDisabled ? .off : .on(
                 weight: model,
                 inferenceLimit: Self.inferenceLimit,
                 requestRichCandidates: false,
@@ -91,7 +94,7 @@ final class MeltypeConverter {
             metadata: .init(versionString: "Meltype \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown")")
         )
         var candidateOptions = options
-        if !classicBenchmark {
+        if !zenzaiDisabled {
             candidateOptions.zenzaiMode = .on(
                 weight: model,
                 inferenceLimit: Self.inferenceLimit,

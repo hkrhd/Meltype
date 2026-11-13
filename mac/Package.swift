@@ -37,6 +37,10 @@ let package = Package(
                 .linkedFramework("Carbon"),
             ]
         ),
+        .executableTarget(
+            name: "InstallSupport",
+            path: "Sources/InstallSupport"
+        ),
         .testTarget(
             name: "MeltypeIMETests",
             dependencies: ["MeltypeIME"],

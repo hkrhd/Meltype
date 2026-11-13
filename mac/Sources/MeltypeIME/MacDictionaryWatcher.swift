@@ -39,6 +39,9 @@ final class MacDictionaryWatcher {
 
     private func readChanges() {
         do {
+            // 親フォルダー作成の通知時には、子の辞書がまだ存在しないことがある。
+            // 反映を通知する前に監視対象を確定し、その直後の直接書込も取りこぼさない。
+            try monitor?.reconcile()
             // 通知時だけ内容を比較する。同一内容の再保存・置換では Core を更新しない。
             var current: [String: Data] = [:]
             for path in try files() {

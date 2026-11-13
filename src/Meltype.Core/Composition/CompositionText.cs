@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Yukishiro
 
 using System.Text;
-using Meltype.Config;
 
 namespace Meltype.Composition;
 
@@ -45,25 +44,16 @@ public sealed class CompositionText
     /// <summary>英字 (F9 / F10) で見せるときの大文字・小文字。確定・取り消しで戻る。</summary>
     public LetterCase Case { get; set; } = LetterCase.AsTyped;
 
-    /// <summary>自動判定の強さ (設定)。</summary>
-    public Func<DetectionLevel> Level { get; set; } = () => DetectionLevel.Balanced;
+    /// <summary>自動判定を使わないか (設定 AutoDetection が OFF)。</summary>
+    public Func<bool> Manual { get; set; } = () => false;
 
-    /// <summary>この入力だけ判定の強さを変える (手動のときに Tab で提案を受け入れる)。確定・取り消しで戻る。</summary>
-    public DetectionLevel? LevelOverride { get; set; }
+    /// <summary>この入力だけ自動判定を使う (自動判定を使わないときに Tab で提案を受け入れた)。確定・取り消しで戻る。</summary>
+    public bool SuggestionAccepted { get; set; }
 
-    private DetectionLevel EffectiveLevel => LevelOverride ?? Level();
+    private bool EffectiveManual => !SuggestionAccepted && Manual();
 
     /// <summary>かな入力 (JIS) か。かな入力では <see cref="AppendKana"/> で 1 キー 1 文字ずつ入れる。</summary>
     public bool KanaInput { get; set; }
-
-    /// <summary>句読点の組み合わせ (設定)。読点と、かな入力の明示的な句点に使う。</summary>
-    public PunctuationStyle Punctuation { get; set; } = PunctuationStyle.Japanese;
-
-    /// <summary>読点 (、 か ，)。</summary>
-    private char Comma => Punctuation is PunctuationStyle.FullWidthCommaPeriod or PunctuationStyle.FullWidthCommaKuten ? '，' : '、';
-
-    /// <summary>句点 (。 か ．)。</summary>
-    private char Period => Punctuation is PunctuationStyle.FullWidthCommaPeriod or PunctuationStyle.ToutenFullWidthPeriod ? '．' : '。';
 
     /// <summary>
     /// かな入力の 1 キー。raw はそのキーの英字 (英単語の判定と、英語として見せるときに使う)。
@@ -71,9 +61,6 @@ public sealed class CompositionText
     /// </summary>
     public void AppendKana(char raw, char kana)
     {
-        // 、 。 のキーも設定の句読点にする。
-        if (kana == '、') kana = Comma;
-        else if (kana == '。') kana = Period;
         if (kana is '゛' or '゜' && _units.Count > 0 && _units[^1].Kana.Length == 1 &&
             Detection.KanaDetector.Combine(_units[^1].Kana[0], kana) is { } combined)
         {
@@ -114,8 +101,9 @@ public sealed class CompositionText
             var acronym = word.Any(char.IsAsciiLetterUpper) && word.All(c => char.IsAsciiLetterUpper(c) || char.IsAsciiDigit(c));
             var knownUnambiguous = word.Length >= 3 && _detector.IsKnownEnglishWord(word) && !_detector.Romaji.AnalyzeFragment(lower).IsValid;
             var properNoun = _detector.ProperNouns.Contains(lower) && (_units[^1].Raw != "-" || word.Any(char.IsAsciiLetterUpper) || !_detector.Romaji.AnalyzeFragment(lower).IsValid);
-            var loneConsonant = word.Length == 1 && char.IsAsciiLetterLower(word[0]) && word[0] is not ('a' or 'i' or 'u' or 'e' or 'o');
-            if (acronym || knownUnambiguous || properNoun || _units[^1].Raw == "-" && loneConsonant)
+            // かなにならずに残った英字 (p-hub の p、kyouhapt-query-digest の t) の後の - は長音ではない。かなになった ん (n-to) の後は長音
+            var unconverted = _units[^2].Kana == _units[^2].Raw && _units[^2].Raw.All(char.IsAsciiLetterLower);
+            if (acronym || knownUnambiguous || properNoun || _units[^1].Raw == "-" && unconverted)
                 _units[^1] = _units[^1] with { Kana = _units[^1].Raw };
         }
         // … になった / の続きの / は、同じ … に足す (4〜6 個で ……、7〜9 個で ………: 3 個ごとに … を 1 つ増やす。issue #495)
@@ -138,7 +126,7 @@ public sealed class CompositionText
         if (!char.IsAsciiDigit(c) && _pending.Length == 0 && _units.Count >= 2 && _units[^1] is { Raw: ",", Kana: "," } &&
             _units[^2].Raw is [var digit] && char.IsAsciiDigit(digit))
         {
-            _units[^1] = _units[^1] with { Kana = Comma.ToString() };
+            _units[^1] = _units[^1] with { Kana = "、" };
         }
         if (char.IsAsciiLetter(c))
         {
@@ -219,29 +207,42 @@ public sealed class CompositionText
             }
         }
         // 文章の入力欄で打ち始めに打った / は ・ (Microsoft IME と同じ)。Space で / にできる。
-        if (c == '/' && _units.Count == 0 && SlashAtStart())
+        if (c == '/' && _units.Count == 0 && SlashAtStart)
         {
             _units.Add(new CompositionUnit("・", "/"));
             return;
         }
-        // / キーで中黒 (設定): かなのすぐ後ろの / は ・ (いろん/ますく → いろん・ますく)。英字・数字の後ろ (and/or、3/4、URL)
+        // 設定「かなの後ろの /」: かなのすぐ後ろの / を ・ (いろん/ますく → いろん・ますく) か ／ にする (issue #502)。英字・数字の後ろ (and/or、3/4、URL)
         // と入力の始め (/help) は / のまま (issue #122)。英語の区間に入ったときは、打ったままの / を見せる。
-        if (c == '/' && SlashAsMiddleDot() && _units.Count > 0 && _units[^1].Kana is [.., var kana] && kana is >= 'ぁ' and <= 'ヺ' or 'ー')
+        if (c == '/' && _units.Count > 0 && _units[^1].Kana is [.., var kana] && kana is >= 'ぁ' and <= 'ヺ' or 'ー')
         {
-            _units.Add(new CompositionUnit("・", "/"));
-            return;
+            var slash = Slash() switch
+            {
+                Config.SlashStyle.MiddleDot => "・",
+                Config.SlashStyle.FullWidth => "／",
+                Config.SlashStyle.Slash => null,
+                var style => throw new InvalidOperationException($"不明な SlashStyle: {style}"),
+            };
+            if (slash is not null)
+            {
+                _units.Add(new CompositionUnit(slash, "/"));
+                return;
+            }
         }
         _units.Add(new CompositionUnit(Symbol(c, textBeforePeriod).ToString(), c.ToString()));
     }
 
-    /// <summary>かなのすぐ後ろの / を中黒 (・) にするか (設定)。</summary>
-    public Func<bool> SlashAsMiddleDot { get; set; } = () => false;
+    /// <summary>かなのすぐ後ろの / を何にするか (設定)。</summary>
+    public Func<Config.SlashStyle> Slash { get; set; } = () => Config.SlashStyle.Slash;
 
     /// <summary>z + 記号・hjkl を記号・矢印にするか (設定。OFF なら z はほかの英字と同じ: issue #1008)。</summary>
     public Func<bool> ZSymbols { get; set; } = () => true;
 
-    /// <summary>空の変換ボックスに打った / を、打ち始めの / として中黒 (・) にするか。読むと次からは false。</summary>
-    public Func<bool> SlashAtStart { get; set; } = () => false;
+    /// <summary>
+    /// この入力の打ち始めの / を中黒 (・) にするか (文章の入力欄で打ち始めた: 本体が入力を始めるときに決める)。
+    /// 入力の間は変えないので、BackSpace で原文を打ち直しても同じ結果になる。入力が空になったら false に戻す。
+    /// </summary>
+    public bool SlashAtStart { get; set; }
 
     /// <summary>打ち始めの / だけを ・ にして入れているか。</summary>
     public bool IsSlashAtStart => _pending.Length == 0 && _units is [{ Kana: "・", Raw: "/" }];
@@ -267,12 +268,22 @@ public sealed class CompositionText
                 if (IsEmpty)
                 {
                     Mode = DisplayMode.Auto;
-                    LevelOverride = null;
+                    SuggestionAccepted = false;
+                    SlashAtStart = false;
                 }
                 return;
             }
         }
-        if (_pending.Length > 0) _pending.Length--;
+        if (_pending.Length > 0 && KanaInput) _pending.Length--;
+        else if (_pending.Length > 0)
+        {
+            // 打ちかけの子音を 1 文字消し、残った原文を打ち直す。後ろのキーを見て決めた単位 (ff の っ、nk の ん) は、
+            // そのキーを消したら決め直す (ff + BackSpace + uronto が っうろんと、nk + BackSpace + a が んあ になっていた: issue #1636)
+            var truncated = Raw[..^1];
+            _units.Clear();
+            _pending.Clear();
+            foreach (var c in truncated) Append(c);
+        }
         else if (_units.Count > 0)
         {
             // 見えている最後の 1 音 (英字なら 1 文字) の分だけ後ろから単位を外し、外しすぎた原文を打ち直す。
@@ -290,7 +301,8 @@ public sealed class CompositionText
         {
             Mode = DisplayMode.Auto;
             Case = LetterCase.AsTyped;
-            LevelOverride = null;
+            SuggestionAccepted = false;
+            SlashAtStart = false;
         }
     }
 
@@ -314,7 +326,8 @@ public sealed class CompositionText
         PrecedingCharacter = null;
         Mode = DisplayMode.Auto;
         Case = LetterCase.AsTyped;
-        LevelOverride = null;
+        SuggestionAccepted = false;
+        SlashAtStart = false;
     }
 
     /// <summary>
@@ -341,6 +354,30 @@ public sealed class CompositionText
         if (digit < 0 || _units[digit].Raw is not [var d] || !char.IsAsciiDigit(d)) return;
         var run = string.Concat(_units.Skip(digit + 1).Select(u => u.Raw)) + _pending;
         var lower = run.ToLowerInvariant();
+        // 確定のとき、数字の後ろに母音 1 文字だけ (GPT-4o の 4o) は型番。4お にしない (issue #1417)。
+        // 単位 (5min) と同じく、確定するときに決める (打っている間は 4お。続けて打つ 4oku は 4億)。
+        // i だけ除くのは、数字の直後の い 1 文字が 位 (1位・2位) として日本語でよく打たれるから。
+        // a・u・e・o は、数字の直後で 1 文字だけで終わる日本語の語にならない (を は wo、へ は he と打つ。円 en・億 oku などは
+        // 2 文字以上続くので、この決まりに当たらない)
+        var digitsStart = digit;
+        while (digitsStart > 0 && _units[digitsStart - 1].Raw is [var earlier] && char.IsAsciiDigit(earlier)) digitsStart--;
+        // 数字のすぐ前がかなとして読んだ英字 (kono|4o の no) なら、日本語の後ろの数字なので、ここでは決めない (前のかなを英字に戻さない)。
+        // 数字の前の英字が 1 文字だけ (m3e) なら、英字 1 文字 + 数字 + 英字 1 文字の略語の形 (i18n・m3e) なので、ここでも決めない。
+        // かなにならなかった 2 文字以上の英字 (gpt4o) は型番の名前なので対象にする
+        var letters = 0;
+        var afterKana = false;
+        for (var k = digitsStart - 1; k >= 0 && _units[k].Raw is { Length: > 0 } raw && raw.All(char.IsAsciiLetter); k--)
+        {
+            if (_units[k].Kana != raw) { afterKana = true; break; }
+            letters += raw.Length;
+        }
+        if (final && lower is "a" or "u" or "e" or "o" && letters != 1 && !afterKana)
+        {
+            _units.RemoveRange(digit + 1, _units.Count - digit - 1);
+            _units.Add(new CompositionUnit(run, run));
+            _pending.Clear();
+            return;
+        }
         foreach (var unit in UnitWords)
         {
             if (!lower.StartsWith(unit, StringComparison.Ordinal)) continue;
@@ -416,6 +453,21 @@ public sealed class CompositionText
         _ => false,
     };
 
+    /// <summary>Markdown 記法の記号だけ (- > * + # ## …) の入力か。Space で、半角の記号と空白で確定する。</summary>
+    public bool IsMarkdownMarker =>
+        !KanaInput && _units.Count > 0 &&
+        (Raw is "-" or ">" or "*" or "+" || (Raw.Length <= 6 && Raw.All(c => c == '#')));  // 見出しは 6 段まで
+
+    /// <summary>水平線・front matter の区切り (3 個以上の -) だけの入力か。打った半角のまま表示・確定する。</summary>
+    public bool IsHorizontalRule => !KanaInput && Raw.Length >= 3 && Raw.All(c => c == '-');
+
+    /// <summary>変換区間に * が 2 個以上あるときだけ、表示の ＊ を打った半角の * にする (強調 **bold**・*italic*)。</summary>
+    private string HalfWidthStars(string text) => !KanaInput && Raw.Count(c => c == '*') >= 2 ? text.Replace('＊', '*') : text;
+
+    /// <summary>変換の最初の候補を、入力中の表示と同じ半角にする (* が 2 個以上・---)。当てはまらなければそのまま返す。</summary>
+    public string AsDisplayedHalfWidth(string candidate, string? clauseRaw) =>
+        IsHorizontalRule ? clauseRaw ?? candidate : HalfWidthStars(candidate);
+
     /// <summary>自動判定の区間分け (Mode が Auto のときに使う)。</summary>
     /// 入力中の表示と、Space・Enter で確定・変換するときで同じ区切りになる。
     public IReadOnlyList<CompositionSegment> Segments()
@@ -460,7 +512,7 @@ public sealed class CompositionText
 
     private (string Key, LanguageMemory? Memory, Detection.IWordChecker? SpellChecker, IReadOnlyList<CompositionSegment> Segments)? _segmentsCache;
 
-    /// <summary>区間分けの結果を決めるもの (打った単位・入力途中の子音・前後・判定の強さ・学習した語の版) をつないだもの。</summary>
+    /// <summary>区間分けの結果を決めるもの (打った単位・入力途中の子音・前後・自動判定を使うか・学習した語の版) をつないだもの。</summary>
     private string SegmentsKey()
     {
         var key = new StringBuilder();
@@ -471,7 +523,7 @@ public sealed class CompositionText
             .Append(PrecedingEnglishSentence ? 'S' : '-').Append(KanaInput ? 'K' : '-')
             .Append(PrecedingEnglishName ? 'N' : '-').Append(FullWidthParentheses ? 'W' : '-').Append(LaughterAfterKana ? 'L' : '-')
             .Append(PrecedingCharacter)
-            .Append((int)EffectiveLevel).Append(':').Append(_detector.Memory?.Version ?? -1);
+            .Append(EffectiveManual ? 'M' : '-').Append(':').Append(_detector.Memory?.Version ?? -1);
         return key.ToString();
     }
 
@@ -480,7 +532,7 @@ public sealed class CompositionText
         // 名前を紹介する英文では、辞書にないローマ字の名前も英字で残す。
         // 手動・かな入力・明示的な日本語学習・後ろの日本語は優先する。
         var raw = Raw;
-        if (!KanaInput && PrecedingEnglishName && FollowingEnglish != false && EffectiveLevel != DetectionLevel.Manual &&
+        if (!KanaInput && PrecedingEnglishName && FollowingEnglish != false && !EffectiveManual &&
             raw.Length > 0 && raw.All(char.IsAsciiLetter) && _detector.Memory?.Get(raw.ToLowerInvariant()) != false)
             return [new CompositionSegment(true, "", raw)];
         var segments = SegmentWithProtection(_units);
@@ -493,7 +545,7 @@ public sealed class CompositionText
     {
         var spans = ProtectedSpans();
         if (spans.Count == 0)
-            return _detector.Segment(units, Pending, PrecedingEnglish, FollowingEnglish, EffectiveLevel, PrecedingEnglishSentence, KanaInput);
+            return _detector.Segment(units, Pending, PrecedingEnglish, FollowingEnglish, EffectiveManual, PrecedingEnglishSentence, KanaInput);
         var raw = Raw;
         var result = new List<CompositionSegment>();
         var start = 0;
@@ -511,7 +563,7 @@ public sealed class CompositionText
             if (from == to) return;
             var gapUnits = UnitsInRawRange(units, from, to, out var pending);
             var segments = _detector.Segment(gapUnits, pending, from == 0 ? PrecedingEnglish : false,
-                to == raw.Length ? FollowingEnglish : false, EffectiveLevel,
+                to == raw.Length ? FollowingEnglish : false, EffectiveManual,
                 from == 0 && PrecedingEnglishSentence, KanaInput);
             // 内部の区切りの子音は後の保護文字列とは結合しない。末尾の Pending は表示側が扱う。
             if (to < raw.Length && pending.Length > 0 && !segments[^1].IsEnglish)
@@ -602,11 +654,11 @@ public sealed class CompositionText
         return adjusted;
     }
 
-    /// <summary>判定の強さが「手動」のとき、標準の判定なら英字にする部分 (提案)。無ければ null。</summary>
+    /// <summary>自動判定を使わないとき、自動判定なら英字にする部分 (提案)。無ければ null。</summary>
     public string? Suggestion()
     {
-        if (Mode != DisplayMode.Auto || EffectiveLevel != DetectionLevel.Manual || IsNumeric) return null;
-        var suggested = _detector.Segment(_units, Pending, PrecedingEnglish, FollowingEnglish, DetectionLevel.Balanced, PrecedingEnglishSentence, KanaInput);
+        if (Mode != DisplayMode.Auto || !EffectiveManual || IsNumeric) return null;
+        var suggested = _detector.Segment(_units, Pending, PrecedingEnglish, FollowingEnglish, false, PrecedingEnglishSentence, KanaInput);
         if (!suggested.Any(s => s.IsEnglish) || suggested.SequenceEqual(Segments())) return null;
         return string.Join(" ", suggested.Where(s => s.IsEnglish).Select(s => s.Raw));
     }
@@ -745,11 +797,11 @@ public sealed class CompositionText
     public string Display(bool final, Func<string, string>? convert = null) => Mode switch
     {
         DisplayMode.HalfWidthAlphanumeric => ApplyCase(Raw, Case),
-        DisplayMode.FullWidthAlphanumeric => ToFullWidth(ApplyCase(Raw, Case)),
+        DisplayMode.FullWidthAlphanumeric => ToFullWidth(ApplyCase(Raw, Case), preserveLiteralSymbols: true),
         DisplayMode.Hiragana => AllKana(final),
         DisplayMode.Katakana => ToKatakana(AllKana(final)),
         DisplayMode.HalfWidthKatakana => ToHalfWidthKatakana(ToKatakana(AllKana(final))),
-        _ => IsNumeric ? Raw : RenderSegments(final, convert),
+        _ => IsNumeric || IsHorizontalRule ? Raw : RenderSegments(final, convert),
     };
 
     /// <summary>英字の大文字・小文字を変える (ai → AI / Ai)。</summary>
@@ -844,7 +896,7 @@ public sealed class CompositionText
             builder.Append(convert is not null && kana.Length > 0 ? convert(kana) : kana);
             builder.Append(pending);
         }
-        return builder.ToString();
+        return HalfWidthStars(builder.ToString());
     }
 
     /// <summary>英語判定を無視してすべてかなにしたもの (F6)。</summary>
@@ -929,7 +981,7 @@ public sealed class CompositionText
         var changed = false;
         // 今の表示で英字に見えている文字 (きょうは|meeting|です の meeting)。ここは直さない
         // (表示では英単語なのに、確定したら g が が に直されて めえちんがです になっていた)。
-        var shownEnglish = EnglishMask();
+        var shownEnglish = EnglishMask(out var firmEnglish);
         var offset = 0;
         var start = 0;
         while (start < _units.Count)
@@ -951,7 +1003,7 @@ public sealed class CompositionText
                 UnitWords.Any(u => letters.StartsWith(u, StringComparison.OrdinalIgnoreCase));
             if (!unitAfterNumber && letters.All(char.IsAsciiLetterLower) && !_detector.IsKnownEnglishWord(letters) &&
                 corrector.FirstUnreadable(letters, final: true) is var first and > 0 &&
-                !(runOffset + first < shownEnglish.Count && shownEnglish[runOffset + first]) &&
+                !(runOffset + first < shownEnglish.Count && shownEnglish[runOffset + first] && (firmEnglish[runOffset + first] || !FixesIntoLongWord(corrector, letters, first))) &&
                 // 数字のすぐ前の短い英字 (kaibunsyo|rta|2026 の rta) は略語。打ち間違いとして直さない
                 !(end < _units.Count && _units[end].Raw is [var after] && char.IsAsciiDigit(after) && first >= letters.Length - 6) &&
                 !ContainsEnglishWord(letters, first) &&
@@ -1037,11 +1089,13 @@ public sealed class CompositionText
 
     /// <summary>
     /// 打った英字 (Raw) の 1 文字ずつが、今の表示で英単語 (5 文字以上の知っている語: meeting) の区間に入っているか。
+    /// firm は、そのうち守った区間か 5 文字以上の語 (短い語 mas と違い、直すと長い語になっても英字のまま)。
     /// 短い語 (onegai|shim|su の shim) は、ローマ字の途中に偶然現れることが多いので含めない (打ち間違いとして直す)。
     /// </summary>
-    private List<bool> EnglishMask()
+    private List<bool> EnglishMask(out List<bool> firm)
     {
         var mask = new List<bool>();
+        firm = [];
         var segments = Segments();
         for (var s = 0; s < segments.Count; s++)
         {
@@ -1049,7 +1103,11 @@ public sealed class CompositionText
             // 英語の語.の後ろの英字 (ドメイン・拡張子: Meltype.amr、MeltypeTip.dll) も、表示のまま英字にする (amr を あめ に直していた: issue #260)
             if (segment.IsEnglish && s >= 2 && segments[s - 1] is { IsEnglish: true, Raw: "." } && segments[s - 2].IsEnglish && segments[s - 2].Raw.Any(char.IsAsciiLetter))
             {
-                for (var i = 0; i < segment.Raw.Length; i++) mask.Add(true);
+                for (var i = 0; i < segment.Raw.Length; i++)
+                {
+                    mask.Add(true);
+                    firm.Add(true);
+                }
                 continue;
             }
             // 5 文字以上の知っている語 (meeting) か、同梱の英語の辞書の 2〜4 文字の語 (user・rta・av)
@@ -1060,9 +1118,26 @@ public sealed class CompositionText
                 segment.Raw.Length == 4 && _detector.IsKnownEnglishWord(lower) && !_detector.Romaji.Analyze(lower).IsValid ||
                 // 3 文字のスペルチェッカーの語で、最後の子音がかなにならないもの (tab|de の b)。表示で英字にしたものを、確定で打ち間違いとして たべ に直さない (issue #220)
                 segment.Raw.Length == 3 && lower.All(char.IsAsciiLetterLower) && _detector.IsSpellWord(lower) && _detector.Romaji.AnalyzeFragment(lower).Partial.Length > 0);
-            for (var i = 0; i < segment.Raw.Length; i++) mask.Add(word);
+            for (var i = 0; i < segment.Raw.Length; i++)
+            {
+                mask.Add(word);
+                // 守った区間と 5 文字以上の語 (shopping) は、直すと長い語になっても英字のまま (FixesIntoLongWord を見ない)
+                firm.Add(segment.IsProtected || segment.Raw.Length >= 5);
+            }
         }
         return mask;
+    }
+
+    /// <summary>
+    /// 表示で英字に見えている短い語 (すみ|mas|ね の mas) でも、直すとその前のかなと合わせて 4 文字以上の 1 つの語になるなら直す
+    /// (sumimasne → すみません: issue #971)。tab|de (たべ)・tab|ga (たば) のように、直しても短い語にしかならないものは英字のまま。
+    /// </summary>
+    private bool FixesIntoLongWord(RomajiTypoCorrector corrector, string letters, int first)
+    {
+        if (corrector.Fix(letters, final: true) is not { } fix || first > fix.Right.Length) return false;
+        // 読めない文字の直前のかな (sumima の ま) が、直した後の語に入っているか
+        var before = _detector.Romaji.AnalyzeFragment(fix.Right[..first]).Kana.Length;
+        return corrector.InLongWord(fix.Kana, before - 1, minLength: 4);
     }
 
     /// <summary>
@@ -1132,9 +1207,6 @@ public sealed class CompositionText
     /// <summary>[ ] を「」ではなく［］にするか (設定)。</summary>
     public bool SquareBrackets { get; set; }
 
-    /// <summary>かなの後ろの / を全角の／にするか (設定)。</summary>
-    public bool FullWidthSlash { get; set; }
-
     /// <summary>1 つのかなの音の後ろの w を笑いにするか (設定)。</summary>
     public bool LaughterAfterKana { get; set; }
 
@@ -1142,8 +1214,8 @@ public sealed class CompositionText
     private char Symbol(char c, string? textBeforePeriod) => c switch
     {
         '-' => 'ー',
-        // 読点は設定どおり。句点キーは表示上の直前が日本語の文字のときだけ「。」にする。
-        ',' => Comma,
+        // 読みは 、。 に固定し、句点の幅だけ直前の表示文字で選ぶ。
+        ',' => '、',
         '.' => EndsWithJapaneseLetter(textBeforePeriod ?? Display(final: true)) ? '。' : '.',
         '[' => SquareBrackets ? '［' : '「',
         ']' => SquareBrackets ? '］' : '」',
@@ -1161,7 +1233,7 @@ public sealed class CompositionText
         _ when IsLiteralSymbol(c) => c,
         // @ はメールアドレス・メンション、/ は URL・日付・パスで使うので、日本語の中でも半角のまま (Space で ＠ ／ ・)。
         '@' => '@',
-        // # はハッシュタグ・チャンネル名 (Discord の #雑談) で使うので半角のまま (Space で ＃)。
+        // # はハッシュタグ・チャンネル名 (Discord の #雑談) で使うので半角のまま (Space で # と半角空白に確定)。
         '#' => '#',
         '/' => '/',
         // JIS キーボードの ￥ キー
@@ -1242,12 +1314,12 @@ public sealed class CompositionText
 
     internal static bool IsLiteralSymbol(char c) => c is '$' or '"' or '`' or '_' or '/';
 
-    public static string ToFullWidth(string text)
+    public static string ToFullWidth(string text, bool preserveLiteralSymbols = false)
     {
         var chars = text.ToCharArray();
         for (var i = 0; i < chars.Length; i++)
         {
-            if (chars[i] is >= '!' and <= '~' && !IsLiteralSymbol(chars[i])) chars[i] = (char)(chars[i] + 0xFEE0);
+            if (chars[i] is >= '!' and <= '~' && !(preserveLiteralSymbols && IsLiteralSymbol(chars[i]))) chars[i] = (char)(chars[i] + 0xFEE0);
             else if (chars[i] == ' ') chars[i] = '　';
         }
         return new string(chars);

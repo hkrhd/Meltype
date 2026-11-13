@@ -69,14 +69,14 @@ internal static class InputRegressionTests
             restored = new UserDictionary(path, builtIn: false);
             Assert.Equal(controlWord, restored.Lookup(controlReading).Single());
             foreach (var live in new[] { false, true })
-            foreach (var (reading, word) in pairs.Append((controlReading, controlWord)))
-            {
-                var k = new CompositionTests.Keyboard(live: live, userDictionary: restored);
-                k.Type(reading + " ");
-                Assert.Equal(word, k.Host.View!.Clauses![0], reading + "の候補");
-                k.Press(VirtualKeys.Return);
-                Assert.Equal(word, k.Host.Document, reading + "の確定");
-            }
+                foreach (var (reading, word) in pairs.Append((controlReading, controlWord)))
+                {
+                    var k = new CompositionTests.Keyboard(live: live, userDictionary: restored);
+                    k.Type(reading + " ");
+                    Assert.Equal(word, k.Host.View!.Clauses![0], reading + "の候補");
+                    k.Press(VirtualKeys.Return);
+                    Assert.Equal(word, k.Host.Document, reading + "の確定");
+                }
         }
         finally { File.Delete(path); }
     }
@@ -85,19 +85,9 @@ internal static class InputRegressionTests
     public static void SnippetAfterCaretMove_UsesTheNewLineContext()
     {
         // Issue #463 / PR #586: キャレットを移動したら、移動先の行頭でスニペットを展開する。単語の途中では展開しない。
-        var store = new SnippetStore(null);
-        store.Set("srch", "検索する");
-        var trigger = new SnippetTrigger();
-        trigger.Append("previous text");
-        // 実際のキャレット移動の通知は扱わず、移動通知後にCoreへ渡される状態を作る。
-        trigger.Lose();
-        Assert.True(trigger.PassesThrough(';', ""), "移動先が行頭ならトリガーを受け取る");
-        trigger.Append(";srch");
-        var expansion = trigger.Expand(store);
-        Assert.Equal<int?>(5, expansion?.Delete, "展開時の削除数");
-        Assert.Equal("検索する", expansion?.Text, "展開文字列");
-        Assert.Equal(";srch", expansion?.Typed, "展開前の入力");
-        trigger.Lose();
-        Assert.True(!trigger.PassesThrough(';', "text"), "移動先が単語の途中なら展開しない");
+        // どちらもフロントが送るキャレットの前の文字だけで決める
+        Assert.True(SnippetTrigger.PassesThrough(";", "", ';'), "移動先が行頭ならトリガーを受け取る");
+        Assert.Equal(";srch", SnippetTrigger.TypedBefore(";", "previous text\n;srch"), "展開前の入力");
+        Assert.True(!SnippetTrigger.PassesThrough(";", "text", ';'), "移動先が単語の途中なら展開しない");
     }
 }

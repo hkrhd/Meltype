@@ -59,6 +59,8 @@ npx wrangler secret put TURNSTILE_SECRET
 
 2回目以降は `npm run deploy` で変更を反映しデプロイできます。
 
+このフォークでは Web の自動デプロイは無効です。
+
 ## 報告の受付について
 
 - 種類は 不具合・変換や判定の間違い・辞書に足してほしい語・改善や機能の提案 の 4 つで、GitHub の Issue のテンプレートに合わせています。

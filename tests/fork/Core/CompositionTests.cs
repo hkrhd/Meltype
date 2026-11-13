@@ -192,7 +192,7 @@ internal static partial class CompositionTests
             Assert.Equal(expected, k.Showing, "かな表示と日本語の変換を維持する: " + input);
         }
 
-        var manual = new Keyboard { Level = DetectionLevel.Manual };
+        var manual = new Keyboard { Manual = true };
         manual.Type("auto ");
         Assert.Equal("あうと", manual.Showing, "手動判定では日本語を変換する");
 
@@ -353,7 +353,6 @@ internal static partial class CompositionTests
         })
         {
             var k = new Keyboard();
-            k.Host.SurroundingTextIsCurrent = true;
             k.Host.PrecedingText = before;
             k.Type(".");
             Assert.Equal(expected, k.Showing, $"直前: {before}");
@@ -408,14 +407,12 @@ internal static partial class CompositionTests
             Assert.Equal("日本語。", k.Host.Document, $"選択中の候補の後ろ: 続けて変換={continueAfterConversion}");
         }
         var moved = new Keyboard();
-        moved.Host.SurroundingTextIsCurrent = true;
         moved.Type("nihongo\n");
         moved.Host.PrecedingText = "English";
         moved.Type(".");
         Assert.Equal(".", moved.Showing, "確定直後でも移動先の文字を使う");
 
         var committed = new Keyboard();
-        committed.Host.SurroundingTextIsCurrent = true;
         committed.Type("nihongo\n.\n");
         Assert.Equal("にほんご。", committed.Host.Document, "確定済み日本語の直後");
     }
