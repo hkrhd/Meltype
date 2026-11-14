@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Meltype</AssemblyName>
     <RootNamespace>Meltype</RootNamespace>
-    <Version>1.5.0</Version>
+    <Version>1.5.1</Version>
     <!-- Windows CI も Mac と同じフォーク版番号をアプリ本体に埋め込む。 -->
     <Version Condition="'$(MELTYPE_VERSION)' != ''">$(MELTYPE_VERSION)</Version>
     <Product>Meltype</Product>

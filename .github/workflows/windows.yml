@@ -83,6 +83,10 @@ jobs:
   test:
     name: Windows validation
     runs-on: windows-latest
+    # 外部コマンドの失敗で即座に停止する。Mac の bash には適用しない。
+    defaults:
+      run:
+        shell: pwsh -NoProfile -Command "$ErrorActionPreference = 'Stop'; $PSNativeCommandUseErrorActionPreference = $true; . '{0}'"
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -114,7 +118,6 @@ jobs:
       # Meltype IME (入力欄に直接入力する TSF の DLL)。C++ なので dotnet build とは別にビルドする (x64 と x86)。
       - name: Build Meltype IME
         if: steps.changes.outputs.tip == 'true'
-        shell: pwsh
         run: ./native/tip/build.ps1 -Configuration Release
 
       - name: Test package scan failure handling
@@ -134,7 +137,6 @@ jobs:
         run: .\tools\Test-SetupIme.ps1
       - name: Compile installer script
         if: steps.changes.outputs.installer == 'true'
-        shell: pwsh
         run: |
           $iscc = .\packaging\Find-InnoSetup.ps1
           $stage = Join-Path $env:RUNNER_TEMP 'Meltype'
@@ -199,6 +201,10 @@ jobs:
   package:
     needs: release
     runs-on: windows-2022
+    # 外部コマンドの失敗で即座に停止する。Mac の bash には適用しない。
+    defaults:
+      run:
+        shell: pwsh -NoProfile -Command "$ErrorActionPreference = 'Stop'; $PSNativeCommandUseErrorActionPreference = $true; . '{0}'"
     timeout-minutes: 120
     permissions:
       contents: write
@@ -216,7 +222,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Bazelisk
-        shell: pwsh
         run: |
           # 版を固定し、ダウンロードしたものが公開されているものと同じか (SHA-256) を確かめる。
           $version = 'v1.29.0'
@@ -264,14 +269,12 @@ jobs:
           }
       # インストーラー (dist\Meltype-<版>-setup.exe)。zip と同じ app フォルダーから作る (issue #161)。
       - name: Installer
-        shell: pwsh
         run: |
           $iscc = .\packaging\Find-InnoSetup.ps1
           $version = $env:MELTYPE_VERSION
           & $iscc /Q "/DAppVersion=$version" "/DSourceDir=$PWD\dist\Meltype" "/DOutputDir=$PWD\dist" packaging\Meltype.iss
           if ($LASTEXITCODE -ne 0) { throw "インストーラーを作れませんでした (exit code $LASTEXITCODE)。" }
       - name: Sign installer
-        shell: pwsh
         env:
           SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
           MELTYPE_SIGN_PASSWORD: ${{ secrets.SIGN_PASSWORD }}
@@ -305,7 +308,6 @@ jobs:
           if ($setups.Count -ne 1) { throw 'Expected one Meltype-*-setup.exe file but found ' + $setups.Count }
           .\tools\Scan-WindowsPackage.ps1 -Path @('.\dist\Meltype', '.\dist\Meltype-portable', $packages[0].FullName, $packages[1].FullName, $setups[0].FullName)
       - name: Upload Windows packages
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
