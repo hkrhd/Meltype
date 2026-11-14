@@ -31,7 +31,7 @@ on:
       - 'tools/Scan-WindowsPackage.ps1'
       - 'tools/Test-WindowsPackageScan.ps1'
       - 'tools/Test-SetupIme.ps1'
-      - '.github/workflows/windows.yml'
+      - '.github/workflows/fork-windows.yml'
       - '.github/bot/windows-checks.mjs'
       - 'tests/fork/windows-checks.test.mjs'
   pull_request:
@@ -61,7 +61,7 @@ on:
       - 'tools/Scan-WindowsPackage.ps1'
       - 'tools/Test-WindowsPackageScan.ps1'
       - 'tools/Test-SetupIme.ps1'
-      - '.github/workflows/windows.yml'
+      - '.github/workflows/fork-windows.yml'
       - '.github/bot/windows-checks.mjs'
       - 'tests/fork/windows-checks.test.mjs'
   workflow_dispatch:

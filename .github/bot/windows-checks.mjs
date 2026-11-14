@@ -20,7 +20,7 @@ if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
     files = execFileSync('git', ['diff', '--name-only', '--no-renames', '-z', base, 'HEAD'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   }
   for (const file of files.split('\0').filter(Boolean)) {
-    if (/^\.github\/(workflows\/windows\.yml|bot\/windows-checks\.mjs)$/.test(file)
+    if (/^\.github\/(workflows\/fork-windows\.yml|bot\/windows-checks\.mjs)$/.test(file)
         || file === 'tests/fork/windows-checks.test.mjs') {
       for (const name of Object.keys(checks)) checks[name] = true;
     }

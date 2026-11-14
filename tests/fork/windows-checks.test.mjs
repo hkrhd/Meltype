@@ -52,7 +52,7 @@ test('変更した対象の検証だけを選び、手動実行ではすべて�
       ['tools/Scan-WindowsPackage.ps1', ['scan']],
       ['packaging/Meltype.iss', ['installer']],
       ['Build-Package.ps1', ['installer']],
-      ['.github/workflows/windows.yml', all],
+      ['.github/workflows/fork-windows.yml', all],
     ]) {
       const before = git('rev-parse', 'HEAD');
       put(file);

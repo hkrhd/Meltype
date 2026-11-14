@@ -76,13 +76,15 @@ upstream 単体でフォークの Core テスト37件を評価し、6件合格�
 フォーク版は自動更新の対象外です。[Releases](https://github.com/hkrhd/Meltype/releases) の ZIP、または上記の実機適用コマンドで更新します。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
+upstream の Actions は GitHub 側でも無効化しています。フォークの `windows` は `fork-windows.yml` に分離し、追従用 `main` への push で upstream の検証・配布を起動させません。
+
 - `upstream-update`: 2日に1回、日本時間21:17に `main` を同期し、更新依頼の Draft PR を作成します。
 - `zenzai-update`: 1日1回、日本時間12:17に small / Q5_K_M の更新を Draft PR で通知します。取り込み・モデル差し替え・自動マージはしません。
 - `windows`: push・PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を1つのジョブで実行します。手動実行では全検証を行い、`package` を有効にした場合だけ Windows・Mac の配布物を作成します。
 
 ```sh
-gh workflow run windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 検証のみ
-gh workflow run windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd -f package=true  # 配布
+gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 検証のみ
+gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd -f package=true  # 配布
 GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run
 ```
 
