@@ -7,34 +7,69 @@ on:
   push:
     branches: [fork_by_hkrhd]
     paths:
-      - 'src/**'
-      - 'native/**'
+      - 'src/Meltype.Core/**'
+      - 'src/Meltype.Core.Tests/**'
+      - 'src/Meltype.Mac.Native/**'
+      - 'src/Meltype.Windows/**'
+      - 'src/Meltype.Windows.Tests/**'
+      - 'src/Directory.Build.*'
+      - 'native/tip/**'
+      - 'native/mozc/**'
       - 'dictionaries/**'
-      - 'tools/**'
-      - 'tests/fork/**'
+      - 'tests/fork/Core/**'
       - 'Meltype.sln'
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
+      - 'Uninstall-Meltype.ps1'
+      - 'nuget.config'
+      - 'global.json'
+      - 'Directory.Build.*'
+      - 'Directory.Packages.*'
       - 'packaging/**'
-      - 'Casks/**'
+      - 'LICENSE'
+      - 'THIRD-PARTY-NOTICES.md'
+      - 'tools/Scan-WindowsPackage.ps1'
+      - 'tools/Test-WindowsPackageScan.ps1'
+      - 'tools/Test-SetupIme.ps1'
       - '.github/workflows/windows.yml'
-      - 'mac/fork-version.sh'
+      - '.github/bot/windows-checks.mjs'
+      - 'tests/fork/windows-checks.test.mjs'
   pull_request:
     branches: [fork_by_hkrhd]
     paths:
-      - 'src/**'
-      - 'native/**'
+      - 'src/Meltype.Core/**'
+      - 'src/Meltype.Core.Tests/**'
+      - 'src/Meltype.Mac.Native/**'
+      - 'src/Meltype.Windows/**'
+      - 'src/Meltype.Windows.Tests/**'
+      - 'src/Directory.Build.*'
+      - 'native/tip/**'
+      - 'native/mozc/**'
       - 'dictionaries/**'
-      - 'tools/**'
-      - 'tests/fork/**'
+      - 'tests/fork/Core/**'
       - 'Meltype.sln'
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
+      - 'Uninstall-Meltype.ps1'
+      - 'nuget.config'
+      - 'global.json'
+      - 'Directory.Build.*'
+      - 'Directory.Packages.*'
       - 'packaging/**'
-      - 'Casks/**'
+      - 'LICENSE'
+      - 'THIRD-PARTY-NOTICES.md'
+      - 'tools/Scan-WindowsPackage.ps1'
+      - 'tools/Test-WindowsPackageScan.ps1'
+      - 'tools/Test-SetupIme.ps1'
       - '.github/workflows/windows.yml'
-      - 'mac/fork-version.sh'
+      - '.github/bot/windows-checks.mjs'
+      - 'tests/fork/windows-checks.test.mjs'
   workflow_dispatch:
+    inputs:
+      package:
+        description: 'Windows・Mac の配布物を作成・公開する'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,47 +81,59 @@ concurrency:
 
 jobs:
   test:
+    name: Windows validation
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Select checks for changed files
+        id: changes
+        run: node .github/bot/windows-checks.mjs
+
+      - name: Test workflow change selection
+        run: node --test tests/fork/windows-checks.test.mjs
+
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        if: steps.changes.outputs.dotnet == 'true'
         with:
           dotnet-version: 10.0.x
       - name: Build
+        if: steps.changes.outputs.dotnet == 'true'
         run: dotnet build Meltype.sln -c Release
 
       # Mozc-UT の辞書の統合 (native/mozc/merge-ut-dictionary.py)。本物の Mozc も辞書も要らない。
       # 環境変数 MELTYPE_UT_DICTIONARY を指定したときだけ使うものなので、ビルドには影響しない。
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        if: steps.changes.outputs.mozc == 'true'
         with:
           python-version: '3.12'
       - name: Test Mozc-UT dictionary merge
+        if: steps.changes.outputs.mozc == 'true'
         run: python native/mozc/tests/test_merge_ut_dictionary.py
 
       # Meltype IME (入力欄に直接入力する TSF の DLL)。C++ なので dotnet build とは別にビルドする (x64 と x86)。
       - name: Build Meltype IME
+        if: steps.changes.outputs.tip == 'true'
         shell: pwsh
         run: ./native/tip/build.ps1 -Configuration Release
 
       - name: Test package scan failure handling
+        if: steps.changes.outputs.scan == 'true'
         shell: powershell
         run: .\tools\Test-WindowsPackageScan.ps1
 
       # Microsoft IME (日本語) や英語のスペルチェッカーが無い環境では、それらを使うテストは飛ばされる。
       - name: Test
+        if: steps.changes.outputs.dotnet == 'true'
         run: dotnet run --project src/Meltype.Windows.Tests/Meltype.Windows.Tests.csproj -c Release --no-build
 
-  # インストーラーの台本 (packaging/Meltype.iss) が Inno Setup で通るか。中身はダミーのファイルで確かめる (本物は package で作る)。
-  installer-script:
-    runs-on: windows-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      # インストーラーの変更は同じ VM で検証する。
       - name: Test setup IME registration launcher
+        if: steps.changes.outputs.installer == 'true'
         shell: powershell
         run: .\tools\Test-SetupIme.ps1
       - name: Compile installer script
+        if: steps.changes.outputs.installer == 'true'
         shell: pwsh
         run: |
           $iscc = .\packaging\Find-InnoSetup.ps1
@@ -105,8 +152,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "IME 同梱のインストーラーを Inno Setup で通せませんでした (exit code $LASTEXITCODE)。" }
 
   release:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fork_by_hkrhd'
-    needs: [test, installer-script]
+    if: github.event_name == 'workflow_dispatch' && inputs.package && github.ref == 'refs/heads/fork_by_hkrhd'
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

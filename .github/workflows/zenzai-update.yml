@@ -2,7 +2,7 @@ name: zenzai-update
 
 on:
   schedule:
-    - cron: '17 */12 * * *'
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:

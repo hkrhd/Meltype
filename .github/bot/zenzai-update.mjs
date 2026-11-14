@@ -83,13 +83,14 @@ export async function run({
   // 通知の比較元と PR の親は、同じ fork_by_hkrhd のコミットに固定する。
   const baseRef = await (await request(`${github}/git/ref/heads/${Base}`)).json();
   const base = await (await request(`${github}/git/commits/${baseRef.object.sha}`)).json();
-  const source = await (await request(`${github}/contents/mac/fetch-zenzai-model.sh?ref=${base.sha}`)).json();
-  if (source.encoding !== 'base64') throw new Error('モデル取得スクリプトを読めませんでした。');
-  const script = Buffer.from(source.content, 'base64').toString('utf8');
-  const pinned = script.match(/^url=https:\/\/huggingface\.co\/(Miwa-Keita\/zenz-v([0-9]+(?:\.[0-9]+)*)-small-gguf)\/resolve\/([0-9a-f]{40})\/ggml-model-Q5_K_M\.gguf$/m);
-  const checksum = script.match(/^checksum=([0-9a-f]{64})$/m)?.[1];
-  if (!pinned || !checksum) throw new Error('固定中のモデル情報の形式が想定と異なります。');
-  const current = { id: pinned[1], version: pinned[2], revision: pinned[3], checksum };
+  const source = await (await request(`${github}/contents/native/zenzai/zenzai.env?ref=${base.sha}`)).json();
+  if (source.encoding !== 'base64') throw new Error('モデルの共通設定を読めませんでした。');
+  const config = Buffer.from(source.content, 'base64').toString('utf8');
+  const version = config.match(/^ZENZ_NAME=zenz-v([0-9]+(?:\.[0-9]+)*)-small-Q5_K_M\.gguf$/m)?.[1];
+  const revision = config.match(/^ZENZ_COMMIT=([0-9a-f]{40})$/m)?.[1];
+  const checksum = config.match(/^ZENZ_SHA256=([0-9a-f]{64})$/m)?.[1];
+  if (!version || !revision || !checksum) throw new Error('固定中のモデル情報の形式が想定と異なります。');
+  const current = { id: `Miwa-Keita/zenz-v${version}-small-gguf`, version, revision, checksum };
 
   const models = await list('https://huggingface.co/api/models?author=Miwa-Keita&search=zenz&limit=100');
   const candidates = models.flatMap(model => {

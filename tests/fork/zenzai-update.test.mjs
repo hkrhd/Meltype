@@ -2,6 +2,7 @@
 // Copyright (C) 2026 hkrhd
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { run } from '../../.github/bot/zenzai-update.mjs';
 
 const Current = 'Miwa-Keita/zenz-v3.1-small-gguf';
@@ -19,6 +20,10 @@ function service({ id = New, checksum = NewChecksum } = {}) {
     },
     branches: new Map(), pulls: [], writes: [], failMetadata: false, failPull: false,
     modelNextPage: [], pullNextPage: [],
+    config: readFileSync(new URL('../../native/zenzai/zenzai.env', import.meta.url), 'utf8')
+      .replace(/^ZENZ_NAME=.*$/m, 'ZENZ_NAME=zenz-v3.1-small-Q5_K_M.gguf')
+      .replace(/^ZENZ_COMMIT=.*$/m, `ZENZ_COMMIT=${'d'.repeat(40)}`)
+      .replace(/^ZENZ_SHA256=.*$/m, `ZENZ_SHA256=${OldChecksum}`),
   };
   const json = (data, status = 200, headers) => new Response(JSON.stringify(data), { status, headers });
   state.fetchImpl = async (url, options) => {
@@ -41,9 +46,9 @@ function service({ id = New, checksum = NewChecksum } = {}) {
     const path = pathname.replace('/repos/hkrhd/Meltype', '');
     if (path === '/git/ref/heads/fork_by_hkrhd') return json({ object: { sha: 'b'.repeat(40) } });
     if (path === `/git/commits/${'b'.repeat(40)}`) return json({ sha: 'b'.repeat(40), tree: { sha: 'c'.repeat(40) } });
-    if (path === '/contents/mac/fetch-zenzai-model.sh') {
-      const source = `checksum=${OldChecksum}\nurl=https://huggingface.co/${Current}/resolve/${'d'.repeat(40)}/ggml-model-Q5_K_M.gguf\n`;
-      return json({ encoding: 'base64', content: Buffer.from(source).toString('base64') });
+    if (path === '/contents/native/zenzai/zenzai.env') {
+      assert.equal(searchParams.get('ref'), 'b'.repeat(40));
+      return json({ encoding: 'base64', content: Buffer.from(state.config).toString('base64') });
     }
     if (path === '/pulls' && method === 'GET') {
       // 実際の GitHub と同様に base・head・state で絞り込む。
@@ -99,6 +104,16 @@ test('新系列の small / Q5_K_M を Draft PR で通知し、変更は候補文
   assert.equal(api.report.content, pr.body);
   assert.ok(api.report.content.includes(NewChecksum));
   assert.ok(!api.writes.some(write => write.pathname.includes('fetch-zenzai-model.sh')));
+  assert.ok(!api.writes.some(write => write.pathname.includes('zenzai.env')));
+});
+
+test('共通設定の版・リビジョン・ハッシュが不足したら通知せず失敗する', async () => {
+  for (const key of ['ZENZ_NAME', 'ZENZ_COMMIT', 'ZENZ_SHA256']) {
+    const api = service();
+    api.config = api.config.replace(new RegExp(`^${key}=.*$`, 'm'), '');
+    await assert.rejects(api.run(), /固定中のモデル情報/);
+    assert.equal(api.writes.length, 0);
+  }
 });
 
 test('同系列の重みの差し替えも通知する', async () => {
