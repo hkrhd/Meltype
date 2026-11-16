@@ -22,6 +22,8 @@ internal static partial class CompositionTests
             if (live) Assert.Equal("何" + suffix, k.Showing, "ライブ変換で数量の疑問詞にする: " + prefix + suffix);
             k.Type(" ");
             Assert.Equal("何" + suffix, k.Showing, "Space で変換し、空白を勝手に確定しない: " + prefix + suffix);
+            // 変換を始めると最後の文節を選ぶので、「何」の文節に戻る
+            k.Press(VirtualKeys.Left);
             var kana = k.Host.View!.Candidates.ToList().IndexOf("なん");
             Assert.True(kana >= 0, "固有名詞などに使う「なん」も選べる");
             k.Type("\n");
@@ -29,10 +31,12 @@ internal static partial class CompositionTests
 
             var alternative = new Keyboard(live: live);
             alternative.Type(prefix + suffix + " ");
+            alternative.Press(VirtualKeys.Left);
             alternative.Controller.SelectCandidate(alternative.Host.View!.Candidates.ToList().IndexOf("なん"));
             alternative.Type("\n");
             Assert.Equal("なん" + suffix, alternative.Host.Document, "かなの候補も確定できる");
             alternative.Type(prefix + suffix + " ");
+            alternative.Press(VirtualKeys.Left);
             Assert.True(alternative.Host.View!.Candidates.Contains("何"), "かなを学習した後も「何」を選び直せる");
         }
     }

@@ -36,6 +36,8 @@ final class DictionarySyncTests: XCTestCase {
 
     private func openDatabase(_ source: URL? = nil) throws {
         XCTAssertEqual(sqlite3_open((source ?? database).path, &connection), SQLITE_OK)
+        // 同期処理の読み取りと重なっても待って書く。
+        sqlite3_busy_timeout(connection, 2000)
         try execute("PRAGMA journal_mode=WAL")
         try execute("CREATE TABLE ZTEXTREPLACEMENTENTRY (ZSHORTCUT TEXT, ZPHRASE TEXT, ZWASDELETED INTEGER)")
     }
@@ -148,8 +150,15 @@ final class DictionarySyncTests: XCTestCase {
         let sync = MacUserDictionarySync(directory: directory.path, database: deferred)
         sync.start()
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
-        try FileManager.default.createDirectory(at: deferred.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try openDatabase(deferred)
+        // OS と同じく、作成途中の DB を見せずにディレクトリごと現れるようにする。
+        let staging = root.appendingPathComponent("staging")
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        try openDatabase(staging.appendingPathComponent(deferred.lastPathComponent))
+        sqlite3_close(connection)
+        connection = nil
+        try FileManager.default.moveItem(at: staging, to: deferred.deletingLastPathComponent())
+        XCTAssertEqual(sqlite3_open(deferred.path, &connection), SQLITE_OK)
+        sqlite3_busy_timeout(connection, 2000)
         try replace("('あとから', '起動後の登録', 0)")
         waitForWords(["あとから\t起動後の登録"])
         withExtendedLifetime(sync) {}

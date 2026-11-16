@@ -10,7 +10,7 @@
 - `zenzai-update.test.mjs`: 外部 API を再現し、新系列・重み更新の通知、重複抑制、障害時の停止を検証。
   `node --test tests/fork/zenzai-update.test.mjs` で実行し、GitHub には書き込みません。
 - `mac/Tests/ForkMacTests/DictionarySyncTests.swift` (リポジトリ直下からのパス): 一時 SQLite DB を使い、自動同期、WAL・DB 入れ替えの監視、スリープ時の再読込を検証。
-- `mac/InputChecks.tsv`: Zenzai の変換例と記号入力の期待値。upstream の
+- `mac/InputChecks.tsv`: 記号・ショートカット表記・区切り線の入力の期待値。upstream の
   `mac/Resources/InputChecks.tsv` と別に実行します。
 - `mac/CandidateChecks.tsv`: 入力キー列と選択・確定する候補。`--check-candidates` が
   Space で一覧を開き、候補の位置に依存せず文節ごとに選択して文章全体の確定結果を確認します。

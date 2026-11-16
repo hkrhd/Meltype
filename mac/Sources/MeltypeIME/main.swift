@@ -36,6 +36,7 @@ func runIsolatedChecks(inputPath: String?, candidatePath: String? = nil, predict
     let files = FileManager.default
     if ProcessInfo.processInfo.environment["MELTYPE_DATA_DIR"] != nil {
         NativeCore.shared.initialize()
+        defer { NativeCore.shared.shutdown() }
         return runChecks(inputPath: inputPath, candidatePath: candidatePath, predictions: predictions)
     }
     let data = files.temporaryDirectory.appendingPathComponent("meltype-input-check.\(UUID().uuidString)", isDirectory: true)
@@ -49,12 +50,15 @@ func runIsolatedChecks(inputPath: String?, candidatePath: String? = nil, predict
                 status = 1
             }
         }
+        // Core は最初に参照したデータの保存先を保持するので、読み込む前に設定する。
         guard setenv("MELTYPE_DATA_DIR", data.path, 1) == 0 else {
             perror("MELTYPE_DATA_DIR")
             return 1
         }
         NativeCore.shared.initialize()
         status = runChecks(inputPath: inputPath, candidatePath: candidatePath, predictions: predictions)
+        // 検査で起動した llama-server を残さない
+        NativeCore.shared.shutdown()
     } catch {
         fputs("検査用の一時ディレクトリを作成できませんでした: \(error.localizedDescription)\n", stderr)
         return 1
@@ -137,7 +141,6 @@ func runChecks(inputPath: String?, candidatePath: String?, predictions: Bool) ->
         do {
             let content = try String(contentsOfFile: candidatePath, encoding: .utf8)
             let document = Document()
-            MeltypeConverter.shared.warmUp()
             var count = 0
             for line in content.split(separator: "\n") where !line.hasPrefix("#") {
                 let parts = line.split(separator: "\t", maxSplits: 1, omittingEmptySubsequences: false)
@@ -148,6 +151,8 @@ func runChecks(inputPath: String?, candidatePath: String?, predictions: Bool) ->
                 var view = type(" ", into: document)?.result.view
                 var lists: [[String]] = []
                 if let initial = view, initial.converting {
+                    // 変換を始めると最後の文節を選ぶので、先頭から候補を集める
+                    for _ in initial.clauses.indices.dropFirst() { view = document.send("KeyPressed", ["key": ["vk": 0x25]])?.result.view }
                     for clause in initial.clauses.indices {
                         if clause > 0 { view = document.send("KeyPressed", ["key": ["vk": 0x27]])?.result.view }
                         lists.append(view?.candidates?.items ?? [])
@@ -285,17 +290,6 @@ func runChecks(inputPath: String?, candidatePath: String?, predictions: Bool) ->
     return failures == 0 ? 0 : 1
 }
 
-if let index = CommandLine.arguments.firstIndex(of: "--convert") {
-    guard index + 1 < CommandLine.arguments.count else { exit(2) }
-    NativeCore.shared.initialize()
-    print(MeltypeConverter.shared.clauses(for: CommandLine.arguments[index + 1], context: nil).map(\.text).joined())
-    exit(0)
-}
-if CommandLine.arguments.contains("--benchmark-conversion") {
-    NativeCore.shared.initialize()
-    ConversionBenchmark.run()
-    exit(0)
-}
 if let index = CommandLine.arguments.firstIndex(of: "--check-candidates") {
     guard index + 1 < CommandLine.arguments.count else { exit(2) }
     exit(runIsolatedChecks(inputPath: nil, candidatePath: CommandLine.arguments[index + 1]))
@@ -336,7 +330,7 @@ func moveModeIndicatorSettingToConfig() {
 
 moveModeIndicatorSettingToConfig()
 
-// 本体 (libMeltypeNative.dylib) を読み込み、漢字変換・英単語の判定の関数を登録しておく。
+// 本体 (libMeltypeNative.dylib) を読み込み、英単語の判定を登録して変換エンジン (Mozc) を起動しておく。
 NativeCore.shared.initialize()
 
 // Input Method Kit のサーバーを起動する。入力欄 (クライアント) ごとに MeltypeInputController が作られる。
@@ -348,7 +342,6 @@ guard let bundleIdentifier = Bundle.main.bundleIdentifier,
 }
 candidatesWindow = IMKCandidates(server: server, panelType: kIMKSingleColumnScrollingCandidatePanel)
 NSRegisterServicesProvider(ModeServices.shared, ModeServices.portName)
-MeltypeConverter.shared.warmUp()
 let dictionaryWatcher = NativeCore.shared.dataDirectory.map {
     MacDictionaryWatcher(directory: $0, reload: { NativeCore.shared.reloadDictionaries() })
 }
@@ -356,4 +349,15 @@ dictionaryWatcher?.start()
 let dictionarySync = NativeCore.shared.dataDirectory.map { MacUserDictionarySync(directory: $0) }
 dictionarySync?.start()
 NativeCore.shared.startBackgroundConversion()
+// 終了するときに llama-server を止める (ログアウトなどの終了と、SIGTERM。強制終了で残ったものは、次に起動したときに止める)
+NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: nil) { _ in
+    NativeCore.shared.shutdown()
+}
+signal(SIGTERM, SIG_IGN)
+let terminationSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+terminationSource.setEventHandler {
+    NativeCore.shared.shutdown()
+    exit(0)
+}
+terminationSource.resume()
 NSApplication.shared.run()

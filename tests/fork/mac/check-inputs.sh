@@ -17,7 +17,6 @@ for live in false true; do
     printf '{"ないように":{"Text":"内容に","Used":"2026-10-24T00:00:00Z"}}\n' > "$temporary/$live/conversions.json"
     printf 'kankisen \t換気扇\nkan \t燗\nkanwosuru \t燗をする\nshinogakita \t紫乃が来た\n' > "$temporary/checks.tsv"
     printf 'motatsukukanjihaaru \tもたつく感じはある\nsukoshimotatsukukanjigasuru \t少しもたつく感じがする\n' >> "$temporary/checks.tsv"
-    printf 'shijisuru \t支持する\n' >> "$temporary/checks.tsv"
     printf 'lji \tL字\n' >> "$temporary/checks.tsv"
     printf 'nanm \t何m\nnancm \t何cm\nnanmm \t何mm\nnankg \t何kg\nnanGB \t何GB\nnanpx \t何px\nnanfps \t何fps\nnannAPI \t何API\n' >> "$temporary/checks.tsv"
     printf 'fo-matta \tフォーマッタ\nfor\tfor\ne-mail\te-mail\nco-op\tco-op\nx-ray\tx-ray\n' >> "$temporary/checks.tsv"

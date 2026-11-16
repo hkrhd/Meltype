@@ -19,6 +19,6 @@
 - このフォークの `upstream-update`・`zenzai-update`・`windows` を維持する。CI/CD を新設・変更したら一度手動実行して成功を確認する。
 - upstream 同期は書き込み可能な SSH デプロイキーを使う。公開鍵は Deploy keys、秘密鍵は `upstream-sync` Environment の `UPSTREAM_SYNC_SSH_KEY` に置き、`fork_by_hkrhd` からだけ利用可能にする。PR 作成には `GITHUB_TOKEN` を使う。キーの廃止・交換時は両方更新する。
 - Zenzai 更新通知は `.github/ZENZAI-UPDATE.md` の候補記録だけを変更する。同じ配布先・重みは再通知せず、説明文だけの変更・xsmall・別量子化形式は対象外。API 障害・必須情報の欠落は失敗として扱う。
-- モデル更新では互換性・ライセンスを確認し、推論上限1回・2回の精度を比較する。低下がなければ1回に減らす。
+- モデル更新では互換性・ライセンスを確認し、実エンジンの入力検証で精度が下がらないことを確かめる。
 - 配布物は Releases に保存し、Actions artifact は使わない。失敗した配布は下書きに残し、過去の公開リリース・タグは削除しない。
 - Actions のキャッシュは無料枠10 GB内に収め、予算 `$0` と `Stop usage when budget limit is reached` を維持する。

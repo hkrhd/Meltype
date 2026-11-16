@@ -322,7 +322,8 @@ jobs:
   mac:
     needs: release
     runs-on: macos-15
-    timeout-minutes: 60
+    # Mozc のビルドは初回 30〜40 分かかる (2 回目からは Bazel のキャッシュを使う)
+    timeout-minutes: 120
     permissions:
       contents: write
     env:
@@ -337,11 +338,25 @@ jobs:
           dotnet-version: 10.0.x
       - name: Check build architecture
         run: test "$(uname -m)" = arm64
+      # upstream の mac.yml と同じ手順で Mozc の変換ヘルパーをビルドする。
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
-          path: mac/.build
-          key: fork-mac-arm64-${{ runner.os }}-${{ hashFiles('mac/Package.swift', 'mac/Package.resolved', 'mac/fetch-zenzai-model.sh', 'mac/build-llama-metal.sh') }}
-          restore-keys: fork-mac-arm64-${{ runner.os }}-
+          path: |
+            ~/bazel-cache
+            ~/mozc/src/third_party_cache
+          key: mozc-macos-arm64-${{ hashFiles('native/mozc/MOZC_COMMIT') }}-${{ hashFiles('native/mozc/*.cc', 'native/mozc/BUILD.fragment') }}
+          restore-keys: |
+            mozc-macos-arm64-${{ hashFiles('native/mozc/MOZC_COMMIT') }}-
+      - name: Bazelisk
+        run: |
+          mkdir -p "$HOME/tools"
+          if ! curl -fsSL --retry 3 --connect-timeout 15 --max-time 120 -o "$HOME/tools/bazelisk" https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-darwin-arm64; then
+            curl -fsSL --retry 3 --connect-timeout 15 --max-time 120 -H 'Accept: application/octet-stream' -o "$HOME/tools/bazelisk" https://api.github.com/repos/bazelbuild/bazelisk/releases/assets/406879037
+          fi
+          echo "cee851f726789227d5561004e9904a52be45c3efb56f8b38b6993d6adbaa0409  $HOME/tools/bazelisk" | shasum -a 256 -c -
+          chmod +x "$HOME/tools/bazelisk"
+      - name: Build Mozc helper
+        run: BAZEL="$HOME/tools/bazelisk" native/mozc/build-mozc-helper.sh "$HOME/mozc" "$HOME/bazel-cache"
       - name: Signing certificate
         env:
           MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}

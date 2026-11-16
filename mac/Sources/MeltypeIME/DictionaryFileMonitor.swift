@@ -39,7 +39,8 @@ final class DictionaryFileMonitor {
             watches.removeValue(forKey: path)?.source.cancel()
             replaced = true
         }
-        for path in paths {
+        // 親から監視する。子を先に見ると、親の監視前に作られた子の作成通知を取りこぼす。
+        for path in paths.sorted(by: { $0.count < $1.count }) {
             var metadata = stat()
             guard lstat(path, &metadata) == 0 else {
                 guard errno == ENOENT else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }

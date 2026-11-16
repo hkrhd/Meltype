@@ -28,8 +28,7 @@ function report(current, candidate) {
 - SHA-256: \`${candidate.checksum}\`
 - [ライセンス・モデルカード](${source}/blob/${candidate.revision}/README.md): \`${candidate.license}\`
 
-ライセンスとエンジン・Metal との互換性を確認して更新してください。
-フォークの変換挙動を保ち、推論上限1回と2回の精度を比較し、低下がなければ1回に減らしてください。
+ライセンスと同梱の llama-server との互換性を確認し、\`native/zenzai/zenzai.env\` を更新してください。
 \`bash mac/update.sh\` で実機へインストールして動作確認し、変換品質・性能の結果を報告してください。
 `;
 }

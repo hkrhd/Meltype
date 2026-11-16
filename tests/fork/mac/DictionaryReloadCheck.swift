@@ -19,10 +19,9 @@ struct DictionaryReloadCheck {
             guard let address = dlsym(library, name) else { fatalError("C ABI がありません: \(name)") }
             return unsafeBitCast(address, to: T.self)
         }
-        typealias Clauses = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>?
-        typealias Candidates = @convention(c) (UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>?
         typealias IsWord = @convention(c) (UnsafePointer<CChar>?) -> Int32
-        typealias Init = @convention(c) (Clauses, Candidates, IsWord) -> Int32
+        typealias Init = @convention(c) (UnsafePointer<CChar>?, IsWord) -> Int32
+        typealias Shutdown = @convention(c) () -> Void
         typealias Create = @convention(c) () -> UnsafeMutableRawPointer?
         typealias Destroy = @convention(c) (UnsafeMutableRawPointer?) -> Void
         typealias Reload = @convention(c) () -> Int32
@@ -34,7 +33,13 @@ struct DictionaryReloadCheck {
         let reload = symbol("meltype_reload_dictionaries", Reload.self)
         let key = symbol("meltype_ime_handle", Key.self)
         let free = symbol("meltype_free", Free.self)
-        precondition(initialize({ _, _ in nil }, { _ in nil }, { _ in 0 }) == 1)
+        let shutdown = symbol("meltype_shutdown", Shutdown.self)
+        // 本番と同じく、Frameworks の隣の Resources にある Mozc・Zenzai を使う。
+        let resources = URL(fileURLWithPath: CommandLine.arguments[1]).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Resources").path
+        precondition(resources.withCString { initialize($0, { _ in 0 }) } == 1, "Mozc を起動できません")
+        // 変換で起動した llama-server を残さない。
+        defer { shutdown() }
         try "{\"LiveConversion\":false}".write(to: root.appendingPathComponent("config.json"), atomically: true, encoding: .utf8)
 
         func check(_ value: Bool, _ message: String = "入力結果が一致しません") {
@@ -61,8 +66,7 @@ struct DictionaryReloadCheck {
         guard let composing = create(), let originalIdle = create() else { fatalError("入力欄を作れません") }
         var idle = originalIdle
         defer { destroy(composing); destroy(idle) }
-        let original = try type("papitto", in: idle).0
-        precondition(original != "papitto")
+        check(try type("papitto", in: idle).0 != "papitto", "登録前は日本語として読む")
         _ = try type("\n", in: idle)
         let pending = try type("mos", in: composing).0
         var updates = 0
@@ -96,7 +100,8 @@ struct DictionaryReloadCheck {
         check(try type("\n", in: composing).1 == pending, "入力中の文字が変化しました")
         try FileManager.default.removeItem(at: english)
         waitForUpdate(3)
-        check(try type("papitto", in: idle).0 == original)
+        // 英語辞書から消した語は、再び日本語として読む (表示の形はライブ変換の設定による)。
+        check(try type("papitto", in: idle).0 != "papitto")
         print(String(format: "PASS 辞書保存→OS通知→C ABI→入力・確定、削除反映、入力途中の保持 (反映 %.3f秒)", latency))
         withExtendedLifetime(watcher) {}
     }

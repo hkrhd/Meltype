@@ -6,8 +6,7 @@
 
 ### 変換精度
 
-- Mac の漢字変換に Zenzai small v3.2（Metal）を使う。同音異義語はモデルと辞書の候補から選べる。
-- 日本語の読みから生成された小文字英単語は候補の後ろに回す（`fo-matta → フォーマッタ`）。英語の直接入力・略語・ユーザー辞書の表記は維持する。
+- 日本語の読みから生成された小文字英単語より日本語候補を優先する（`fo-matta → フォーマッタ`）。英語の直接入力・略語・ユーザー辞書の表記は維持する。
 - 日英の区切り判定、最後の文節からの予測、あいさつの補完、括弧・8桁の日付の候補を追加。
 - かなのまま残った部分は学習で自動上書きしない。単独入力の学習と候補の選び直しは維持する。
 - 短い登録語で終助詞の先頭だけを切り出さず、読み全体の学習を分割より優先する（`けい → 径` があっても、一度選んだ `keisann → 計算` を維持）。直前に日本語があっても、Space・Enterの前から学習した表記で表示する。
@@ -40,7 +39,9 @@
 
 ## ビルドと実機適用
 
-Mac は Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK（10.0.403 以降）、Xcode、CMake が必要です。
+Mac は Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
+漢字変換は upstream と同じ Mozc の変換ヘルパーと Zenzai（llama-server・zenz-v3.2-small）で、Zenzai はビルドスクリプトが取得します。
+Mozc の変換ヘルパーは `native/mozc/build-mozc-helper.sh`（Bazelisk が必要、初回30〜40分）で `native/mozc/bin/mac/` に作るか、`native/mozc/` が同じ upstream リリースの Mac 版 ZIP の `Meltype.app/Contents/Resources/mozc/` から置きます。
 
 ```sh
 bash mac/build-cli.sh --test --build   # Core・Swift のテストとビルド
@@ -55,23 +56,19 @@ dotnet run --project src/Meltype.Core.Tests -- --eval
 dotnet run --project src/Meltype.Core.Tests -- --repro kyouhagoogle enter
 node tools/check-dictionaries.mjs       # 辞書を変更したとき
 python3 tools/mcfly-terms.py --min-count 3  # 英語辞書に足す語をシェル履歴から探す（履歴本文は出さない）
-bash mac/benchmark-conversion.sh        # Zenzai の速度・精度比較
 ```
 
 McFly の集計結果は自動で辞書に追加されません。簡易解析のため、個人情報や不要な語が混ざっていないか公開・登録前に確認してください。
-
-Zenzai のモデル・Metal ランタイムはビルドスクリプトで取得します。モデル更新時は推論上限1回・2回を比較します。
-`--convert` と `--benchmark-conversion` の `--inference-limit 1`〜`5` で比較でき、測定結果は `mac/.build/benchmarks/` に残ります。
 
 版番号は `mac/fork-version.sh` が upstream のタグとコミットから生成します。実機適用はコミット前なので `.dirty` が付きます。
 必要なら `MELTYPE_VERSION=... bash mac/update.sh` で指定できます。upstream のバージョンファイルは変更しません。
 
 ## 更新と配布
 
-2026-11-14 に upstream の 1.5.1 系列（`48b115d9`、前回から18コミット）を統合しました。
-Zenzai の候補採用条件の改善、Windows 設定画面の「適用」ボタン、Windows CI の外部コマンド失敗時の停止を取り込みました。
-upstream 単体でフォークの Core テスト37件を評価し、6件合格・29件失敗・2件は独自API未対応でした。今回不要になった独自修正はなく、既存の入力仕様を維持しています。
-統合後は Core 911件・Swift 43件と実エンジンの入力検証が合格しています。
+2026-11-16 に upstream の 1.6.0 系列（`cbb3a171`、前回から177コミット）を統合しました。
+Mac の漢字変換は upstream に合わせて azooKey から Mozc＋Zenzai（llama-server）に移し、azooKey・Metal ランタイムの自前ビルド・推論上限の比較・変換ベンチマークは廃止しました。
+同条件の一般文44件では、旧 azooKey 版と新エンジンの正解数は同じでした。かなだけの読みに英字を足した Zenzai の答え（`ふぉーまった → forMATTA`）は Mozc の候補で作れる場合だけ使います。
+upstream 単体でフォークの Core テストを評価し、前回と同じ5件合格でした。統合後は Core 946件・Swift 43件と実エンジンの入力検証が合格しています。
 
 フォーク版は自動更新の対象外です。[Releases](https://github.com/hkrhd/Meltype/releases) の ZIP、または上記の実機適用コマンドで更新します。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
