@@ -89,8 +89,12 @@ public sealed partial class CompositionDetector
 
     private enum Side : byte { None, Japanese, English, Sentence }
 
-    /// <summary>区切りの 1 つの候補。Kana は日本語の候補の読み。Letters は英字を含む日本語の候補か。Neutral は記号・数字・空白 (言語を切り替えない)。</summary>
-    private readonly record struct LatticeEdge(int Start, int End, bool English, string Kana, bool Letters, bool Particle, bool Neutral = false, bool Name = false);
+    /// <summary>
+    /// 区切りの 1 つの候補。Kana は日本語の候補の読み。Letters は英字を含む日本語の候補か。Neutral は記号・数字・空白 (言語を切り替えない)。
+    /// AfterJapanese は、すぐ前に日本語を打ったときだけ使う語 (英単語と同じ綴りのユーザー辞書の語: とく|bee の べえ。単独の bee・honeybee は英語)。
+    /// </summary>
+    private readonly record struct LatticeEdge(int Start, int End, bool English, string Kana, bool Letters, bool Particle, bool Neutral = false, bool Name = false,
+        bool AfterJapanese = false);
 
     private sealed record LatticeNode(double Cost, LatticeNode? Previous, LatticeEdge Edge);
 
@@ -189,6 +193,7 @@ public sealed partial class CompositionDetector
             if (edge.English && state.IsEnglish && edge.End - edge.Start <= 2 &&
                 text[edge.Start..edge.End] is var learnedParticle && learnedParticle.All(char.IsAsciiLetterLower) &&
                 Memory?.Get(learnedParticle) == true && IsNounParticle(_romaji.ConvertLenient(learnedParticle, final: true))) return;
+            if (edge.AfterJapanese && !(state.Side == Side.Japanese && !state.PreviousEnglish && edge.Start > 0 && char.IsAsciiLetter(text[edge.Start - 1]))) return;
             double step;
             LatticeState next;
             var japanese = !edge.English && !edge.Neutral;
@@ -449,7 +454,7 @@ public sealed partial class CompositionDetector
     {
         var particle = IsNounParticle(kana);
         if (RomajiTypoCorrector.CommonWordCost(kana) is { } cost) return (new LatticeEdge(start, end, false, kana, true, particle), cost);
-        if (CommonReadings.Phrases.Contains(kana) || _userJapanese.Contains(kana) || UserDictionary?.IsUserKanaWord(kana) == true) return (new LatticeEdge(start, end, false, kana, true, false), JapaneseWordCost);
+        if (CommonReadings.Phrases.Contains(kana) || _userJapanese.Contains(kana)) return (new LatticeEdge(start, end, false, kana, true, false), JapaneseWordCost);
         if (CommonReadings.Katakana.Contains(kana) || CommonReadings.Brands.Contains(kana)) return (new LatticeEdge(start, end, false, kana, true, false), KatakanaWordCost);
         return (new LatticeEdge(start, end, false, kana, true, false), double.NaN);
     }
@@ -469,6 +474,8 @@ public sealed partial class CompositionDetector
         void Add(int end, string reading, bool wordOnly = false)
         {
             var (edge, cost) = JapaneseEdge(start, end, reading);
+            if (double.IsNaN(cost) && UserDictionary?.IsUserKanaWord(reading) == true)
+                (edge, cost) = (edge with { AfterJapanese = IsLatticeEnglishWord(text[start..end].ToLowerInvariant()) }, JapaneseWordCost);
             if (first && !wordOnly)
             {
                 // 1 音目は、語にならなくても読める (打っている途中の子音だけなら重み 0)

@@ -591,4 +591,39 @@ internal static partial class CompositionTests
             Detector.UserDictionary = null;
         }
     }
+
+    [Test]
+    public static void Fork_UserDictionary_EnglishSpelledSuffix_OnlyAfterJapanese()
+    {
+        // べえ → 兵衛 を登録すると、日本語の後ろの bee は 兵衛 にする。単独・英語の後ろ・空白の後ろの bee は英語のまま
+        var dictionary = new UserDictionary(null, builtIn: false);
+        dictionary.Add("べえ", "兵衛");
+        Detector.UserDictionary = dictionary;
+        try
+        {
+            var converter = new SplitConverter(new()
+            {
+                ["やまだべえ"] = [new("やまだ", "山田"), new("べえ", "ベエ")],
+                ["じんべえ"] = [new("じんべえ", "ジンベエ")],
+                ["やまだ"] = [new("やまだ", "山田")],
+            });
+            foreach (var (input, expected) in new[] {
+                ("yamadabee \n", "山田兵衛"),
+                ("jinbee \n", "甚兵衛"),
+                ("bee\n", "bee"),
+                ("honeybee\n", "honeybee"),
+                ("yamada bee\n", "山田bee"),
+            })
+            {
+                var k = new Keyboard(converter: converter, userDictionary: dictionary,
+                    moreCandidates: reading => reading == "じんべえ" ? ["ジンベエ", "甚兵衛"] : []);
+                k.Type(input);
+                Assert.Equal(expected, k.Host.Document, input);
+            }
+        }
+        finally
+        {
+            Detector.UserDictionary = null;
+        }
+    }
 }

@@ -496,7 +496,13 @@ public sealed partial class CompositionController
         if (_services.History?.Get(kana) is not null || _services.UserDictionary?.Split(kana) is not { } split)
             return ConvertWithEngine(kana, converter);
         var pieces = AlignUserWords(kana, split, converter);
-        if (pieces.All(p => p.Word is null && p.Engine is null)) return ConvertWithEngine(kana, converter);
+        if (pieces.All(p => p.Word is null && p.Engine is null))
+        {
+            var whole = ConvertWithEngine(kana, converter);
+            foreach (var clause in whole)
+                if (UserWordEnding(clause) is { } ending) Prefer(clause, ending);
+            return whole;
+        }
         var clauses = new List<Clause>();
         var registered = new List<Clause>();
         var parts = new List<Clause>();
@@ -525,8 +531,30 @@ public sealed partial class CompositionController
             var surrounding = (_precedingText ?? "") + string.Concat(clauses.Where(c => c != clause).Select(c => c.Text)) + (_followingText ?? "");
             var preferred = _services.ContextRules?.Choose(clause.Reading, surrounding, clause.Text, Standalone) ?? (registered.Contains(clause) ? _learning.LearnedConversion(clause.Reading) : null);
             if (preferred is not null) Prefer(clause, preferred);
+            else if (!registered.Contains(clause) && UserWordEnding(clause) is { } ending) Prefer(clause, ending);
         }
         return clauses;
+    }
+
+    /// <summary>
+    /// 文節の読みが登録語の読みで終わるのに、変換エンジンがその語にしなかった文節 (じんべえ → ジンベエ、べえ → 兵衛 を登録) は、
+    /// 変換エンジンの候補から登録語の表記で終わるもの (甚兵衛) を選ぶ。無ければ変換エンジンのまま。
+    /// </summary>
+    private string? UserWordEnding(Clause clause)
+    {
+        if (clause.IsEnglish || _services.UserDictionary is not { } dictionary || _learning.LearnedConversion(clause.Reading) is not null) return null;
+        var reading = clause.Reading;
+        for (var length = reading.Length - 1; length >= 2; length--)
+        {
+            var suffix = reading[^length..];
+            if (!dictionary.IsUserReading(suffix)) continue;
+            var words = dictionary.Lookup(suffix);
+            if (words.Any(w => clause.Text.EndsWith(w, StringComparison.Ordinal))) return null;
+            var found = clause.Candidates.Concat(_services.MoreCandidates?.Invoke(reading) ?? [])
+                .FirstOrDefault(c => words.Any(w => c.Length > w.Length && c.EndsWith(w, StringComparison.Ordinal)));
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     /// <summary>
