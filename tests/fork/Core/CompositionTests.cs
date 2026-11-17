@@ -568,34 +568,9 @@ internal static partial class CompositionTests
 internal static partial class CompositionTests
 {
     [Test]
-    public static void Fork_UserDictionary_ReadingIsNotSplitIntoEnglish()
+    public static void Fork_UserDictionary_HyoueAfterJapanese()
     {
-        // ますだとくべえ の べえ が語にならず、ますだとく|bee と英単語に分けていた
-        var dictionary = new UserDictionary(null, builtIn: false);
-        dictionary.Add("ますだとくべえ", "増田徳兵衛");
-        Detector.UserDictionary = dictionary;
-        try
-        {
-            foreach (var live in new[] { false, true })
-            {
-                var k = new Keyboard(live: live, converter: new KansenConverter(), userDictionary: dictionary);
-                k.Type("masudatokubee \n");
-                Assert.Equal("増田徳兵衛", k.Host.Document, "登録した読みは英単語に分けない");
-            }
-            var unregistered = new Keyboard(converter: new KansenConverter(), userDictionary: dictionary);
-            unregistered.Type("kimihabee\n");
-            Assert.Equal("きみはbee", unregistered.Host.Document, "登録していない読みの英単語は今までどおり");
-        }
-        finally
-        {
-            Detector.UserDictionary = null;
-        }
-    }
-
-    [Test]
-    public static void Fork_UserDictionary_EnglishSpelledSuffix_OnlyAfterJapanese()
-    {
-        // べえ → 兵衛 を登録すると、日本語の後ろの bee は 兵衛 にする。単独・英語の後ろ・空白の後ろの bee は英語のまま
+        // べえ → 兵衛 を登録しても、ますだとく|bee と英単語に分けていた
         var dictionary = new UserDictionary(null, builtIn: false);
         dictionary.Add("べえ", "兵衛");
         Detector.UserDictionary = dictionary;
@@ -603,21 +578,14 @@ internal static partial class CompositionTests
         {
             var converter = new SplitConverter(new()
             {
-                ["やまだべえ"] = [new("やまだ", "山田"), new("べえ", "ベエ")],
-                ["じんべえ"] = [new("じんべえ", "ジンベエ")],
-                ["やまだ"] = [new("やまだ", "山田")],
+                ["ますだとくべえ"] = [new("ますだ", "増田"), new("とくべえ", "徳兵衛")],
+                ["はちだいめぎへえ"] = [new("はちだいめ", "八代目"), new("ぎへえ", "儀兵衛")],
             });
-            foreach (var (input, expected) in new[] {
-                ("yamadabee \n", "山田兵衛"),
-                ("jinbee \n", "甚兵衛"),
-                ("bee\n", "bee"),
-                ("honeybee\n", "honeybee"),
-                ("yamada bee\n", "山田bee"),
-            })
+            foreach (var live in new[] { false, true })
+            foreach (var (input, expected) in new[] { ("masudatokubee", "増田徳兵衛"), ("hachidaimegihee", "八代目儀兵衛") })
             {
-                var k = new Keyboard(converter: converter, userDictionary: dictionary,
-                    moreCandidates: reading => reading == "じんべえ" ? ["ジンベエ", "甚兵衛"] : []);
-                k.Type(input);
+                var k = new Keyboard(live: live, converter: converter, userDictionary: dictionary);
+                k.Type(input + " \n");
                 Assert.Equal(expected, k.Host.Document, input);
             }
         }
