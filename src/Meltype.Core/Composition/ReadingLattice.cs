@@ -449,7 +449,7 @@ public sealed partial class CompositionDetector
     {
         var particle = IsNounParticle(kana);
         if (RomajiTypoCorrector.CommonWordCost(kana) is { } cost) return (new LatticeEdge(start, end, false, kana, true, particle), cost);
-        if (CommonReadings.Phrases.Contains(kana) || _userJapanese.Contains(kana)) return (new LatticeEdge(start, end, false, kana, true, false), JapaneseWordCost);
+        if (CommonReadings.Phrases.Contains(kana) || _userJapanese.Contains(kana) || UserDictionary?.IsUserKanaWord(kana) == true) return (new LatticeEdge(start, end, false, kana, true, false), JapaneseWordCost);
         if (CommonReadings.Katakana.Contains(kana) || CommonReadings.Brands.Contains(kana)) return (new LatticeEdge(start, end, false, kana, true, false), KatakanaWordCost);
         return (new LatticeEdge(start, end, false, kana, true, false), double.NaN);
     }
@@ -545,7 +545,8 @@ public sealed partial class CompositionDetector
         {
             // 語の頭でなくなったら、それより長い語は無い (1 音目は語にならなくても読む)
             if (!first && !RomajiTypoCorrector.CommonHasPrefix(kana) && !CommonReadings.Katakana.HasPrefix(kana) && !CommonReadings.Brands.HasPrefix(kana) &&
-                !CommonReadings.Phrases.HasPrefix(kana) && !_userJapanesePrefixes.Contains(kana)) break;
+                !CommonReadings.Phrases.HasPrefix(kana) && !_userJapanesePrefixes.Contains(kana) &&
+                UserDictionary?.HasUserKanaWordPrefix(kana) != true) break;
             var unit = units[k];
             if (!IsKanaUnit(unit) || !kanaInput && unit.Raw.Any(char.IsAsciiLetterUpper)) break;
             var from = _preparedRawOffsets[k];

@@ -564,3 +564,31 @@ internal static partial class CompositionTests
         Assert.Equal("もたつく感じはある", liveInput.Showing, "ライブ変換でも送り仮名を分断しない");
     }
 }
+
+internal static partial class CompositionTests
+{
+    [Test]
+    public static void Fork_UserDictionary_ReadingIsNotSplitIntoEnglish()
+    {
+        // ますだとくべえ の べえ が語にならず、ますだとく|bee と英単語に分けていた
+        var dictionary = new UserDictionary(null, builtIn: false);
+        dictionary.Add("ますだとくべえ", "増田徳兵衛");
+        Detector.UserDictionary = dictionary;
+        try
+        {
+            foreach (var live in new[] { false, true })
+            {
+                var k = new Keyboard(live: live, converter: new KansenConverter(), userDictionary: dictionary);
+                k.Type("masudatokubee \n");
+                Assert.Equal("増田徳兵衛", k.Host.Document, "登録した読みは英単語に分けない");
+            }
+            var unregistered = new Keyboard(converter: new KansenConverter(), userDictionary: dictionary);
+            unregistered.Type("kimihabee\n");
+            Assert.Equal("きみはbee", unregistered.Host.Document, "登録していない読みの英単語は今までどおり");
+        }
+        finally
+        {
+            Detector.UserDictionary = null;
+        }
+    }
+}

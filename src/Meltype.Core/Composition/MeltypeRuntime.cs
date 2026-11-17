@@ -63,6 +63,7 @@ public sealed class MeltypeRuntime : IDisposable
         Phrases = new PhraseHistory(Path.Combine(dataDirectory, "phrases.txt"));
         // dictionaries/ に置いた macOS の「ユーザ辞書」の .plist も読む (#40)
         UserDictionary = new UserDictionary(Path.Combine(dataDirectory, "userdict.txt"), importDirectory: _userDirectory);
+        Detector.UserDictionary = UserDictionary;
         Snippets = new SnippetStore(Path.Combine(dataDirectory, "snippets.json"));
         _directEngine = new(() => ScoreEngine.CreateDefault(() => Settings.Current, _userDirectory));
         if (nowPlaying) _nowPlaying = NowPlayingSource.Create(() => Settings.Current.NowPlayingCandidates);
@@ -92,6 +93,7 @@ public sealed class MeltypeRuntime : IDisposable
         var detector = CompositionDetector.CreateDefault(_userDirectory);
         detector.SpellChecker = _wordChecker;
         detector.Memory = Languages;
+        detector.UserDictionary = UserDictionary;
         detector.UseJapanesePunctuationAfterEnglish = () => Settings.Current.JapanesePunctuationAfterEnglish;
         var typos = RomajiTypoCorrector.Load(detector.Romaji);
         Languages.IsCommonJapanese = typos.IsCommonJapanese;

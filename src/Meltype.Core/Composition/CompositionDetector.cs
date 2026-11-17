@@ -112,6 +112,9 @@ public sealed partial class CompositionDetector
     /// <summary>ユーザーが英字 / かなに直して覚えた語 (自動の判定より優先する)。</summary>
     public LanguageMemory? Memory { get; set; }
 
+    /// <summary>ユーザー辞書。登録した読みを英語との区切りで日本語の語にする。</summary>
+    public UserDictionary? UserDictionary { get; set; }
+
     /// <summary>英字の並びが、ローマ字としてよく使う日本語になるか (kyouha = 今日は、tomato = とまと)。無ければ使わない。</summary>
     public Func<string, bool>? IsCommonJapanese { get; set; }
 

@@ -356,10 +356,24 @@ public sealed class UserDictionary
         _byReading = byReading;
         _maxReadingLength = byReading.Count == 0 ? 0 : byReading.Keys.Max(k => k.Length);
         _builtInOnly = _builtIn.Select(w => w.Reading).Except(_words.Concat(_imported).Select(w => w.Reading)).ToHashSet(StringComparer.Ordinal);
+        var kanaReadings = _words.Concat(_imported).Select(w => w.Reading)
+            .Where(r => r.Length >= MinSplitReadingLength && r.All(KanaChars.IsHiraganaOrLongMark)).ToHashSet(StringComparer.Ordinal);
+        _kanaReadingPrefixes = kanaReadings.SelectMany(r => Enumerable.Range(1, r.Length).Select(n => r[..n])).ToHashSet(StringComparer.Ordinal);
+        _kanaReadings = kanaReadings;
     }
 
     // 同梱の語句だけにある読み (ユーザーが登録した語ではない)。
     private HashSet<string> _builtInOnly = new(StringComparer.Ordinal);
+
+    // ユーザーが登録した (取り込んだ) 2 文字以上のひらがなの読みと、その頭 (英語との区切りで日本語の語にする)。
+    private HashSet<string> _kanaReadings = new(StringComparer.Ordinal);
+    private HashSet<string> _kanaReadingPrefixes = new(StringComparer.Ordinal);
+
+    /// <summary>英語との区切りで 1 語として扱う、ユーザーが登録した読みか (ますだとくべえ を ますだとく|bee に分けない)。</summary>
+    public bool IsUserKanaWord(string kana) => _kanaReadings.Contains(kana);
+
+    /// <summary><see cref="IsUserKanaWord"/> の読みの頭か。</summary>
+    public bool HasUserKanaWordPrefix(string kana) => _kanaReadingPrefixes.Contains(kana);
 
     /// <summary>ユーザーが登録した (取り込んだ) 語の読みか。同梱の語句だけの読みなら false。</summary>
     public bool IsUserReading(string reading) => _byReading.ContainsKey(reading) && !_builtInOnly.Contains(reading);
