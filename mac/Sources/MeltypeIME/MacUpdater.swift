@@ -240,7 +240,7 @@ final class MacUpdater {
         posix_spawnattr_init(&attributes)
         defer { posix_spawnattr_destroy(&attributes) }
         posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETSID | POSIX_SPAWN_CLOEXEC_DEFAULT))
-        let arguments = ["/bin/bash", installer.path].map { strdup($0) } + [nil]
+        let arguments: [UnsafeMutablePointer<CChar>?] = [strdup("/bin/bash"), strdup(installer.path), nil]
         defer { arguments.forEach { free($0) } }
         var pid = pid_t()
         let status = posix_spawn(&pid, "/bin/bash", &actions, &attributes, arguments, environ)
