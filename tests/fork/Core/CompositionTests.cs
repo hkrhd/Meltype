@@ -77,6 +77,17 @@ internal static partial class CompositionTests
     }
 
     [Test]
+    public static void Fork_ThreeSoundKatakanaWord_IsNotSplitByTrailingEnglish()
+    {
+        foreach (var (typed, expected) in new[] { ("sukirude", "すきるで"), ("apudego", "あぷでご") })
+        {
+            var k = new Keyboard();
+            k.Type(typed + "\n");
+            Assert.Equal(expected, k.Host.Document, "スキル・アプデの後ろを英単語 (rude・go) に分けない: " + typed);
+        }
+    }
+
+    [Test]
     public static void Fork_LShape_DefaultsToCapitalLAndKanji()
     {
         foreach (var live in new[] { false, true })

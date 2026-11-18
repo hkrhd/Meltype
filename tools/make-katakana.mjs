@@ -5,8 +5,9 @@
 // 日英の区切り (ReadingLattice.cs) で、readings.txt に無いカタカナ語 (ホスティング) を日本語の語として読むのに使う。
 //   node tools/make-katakana.mjs JMdict_e.xml > dictionaries/katakana.txt
 // よく使う語の印の有無によらず、カタカナだけの読みを入れる。
-// 3 文字以下の語は入れない。英単語をローマ字で読むと、その一部に短いカタカナ語がたまたま現れて、英単語が日本語に割られる
-// (gameover の ガメ、thin の ティン、massive の シヴェ)。よく使う短いカタカナ語 (ペン) は readings.txt にある。
+// 2 音以下の語は入れない。英単語をローマ字で読むと、その一部に短いカタカナ語がたまたま現れて、英単語が日本語に割られる
+// (gameover の ガメ、thin の ティン、massive の シヴェ、adbyuu の ビュウ)。よく使う短いカタカナ語 (ペン) は readings.txt にある。
+// 3 文字は、小書きのかなを含まない 3 音の語 (スキル・アプデ) だけを入れる。
 import fs from 'node:fs';
 
 const xml = fs.readFileSync(process.argv[2], 'utf8');
@@ -15,7 +16,7 @@ const toHiragana = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charC
 const words = new Set();
 for (const [, reb] of xml.matchAll(/<reb>([ァ-ヶー]+)<\/reb>/g)) {
   const reading = toHiragana(reb);
-  if (reading.length >= 4) words.add(reading);
+  if (reading.length >= 4 || reading.length === 3 && !/[ぁぃぅぇぉゃゅょゎゕゖ]/.test(reading)) words.add(reading);
 }
 
 const out = [

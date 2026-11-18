@@ -21,6 +21,7 @@ for live in false true; do
     printf 'lji \tL字\n' >> "$temporary/checks.tsv"
     printf 'nanm \t何m\nnancm \t何cm\nnanmm \t何mm\nnankg \t何kg\nnanGB \t何GB\nnanpx \t何px\nnanfps \t何fps\nnannAPI \t何API\n' >> "$temporary/checks.tsv"
     printf 'fo-matta \tフォーマッタ\nfor\tfor\ne-mail\te-mail\nco-op\tco-op\nx-ray\tx-ray\n' >> "$temporary/checks.tsv"
+    printf 'sukirude \tスキルで\napudego \tアプデ後\n' >> "$temporary/checks.tsv"
     printf 'mainno\tmainの\nmainno \tmainの\nmainde\tmainで\nmainde \tmainで\nmainwo\tmainを\nmainwo \tmainを\n' >> "$temporary/checks.tsv"
     printf 'mainnoyousuwomite \tmainの様子を見て\n' >> "$temporary/checks.tsv"
     printf '1niti1kai \t1日1回\n1nichi1kai \t1日1回\n1nitini1kai \t1日に1回\n' >> "$temporary/checks.tsv"
@@ -43,6 +44,7 @@ for live in false true; do
         printf 'lji\tL字\n' >> "$temporary/checks.tsv"
         printf 'nancm\t何cm\nnanmm\t何mm\nnanpx\t何px\n' >> "$temporary/checks.tsv"
         printf 'fo-matta\tフォーマッタ\n' >> "$temporary/checks.tsv"
+        printf 'sukirude\tスキルで\napudego\tアプデ後\n' >> "$temporary/checks.tsv"
         printf 'ataranaiyouni\t当たらないように\nfurenaiyouni\t触れないように\nnaiyouni\t内容に\n' >> "$temporary/checks.tsv"
         printf '1niti1kai\t1日1回\n' >> "$temporary/checks.tsv"
         printf 'kankisen\t換気扇\nmotatsukukanjihaaru\tもたつく感じはある\n' >> "$temporary/checks.tsv"
@@ -51,6 +53,7 @@ for live in false true; do
     else
         printf 'mainnoyousuwomite\tmainのようすをみて\n' >> "$temporary/checks.tsv"
         printf 'kyouhagithubde\tきょうはGitHubで\n' >> "$temporary/checks.tsv"
+        printf 'sukirude\tすきるで\napudego\tあぷでご\n' >> "$temporary/checks.tsv"
     fi
     echo "ユーザー辞書・英単語と助詞の実変換テスト (LiveConversion=$live)"
     MELTYPE_DATA_DIR="$temporary/$live" "$app/Contents/MacOS/Meltype" --check-inputs "$temporary/checks.tsv"

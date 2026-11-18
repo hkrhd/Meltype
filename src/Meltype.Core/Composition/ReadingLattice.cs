@@ -28,6 +28,9 @@ public sealed partial class CompositionDetector
     private const double JapaneseWordCost = 1;
     // katakana.txt の語 (ほすてぃんぐ) と brands.txt の読み (ぎっとはぶ)。katakana.txt は英単語をカタカナにした語 (アマゾン) が多いので、同じ綴りの英単語 (amazon) に譲る
     private const double KatakanaWordCost = 1.1;
+    // katakana.txt の 3 文字の語 (すきる・あぷで)。英単語を読むと一部に現れやすい (thin の てぃん) ので、
+    // 英単語 1 つを割って切り替える道 (英単語 + 切り替え + 語) より重く、語にならないかな 1 音 (3) より軽くする
+    private const double ShortKatakanaWordCost = 2;
     // 語にならないかな 1 音、日本語の中に残る読めない英字 1 文字
     private const double UnknownKanaCost = 3;
     // 語にならない っ・ー、x で打った小書きの母音が語の 1 音目 (だめ|ぇ)
@@ -455,7 +458,9 @@ public sealed partial class CompositionDetector
         var particle = IsNounParticle(kana);
         if (RomajiTypoCorrector.CommonWordCost(kana) is { } cost) return (new LatticeEdge(start, end, false, kana, true, particle), cost);
         if (CommonReadings.Phrases.Contains(kana) || _userJapanese.Contains(kana)) return (new LatticeEdge(start, end, false, kana, true, false), JapaneseWordCost);
-        if (CommonReadings.Katakana.Contains(kana) || CommonReadings.Brands.Contains(kana)) return (new LatticeEdge(start, end, false, kana, true, false), KatakanaWordCost);
+        if (CommonReadings.Brands.Contains(kana)) return (new LatticeEdge(start, end, false, kana, true, false), KatakanaWordCost);
+        if (CommonReadings.Katakana.Contains(kana))
+            return (new LatticeEdge(start, end, false, kana, true, false), kana.Length > 3 ? KatakanaWordCost : ShortKatakanaWordCost);
         return (new LatticeEdge(start, end, false, kana, true, false), double.NaN);
     }
 
