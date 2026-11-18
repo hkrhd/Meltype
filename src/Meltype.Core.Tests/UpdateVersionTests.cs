@@ -35,10 +35,10 @@ internal static class UpdateVersionTests
     }
 
     [Test]
-    public static void UpdatePrerelease_IsOffByDefaultAndSharedByProfiles()
+    public static void UpdatePrerelease_IsOnByDefaultAndSharedByProfiles()
     {
         var settings = new Settings();
-        Assert.True(!settings.UpdatePrerelease, "標準は正式版だけ");
+        Assert.True(settings.UpdatePrerelease, "フォークの配布はすべてプレリリースなので標準で対象にする");
         Assert.True(!settings.ProfileValues().ContainsKey(nameof(Settings.UpdatePrerelease)), "プロファイルでは変えない");
     }
 }

@@ -11,6 +11,7 @@
   `node --test tests/fork/zenzai-update.test.mjs` で実行し、GitHub には書き込みません。
 - `mac/Tests/ForkMacTests/DictionarySyncTests.swift` (リポジトリ直下からのパス): 一時 SQLite DB を使い、自動同期、WAL・DB 入れ替えの監視、スリープ時の再読込を検証。
 - `mac/Tests/ForkMacTests/UpdaterTests.swift`: 偽の Releases 一覧と ZIP で、更新する版の選択、失敗した版の再試行抑止、ハッシュ検証、入力中の待機、`install.sh` の起動を検証。
+- `Windows/UpdaterTests.cs`: ビルド番号による新旧の比較と、手元のサーバーで再現した Releases からの `update.ps1` の取得・展開を検証（Windows のみ）。
 - `mac/InputChecks.tsv`: 記号・ショートカット表記・区切り線の入力の期待値。upstream の
   `mac/Resources/InputChecks.tsv` と別に実行します。
 - `mac/CandidateChecks.tsv`: 入力キー列と選択・確定する候補。`--check-candidates` が

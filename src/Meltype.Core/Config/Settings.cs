@@ -544,8 +544,8 @@ public sealed class Settings
     public bool AutoUpdate { get; set; } = true;
 
     [Category("12. 更新"), DisplayName("プレリリース版も自動で更新する"), Platforms(Platform.Windows),
-     Description("ON にすると、正式版の前に公開するプレリリース版 (1.3.1-pre.4 など) も自動更新の対象にします。新しい機能や修正を早く試せますが、不具合や動作の不安定さが含まれることがあります。OFF (標準) では正式版だけを対象にします。")]
-    public bool UpdatePrerelease { get; set; }
+     Description("ON にすると、正式版の前に公開するプレリリース版 (1.3.1-pre.4 など) も自動更新の対象にします。新しい機能や修正を早く試せますが、不具合や動作の不安定さが含まれることがあります。このフォークの配布はすべてプレリリースなので、標準で ON です。OFF にすると自動更新しません。")]
+    public bool UpdatePrerelease { get; set; } = true;
 
     [Category("1. 全般"), DisplayName("入力方式"), Description("ローマ字入力 / かな入力 (JIS、α版: 試験中)。Meltype キーボードでは、かな入力を選ぶと JIS かな配列で入力し (Shift+E = ぃ, Shift+Z = っ, Shift+ね = 、)、打ったキーの英字が英単語なら英字で見せます。")]
     [JsonConverter(typeof(InputStyleJsonConverter))]

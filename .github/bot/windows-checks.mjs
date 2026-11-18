@@ -25,7 +25,7 @@ if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
       for (const name of Object.keys(checks)) checks[name] = true;
     }
     if (/^src\/(Meltype\.(Core|Core\.Tests|Mac\.Native|Windows|Windows\.Tests)\/|Directory\.Build\.)/.test(file)
-        || /^(dictionaries\/|tests\/fork\/Core\/)/.test(file)
+        || /^(dictionaries\/|tests\/fork\/(Core|Windows)\/)/.test(file)
         || /^(Meltype\.sln|nuget\.config|global\.json|Directory\.(Build|Packages)\.(props|targets))$/.test(file)) checks.dotnet = true;
     if (file.startsWith('native/tip/')) { checks.tip = true; checks.dotnet = true; }
     if (file.startsWith('native/mozc/')) checks.mozc = true;

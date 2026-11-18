@@ -11,5 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Meltype.Windows\Meltype.Windows.csproj" />
     <ProjectReference Include="..\Meltype.Core.Tests\Meltype.Core.Tests.csproj" />
+    <Compile Include="../../tests/fork/Windows/**/*.cs" />
   </ItemGroup>
 </Project>

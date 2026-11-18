@@ -55,7 +55,7 @@ internal sealed class Updater : IDisposable
         {
             if (!File.Exists(ReadyFile)) return null;
             var parts = File.ReadAllText(ReadyFile).Trim().Split('\t');
-            if (parts.Length != 2 || !IsNewer(parts[0]) || !File.Exists(Path.Combine(parts[1], "install.ps1"))) return null;
+            if (parts.Length != 2 || !IsNewer(parts[0], AppInfo.Version) || !File.Exists(Path.Combine(parts[1], "install.ps1"))) return null;
             if (Config.ProjectInfo.IsPrerelease(parts[0]) && !allowPrerelease) return null;
             return (parts[0], parts[1]);
         }
@@ -78,7 +78,7 @@ internal sealed class Updater : IDisposable
             {
                 var tried = File.ReadAllText(ApplyingFile).Trim();
                 File.Delete(ApplyingFile);
-                if (IsNewer(tried))
+                if (IsNewer(tried, AppInfo.Version))
                 {
                     Log.Warn($"Meltype {tried} への更新に失敗したようです。もう一度ダウンロードするまで、自動では更新しません。");
                     File.Delete(ReadyFile);
@@ -248,8 +248,11 @@ internal sealed class Updater : IDisposable
         return output.Result;
     }
 
-    /// <summary>今の版より新しいか (1.3.1-pre.3 → 1.3.1-pre.4 → 1.3.1 の順)。</summary>
-    private static bool IsNewer(string version) => Config.ProjectInfo.CompareVersions(version, AppInfo.Version) > 0;
+    /// <summary>今の版より新しいか。このフォークは upstream の版の順に関係なく、通しのビルド番号 (1.6.0-hkrhd.2913.g… の 2913) で比べる。</summary>
+    internal static bool IsNewer(string version, string current) => ForkBuild(version) is { } next && ForkBuild(current) is { } now && next > now;
+
+    private static long? ForkBuild(string version) =>
+        System.Text.RegularExpressions.Regex.Match(version, @"[-.]hkrhd\.(\d+)\.") is { Success: true } match ? long.Parse(match.Groups[1].Value) : null;
 
     public void Dispose() => _timer.Dispose();
 }

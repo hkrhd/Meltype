@@ -17,6 +17,7 @@ on:
       - 'native/mozc/**'
       - 'dictionaries/**'
       - 'tests/fork/Core/**'
+      - 'tests/fork/Windows/**'
       - 'Meltype.sln'
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
@@ -50,6 +51,7 @@ on:
       - 'native/mozc/**'
       - 'dictionaries/**'
       - 'tests/fork/Core/**'
+      - 'tests/fork/Windows/**'
       - 'Meltype.sln'
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
@@ -197,7 +199,7 @@ jobs:
           - Mac: Apple Silicon / macOS 13.3 以降。Core・Swift テストと実エンジンの入力検証を実行済み。
           - Mac は ZIP を展開し、Install Meltype.command を実行してください。
           - 未署名の場合、OS の警告が出ることがあります。
-          - Mac 版は自動で更新します (config.json の AutoUpdate で停止)。Windows 版はこの Releases から手動で更新してください。
+          - インストール後は、この Releases から Windows・Mac とも自動で更新します。
           EOF
           gh release create "$tag" --target "$GITHUB_SHA" --title "Meltype $version" --notes-file "$RUNNER_TEMP/release.md" --draft --prerelease
 

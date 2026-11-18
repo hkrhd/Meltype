@@ -70,8 +70,8 @@ Mac の漢字変換は upstream に合わせて azooKey から Mozc＋Zenzai（l
 同条件の一般文44件では、旧 azooKey 版と新エンジンの正解数は同じでした。かなだけの読みに英字を足した Zenzai の答え（`ふぉーまった → forMATTA`）は Mozc の候補で作れる場合だけ使います。
 upstream 単体でフォークの Core テストを評価し、前回と同じ5件合格でした。統合後は Core 946件・Swift 43件と実エンジンの入力検証が合格しています。
 
-Mac 版は [Releases](https://github.com/hkrhd/Meltype/releases) から自動更新します（6時間ごとに確認し、10分間入力がないときに入れ替え。失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
-Windows のフォーク版は自動更新の対象外です。
+[Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.6.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認し、10分間入力がないときに入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
+Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
 upstream の Actions は GitHub 側でも無効化しています。フォークの `windows` は `fork-windows.yml` に分離し、追従用 `main` への push で upstream の検証・配布を起動させません。

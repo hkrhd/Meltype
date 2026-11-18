@@ -2,17 +2,20 @@
 # Copyright (C) 2026 Yukishiro
 
 # Meltype の更新を確認して、新しい版があればダウンロードして展開しておく (Meltype が定期的に呼ぶ)。
-#   update.ps1 -Repository yksr-melt/Meltype -CurrentVersion 0.1.2 -Directory %LOCALAPPDATA%\Meltype\update [-Prerelease]
-# -Prerelease を付けると、プレリリース版 (v1.3.1-pre.4 など) も含めて一番新しい版を見る (付けなければ正式版の最新だけ)。
-# GitHub の最新のリリースに Windows 版の zip (Meltype-<版>-windows.zip、前の名前は Meltype-test-*.zip) があり、版 (タグ v0.1.3) が今の版より新しければ、
-# <Directory>\<版> に展開し、<Directory>\ready.txt に「版 TAB 展開した場所」を書く。インストールは Meltype が install.ps1 を呼んで行う。
+#   update.ps1 -Repository hkrhd/Meltype -CurrentVersion 1.6.0-hkrhd.2913.g… -Directory %LOCALAPPDATA%\Meltype\update -Prerelease
+# このフォークの配布はすべてプレリリースで、-Prerelease が無ければ更新しない。
+# タグ hkrhd-build-<ビルド番号>-… のうち、Windows 版の zip (Meltype-<版>-windows.zip) があり、ビルド番号が今の版
+# (1.6.0-hkrhd.2913.g… の 2913) より大きい最新のリリースを、<Directory>\<版> に展開し、<Directory>\ready.txt に
+# 「版 TAB 展開した場所」を書く。インストールは Meltype が install.ps1 を呼んで行う。
 # 結果は標準出力に 1 行で返す: none (更新なし) / ready <版> / error <理由>
 
 param(
     [Parameter(Mandatory)] [string]$Repository,
     [Parameter(Mandatory)] [string]$CurrentVersion,
     [Parameter(Mandatory)] [string]$Directory,
-    [switch]$Prerelease
+    [switch]$Prerelease,
+    # テストでは手元のサーバーの一覧を渡す。
+    [string]$ReleasesUri = "https://api.github.com/repos/$Repository/releases?per_page=30"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,50 +23,22 @@ $ProgressPreference = 'SilentlyContinue'
 # 結果を UTF-8 で返す (Meltype が UTF-8 として読む)
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
-# 版 (1.3.1・1.3.1-pre.3) を比べる (Semantic Versioning の順。プレリリースは同じ数字の正式版より前)。
-# Left が新しければ 1、同じなら 0、古ければ -1。Meltype.Core の ProjectInfo.CompareVersions と同じ順。
-function Compare-MeltypeVersion([string]$Left, [string]$Right) {
-    $l = ($Left -split '\+')[0] -split '-', 2
-    $r = ($Right -split '\+')[0] -split '-', 2
-    $core = ([version]$l[0]).CompareTo([version]$r[0])
-    if ($core -ne 0 -or ($l.Count -eq 1 -and $r.Count -eq 1)) { return [Math]::Sign($core) }
-    if ($l.Count -eq 1) { return 1 }
-    if ($r.Count -eq 1) { return -1 }
-    $p = $l[1] -split '\.'
-    $q = $r[1] -split '\.'
-    for ($i = 0; $i -lt [Math]::Min($p.Count, $q.Count); $i++) {
-        $pn = $p[$i] -match '^\d+$'
-        $qn = $q[$i] -match '^\d+$'
-        if ($pn -and $qn) { $c = ([long]$p[$i]).CompareTo([long]$q[$i]) }
-        elseif ($pn) { $c = -1 }
-        elseif ($qn) { $c = 1 }
-        else { $c = [string]::CompareOrdinal($p[$i], $q[$i]) }
-        if ($c -ne 0) { return [Math]::Sign($c) }
-    }
-    return [Math]::Sign($p.Count - $q.Count)
-}
-
 try {
+    if (-not $Prerelease) { Write-Output 'none'; exit 0 }
+    if ($CurrentVersion -notmatch '[-.]hkrhd\.(\d+)\.') { Write-Output "error 今の版 $CurrentVersion からビルド番号を読めません"; exit 0 }
+    $build = [long]$Matches[1]
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     $headers = @{ 'User-Agent' = 'Meltype-Updater'; 'Accept' = 'application/vnd.github+json' }
-    if ($Prerelease) {
-        # releases/latest はプレリリースを返さないので、最近のリリースから一番新しい版を選ぶ (下書きと、版として読めないタグは除く)
-        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases?per_page=30" -Headers $headers -TimeoutSec 30
-        $release = $null
-        foreach ($candidate in $releases) {
-            if ($candidate.draft -or $candidate.tag_name -notmatch '^v?\d+(\.\d+){1,3}(-[0-9A-Za-z.]+)?$') { continue }
-            if (-not $release -or (Compare-MeltypeVersion ($candidate.tag_name -replace '^v', '') ($release.tag_name -replace '^v', '')) -gt 0) { $release = $candidate }
-        }
-        if (-not $release) { Write-Output 'none'; exit 0 }
+    $releases = Invoke-RestMethod -Uri $ReleasesUri -Headers $headers -TimeoutSec 30
+    $asset = $null
+    foreach ($candidate in $releases) {
+        if ($candidate.draft -or $candidate.tag_name -notmatch '^hkrhd-build-(\d+)-') { continue }
+        $number = [long]$Matches[1]
+        $windows = @($candidate.assets | Where-Object { $_.name -like 'Meltype-*-windows.zip' }) | Select-Object -First 1
+        if ($windows -and $number -gt $build) { $asset = $windows; $build = $number }
     }
-    else {
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases/latest" -Headers $headers -TimeoutSec 30
-    }
-    $latest = $release.tag_name -replace '^v', ''
-    if ((Compare-MeltypeVersion $latest $CurrentVersion) -le 0) { Write-Output 'none'; exit 0 }
-
-    $asset = @($release.assets | Where-Object { $_.name -like 'Meltype-*-windows.zip' -and $_.name -notlike '*-windows-portable.zip' }) + @($release.assets | Where-Object { $_.name -like 'Meltype-test-*.zip' }) | Select-Object -First 1
-    if (-not $asset) { Write-Output "error リリース $latest に zip がありません"; exit 0 }
+    if (-not $asset) { Write-Output 'none'; exit 0 }
+    $latest = $asset.name -replace '^Meltype-(.+)-windows\.zip$', '$1'
 
     $target = Join-Path $Directory $latest
     $ready = Join-Path $Directory 'ready.txt'
