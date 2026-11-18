@@ -70,14 +70,15 @@ Mac の漢字変換は upstream に合わせて azooKey から Mozc＋Zenzai（l
 同条件の一般文44件では、旧 azooKey 版と新エンジンの正解数は同じでした。かなだけの読みに英字を足した Zenzai の答え（`ふぉーまった → forMATTA`）は Mozc の候補で作れる場合だけ使います。
 upstream 単体でフォークの Core テストを評価し、前回と同じ5件合格でした。統合後は Core 946件・Swift 43件と実エンジンの入力検証が合格しています。
 
-フォーク版は自動更新の対象外です。[Releases](https://github.com/hkrhd/Meltype/releases) の ZIP、または上記の実機適用コマンドで更新します。
+Mac 版は [Releases](https://github.com/hkrhd/Meltype/releases) から自動更新します（6時間ごとに確認し、10分間入力がないときに入れ替え。失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
+Windows のフォーク版は自動更新の対象外です。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
 upstream の Actions は GitHub 側でも無効化しています。フォークの `windows` は `fork-windows.yml` に分離し、追従用 `main` への push で upstream の検証・配布を起動させません。
 
 - `upstream-update`: 2日に1回、日本時間21:17に `main` を同期し、更新依頼の Draft PR を作成します。
 - `zenzai-update`: 1日1回、日本時間12:17に small / Q5_K_M の更新を Draft PR で通知します。取り込み・モデル差し替え・自動マージはしません。
-- `windows`: push・PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を1つのジョブで実行します。手動実行では全検証を行い、`package` を有効にした場合だけ Windows・Mac の配布物を作成します。
+- `windows`: push・PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を1つのジョブで実行します。`fork_by_hkrhd` への push（Mac の変更も含む）と、手動実行で `package` を有効にした場合に Windows・Mac の配布物を作成します。
 
 ```sh
 gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 検証のみ

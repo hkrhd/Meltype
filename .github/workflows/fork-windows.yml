@@ -34,6 +34,9 @@ on:
       - '.github/workflows/fork-windows.yml'
       - '.github/bot/windows-checks.mjs'
       - 'tests/fork/windows-checks.test.mjs'
+      # Mac 版も push で配布し、自動更新の配信元にする。
+      - 'mac/**'
+      - 'tests/fork/mac/**'
   pull_request:
     branches: [fork_by_hkrhd]
     paths:
@@ -75,9 +78,9 @@ permissions:
   contents: read
 
 concurrency:
-  # push の検証更新で、時間のかかる手動の配布物作成を中断しない。
+  # 配布中の実行は中断せず、続く push は最新の1件だけ待たせる。
   group: windows-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -154,7 +157,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "IME 同梱のインストーラーを Inno Setup で通せませんでした (exit code $LASTEXITCODE)。" }
 
   release:
-    if: github.event_name == 'workflow_dispatch' && inputs.package && github.ref == 'refs/heads/fork_by_hkrhd'
+    if: github.ref == 'refs/heads/fork_by_hkrhd' && (github.event_name == 'push' || inputs.package)
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -177,7 +180,8 @@ jobs:
         run: |
           git fetch --no-tags https://github.com/yksr-melt/Meltype.git 'refs/tags/v*:refs/tags/v*'
           version="$(bash mac/fork-version.sh)"
-          tag="hkrhd-release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          # Mac の自動更新はタグのビルド番号 (CFBundleVersion と同じ) で新旧を比べる。
+          tag="hkrhd-build-$(git rev-list --count HEAD)-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           {
             echo "version=$version"
             echo "build-number=$(git rev-list --count HEAD)"
@@ -193,7 +197,7 @@ jobs:
           - Mac: Apple Silicon / macOS 13.3 以降。Core・Swift テストと実エンジンの入力検証を実行済み。
           - Mac は ZIP を展開し、Install Meltype.command を実行してください。
           - 未署名の場合、OS の警告が出ることがあります。
-          - 更新はこの Releases から手動で行ってください。
+          - Mac 版は自動で更新します (config.json の AutoUpdate で停止)。Windows 版はこの Releases から手動で更新してください。
           EOF
           gh release create "$tag" --target "$GITHUB_SHA" --title "Meltype $version" --notes-file "$RUNNER_TEMP/release.md" --draft --prerelease
 
