@@ -327,7 +327,8 @@ jobs:
 
   mac:
     needs: release
-    runs-on: macos-15
+    # 利用者の Mac は最新の macOS にするので、版を固定せず GitHub の最新の Mac で作る
+    runs-on: macos-latest
     # Mozc のビルドは初回 30〜40 分かかる (2 回目からは Bazel のキャッシュを使う)
     timeout-minutes: 120
     permissions:
