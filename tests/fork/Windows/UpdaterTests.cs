@@ -73,6 +73,8 @@ internal static class ForkUpdaterTests
                 foreach (var arg in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", Path.GetFullPath(script), "-Repository", "hkrhd/Meltype",
                              "-CurrentVersion", current, "-Directory", directory, "-Prerelease", "-ReleasesUri", prefix + "releases" })
                     start.ArgumentList.Add(arg);
+                // CI は PowerShell 7 からテストを起動する。サインイン時の Meltype と同じく、その場所を Windows PowerShell に渡さない。
+                start.Environment.Remove("PSModulePath");
                 using var process = Process.Start(start)!;
                 return Updater.ReadOutput(process, 120_000)?.Trim() ?? "timeout";
             }
