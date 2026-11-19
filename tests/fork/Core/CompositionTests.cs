@@ -32,7 +32,7 @@ internal static partial class CompositionTests
             var alternative = new Keyboard(live: live);
             alternative.Type(prefix + suffix + " ");
             alternative.Press(VirtualKeys.Left);
-            alternative.Controller.SelectCandidate(alternative.Host.View!.Candidates.ToList().IndexOf("なん"));
+            alternative.SelectCandidate(alternative.Host.View!.Candidates.ToList().IndexOf("なん"));
             alternative.Type("\n");
             Assert.Equal("なん" + suffix, alternative.Host.Document, "かなの候補も確定できる");
             alternative.Type(prefix + suffix + " ");
@@ -175,7 +175,7 @@ internal static partial class CompositionTests
             var day = number == "2" ? "2日に" : "日に";
             var index = k.Host.View!.Candidates.ToList().IndexOf(day);
             Assert.True(index >= 0, "日にを候補から選べる: " + number);
-            k.Controller.SelectCandidate(index);
+            k.SelectCandidate(index);
             k.Type("\n");
             Assert.Equal(number + "日に", k.Host.Document, "日数の候補を確定する");
         }
@@ -403,7 +403,7 @@ internal static partial class CompositionTests
             Assert.Equal("。https://example.", deleting.Host.Document);
 
             var empty = new Keyboard(live: live);
-            empty.Type("nihongo\b\b\b\b.");
+            empty.Type("nihongo\b\b\b\b\b.");
             Assert.Equal(".", empty.Showing, "すべて削除した後の単独ピリオド");
         }
     }
@@ -452,7 +452,7 @@ internal static partial class CompositionTests
             Assert.Equal("けいさん", k.Showing, "「さん」は助詞「さ」で始まるだけなので、登録語で分割しない");
             var index = k.Host.View!.Candidates.ToList().IndexOf("計算");
             Assert.True(index >= 0, "読み全体の候補を選べる");
-            k.Controller.SelectCandidate(index);
+            k.SelectCandidate(index);
             k.Type("\n");
             Assert.Equal("計算", k.Host.Document);
             Assert.Equal("計算", history.Get("けいさん"), "読み全体として学習する");

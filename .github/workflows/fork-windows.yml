@@ -9,7 +9,7 @@ on:
     paths:
       - 'src/Meltype.Core/**'
       - 'src/Meltype.Core.Tests/**'
-      - 'src/Meltype.Mac.Native/**'
+      - 'src/Meltype.Core.CApi/**'
       - 'src/Meltype.Windows/**'
       - 'src/Meltype.Windows.Tests/**'
       - 'src/Directory.Build.*'
@@ -21,7 +21,6 @@ on:
       - 'Meltype.sln'
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
-      - 'Uninstall-Meltype.ps1'
       - 'nuget.config'
       - 'global.json'
       - 'Directory.Build.*'
@@ -43,7 +42,7 @@ on:
     paths:
       - 'src/Meltype.Core/**'
       - 'src/Meltype.Core.Tests/**'
-      - 'src/Meltype.Mac.Native/**'
+      - 'src/Meltype.Core.CApi/**'
       - 'src/Meltype.Windows/**'
       - 'src/Meltype.Windows.Tests/**'
       - 'src/Directory.Build.*'
@@ -55,7 +54,6 @@ on:
       - 'Meltype.sln'
       - 'Build-Package.ps1'
       - 'Install-Meltype.ps1'
-      - 'Uninstall-Meltype.ps1'
       - 'nuget.config'
       - 'global.json'
       - 'Directory.Build.*'

@@ -41,7 +41,6 @@ internal static class KanaQualityTests
     [Test]
     public static void KanaInput_Accuracy()
     {
-        CompositionTests.Detector.SpellChecker = BuiltInWordChecker.Shared;
         var romaji = new RomajiDetector();
         var typing = (System.Collections.IEnumerable)typeof(Quality).GetField("Typing", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
         var japanese = new List<string>();
@@ -90,7 +89,6 @@ internal static class KanaQualityTests
                     if (k.Host.Document == h + shown + t) okMixed++; else mixed.Add($"{h}+{w}+{t} → {k.Host.Document} (期待: {h + shown + t})");
                 }
         }
-        CompositionTests.Detector.SpellChecker = null;
         var total = japanese.Count(sentence => !sentence.Contains('ゔ'));
         Console.WriteLine($"  かな入力: 日本語 {total - fails.Count}/{total}、混在 {okMixed}/{totalMixed}");
         Assert.True((total - fails.Count) * 100 >= total * 99, $"日本語の文を英字にした: {string.Join(" / ", fails.Take(10))}");

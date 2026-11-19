@@ -12,7 +12,7 @@
   <ItemGroup>
     <Compile Include="../../tests/fork/Core/**/*.cs" />
     <ProjectReference Include="..\Meltype.Core\Meltype.Core.csproj" />
-    <ProjectReference Include="..\Meltype.Mac.Native\Meltype.Mac.Native.csproj" />
+    <ProjectReference Include="..\Meltype.Core.CApi\Meltype.Core.CApi.csproj" />
     <InternalsVisibleTo Include="Meltype.Windows.Tests" />
   </ItemGroup>
 </Project>

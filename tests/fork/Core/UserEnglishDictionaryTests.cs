@@ -26,7 +26,7 @@ internal static partial class SessionFacadeTests
                 foreach (var word in new[] { "sudo", "repo", "no", "e", "c" })
                 foreach (var ending in new[] { "\n", " \n" })
                 {
-                    var session = runtime.CreateSession(new CompositionTests.FakeConverter());
+                    var session = new TestSession(runtime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => runtime.Settings.Current);
                     var shown = word == "no" ? "の" : word;
                     Assert.Equal(shown, Type(session, word)[^1].View?.Text, "登録語の表示: " + word);
                     var results = Type(session, ending);
@@ -39,18 +39,18 @@ internal static partial class SessionFacadeTests
             foreach (var (input, expected) in new[] { ("sudou", "すどう"), ("nihongo", "にほんご"), ("nekono", "ねこの") })
             {
                 using var runtime = new MeltypeRuntime(directory);
-                var session = runtime.CreateSession(new CompositionTests.FakeConverter());
+                var session = new TestSession(runtime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => runtime.Settings.Current);
                 Assert.Equal(expected, Type(session, input)[^1].View?.Text, "日本語の途中を分断しない: " + input);
             }
 
             new Settings { LiveConversion = false, AutoDetection = false }.Save(Path.Combine(directory, "config.json"));
             using var manualRuntime = new MeltypeRuntime(directory);
-            var manual = manualRuntime.CreateSession(new CompositionTests.FakeConverter());
+            var manual = new TestSession(manualRuntime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => manualRuntime.Settings.Current);
             Assert.Equal("すど", Type(manual, "sudo")[^1].View?.Text, "手動判定を維持する");
 
             new Settings { LiveConversion = false }.Save(Path.Combine(directory, "config.json"));
             using var rememberedRuntime = new MeltypeRuntime(directory);
-            var remembered = rememberedRuntime.CreateSession(new CompositionTests.FakeConverter());
+            var remembered = new TestSession(rememberedRuntime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => rememberedRuntime.Settings.Current);
             Type(remembered, "sudo");
             remembered.HandleKey(VirtualKeys.F6, null, false, false, false, false);
             Type(remembered, "\n");

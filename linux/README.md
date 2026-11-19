@@ -194,6 +194,7 @@ bash uninstall.sh --data
 | fcitx5 のアドオン (`fcitx5/`, C++) | fcitx5 からキーを受け取り、判定の本体に渡す |
 | 判定の本体 (`libMeltypeNative.so`) | Windows 版と共通の C# の部分 (`src/Meltype.Core`) を NativeAOT で Linux 用のライブラリにしたもの |
 | 漢字変換 | Mozc の変換ヘルパー (`native/mozc`) |
+| 文脈を見た変換 (Zenzai) | llama.cpp の llama-server と zenz のモデル。llama-server は `native/zenzai/build-llama-server.sh` が `native/zenzai/zenzai.env` の版のソースからビルドし、モデルは `linux/build.sh` が取ってくる (取れなければ同梱せず、Mozc だけで変換する)。どちらも `zenzai/` に置く |
 
 - ビルドとインストール → [docs/WSL.md](https://github.com/yksr-melt/Meltype/blob/main/docs/WSL.md) (`linux/build.sh`)
 - 全体の仕組み・テスト → [docs/DEVELOPMENT.md](https://github.com/yksr-melt/Meltype/blob/main/docs/DEVELOPMENT.md)

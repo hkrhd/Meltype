@@ -31,7 +31,7 @@ if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
     if (file.startsWith('native/mozc/')) checks.mozc = true;
     if (/^tools\/(Scan-WindowsPackage|Test-WindowsPackageScan)\.ps1$/.test(file)) checks.scan = true;
     if (/^packaging\//.test(file) || file === 'tools/Test-SetupIme.ps1'
-        || /^(Build-Package|Install-Meltype|Uninstall-Meltype)\.ps1$/.test(file)
+        || /^(Build-Package|Install-Meltype)\.ps1$/.test(file)
         || /^(LICENSE|THIRD-PARTY-NOTICES\.md)$/.test(file)) checks.installer = true;
   }
 }

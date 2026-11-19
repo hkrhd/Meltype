@@ -34,7 +34,7 @@ internal static partial class SessionFacadeTests
                 })
                 foreach (var ending in new[] { "\n", " \n" })
                 {
-                    var session = runtime.CreateSession(new CompositionTests.FakeConverter());
+                    var session = new TestSession(runtime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => runtime.Settings.Current);
                     Assert.Equal(expected, Type(session, input)[^1].View?.Text, "通常入力を登録表記で表示する: " + input);
                     var committed = string.Concat(Type(session, ending).SelectMany(r => r.Commits).Select(e => e.Text));
                     var mixed = input == "kyouhagithubde";
@@ -45,7 +45,7 @@ internal static partial class SessionFacadeTests
 
                 foreach (var key in new[] { VirtualKeys.F9, VirtualKeys.F10 })
                 {
-                    var session = runtime.CreateSession(new CompositionTests.FakeConverter());
+                    var session = new TestSession(runtime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => runtime.Settings.Current);
                     Type(session, "github");
                     session.HandleKey(key, null, false, false, false, false, null);
                     var committed = string.Concat(Type(session, "\n").SelectMany(r => r.Commits).Select(e => e.Text));

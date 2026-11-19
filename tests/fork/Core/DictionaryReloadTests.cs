@@ -19,7 +19,7 @@ internal static partial class SessionFacadeTests
         {
             new Settings { LiveConversion = false }.Save(Path.Combine(directory, "config.json"));
             using var runtime = new MeltypeRuntime(directory);
-            MeltypeSession Create() => runtime.CreateSession(new CompositionTests.FakeConverter());
+            TestSession Create() => new TestSession(runtime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => runtime.Settings.Current);
             var old = Create();
             var unregistered = Type(old, "papitto")[^1].View?.Text;
             Assert.True(unregistered is not null and not "papitto", "未登録の語を比較の基準にする");

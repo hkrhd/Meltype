@@ -475,14 +475,14 @@ public sealed class CompositionText
         // 1 キーごとに、表示・打ち間違いの直し・Space の扱いなどで何度も呼ばれる。区間分けは重い (打った文字のあらゆる区間を調べる) ので、
         // 打った内容と判定の条件が同じなら前の結果を使い回す。
         var key = SegmentsKey();
-        if (_segmentsCache is { } cached && cached.Key == key && ReferenceEquals(cached.Memory, _detector.Memory) && ReferenceEquals(cached.SpellChecker, _detector.SpellChecker))
+        if (_segmentsCache is { } cached && cached.Key == key && ReferenceEquals(cached.Memory, _detector.Memory))
         {
             return cached.Segments;
         }
         // 区切りを選んだ理由も、区切りと同じ計算から取る (確定のログが、実際に確定した区切りと食い違わないように。issue #1644)
         var reasons = new List<Func<string>>();
         var result = Adjusted(ComputeSegments(reasons)[0], reasons);
-        _segmentsCache = (key, _detector.Memory, _detector.SpellChecker, result, reasons);
+        _segmentsCache = (key, _detector.Memory, result, reasons);
         return result;
     }
 
@@ -549,7 +549,7 @@ public sealed class CompositionText
         return changed ?? segments;
     }
 
-    private (string Key, LanguageMemory? Memory, Detection.IWordChecker? SpellChecker, IReadOnlyList<CompositionSegment> Segments, List<Func<string>> Reasons)? _segmentsCache;
+    private (string Key, LanguageMemory? Memory, IReadOnlyList<CompositionSegment> Segments, List<Func<string>> Reasons)? _segmentsCache;
 
     /// <summary>区間分けの結果を決めるもの (打った単位・入力途中の子音・前後・自動判定を使うか・学習した語の版) をつないだもの。</summary>
     private string SegmentsKey()
@@ -853,8 +853,8 @@ public sealed class CompositionText
     }
 
     /// <param name="final">確定・変換のときは true (語末の n を ん にする)。</param>
-    /// <param name="convert">日本語の区間を漢字に変換する関数 (ライブ変換)。null ならかなのまま。</param>
-    public string Display(bool final, Func<string, string>? convert = null) => Mode switch
+    /// <param name="convert">日本語の区間 (かな, 前の区間が英語か) を漢字に変換する関数 (ライブ変換)。null ならかなのまま。</param>
+    public string Display(bool final, Func<string, bool, string>? convert = null) => Mode switch
     {
         DisplayMode.HalfWidthAlphanumeric => ApplyCase(Raw, Case),
         DisplayMode.FullWidthAlphanumeric => ToFullWidth(ApplyCase(Raw, Case), preserveLiteralSymbols: true),
@@ -920,7 +920,7 @@ public sealed class CompositionText
     }
 
     /// <summary>英語区間は英字のまま、日本語区間はかな (または漢字)。保護範囲は打った原文のまま。</summary>
-    public string RenderSegments(bool final, Func<string, string>? convert)
+    public string RenderSegments(bool final, Func<string, bool, string>? convert)
     {
         // 保護範囲 (技術的な文字列) は、幅変換・かな化・漢字変換をせずに原文のまま出す (INV-01)。
         if (VerifyProtectedRaw()) return Raw;
@@ -953,7 +953,7 @@ public sealed class CompositionText
                     kana = kana[..^laughter];
                 }
             }
-            builder.Append(convert is not null && kana.Length > 0 ? convert(kana) : kana);
+            builder.Append(convert is not null && kana.Length > 0 ? convert(kana, i > 0 && segments[i - 1].IsEnglish) : kana);
             builder.Append(pending);
         }
         return HalfWidthStars(builder.ToString());
@@ -1128,7 +1128,7 @@ public sealed class CompositionText
         // 1 つだけの w は、日本語のかなの後ろ (きた + w) のときだけ笑いとみなす
         if (count == 1 && !(start > 0 && _units[start - 1].Kana is [var kana, ..] && kana is >= 'ぁ' and <= 'ヺ')) return end;
         // 前から続く英単語の終わり (aww・new・show) なら笑いではない。英単語とみなすのは、英字の並びの頭から始まる語か、同梱の辞書の語だけ
-        // (スペルチェッカーの短い語が音の途中から見つかる kiyagat|taw の taw で、笑いの w を英字にしていた)
+        // (english-words.txt の短い語が音の途中から見つかる kiyagat|taw の taw で、笑いの w を英字にしていた)
         var letters = string.Concat(_units.Skip(start).Take(end - start).Select(u => u.Raw)) + pending;
         var laugh = letters;
         // 設定「かな + w を笑いにする」: 1 つのかなの音 (ね・さ) だけの後ろの w は、その 2 つで英単語 (new・saw) にしない (issue #713・#492)。
@@ -1176,8 +1176,8 @@ public sealed class CompositionText
             var word = segment.IsProtected || segment.IsEnglish && (s > 0 && segments[s - 1] is { IsEnglish: false, Kana: "なん" } ||
                 segment.Raw.Length >= 5 && _detector.IsKnownEnglishWord(segment.Raw) || segment.Raw.Length is >= 2 and <= 4 && _detector.IsListedEnglishWord(lower) ||
                 segment.Raw.Length == 4 && _detector.IsKnownEnglishWord(lower) && !_detector.Romaji.Analyze(lower).IsValid ||
-                // 3 文字のスペルチェッカーの語で、最後の子音がかなにならないもの (tab|de の b)。表示で英字にしたものを、確定で打ち間違いとして たべ に直さない (issue #220)
-                segment.Raw.Length == 3 && lower.All(char.IsAsciiLetterLower) && _detector.IsSpellWord(lower) && _detector.Romaji.AnalyzeFragment(lower).Partial.Length > 0);
+                // 3 文字のよく使う英単語で、最後の子音がかなにならないもの (tab|de の b)。表示で英字にしたものを、確定で打ち間違いとして たべ に直さない (issue #220)
+                segment.Raw.Length == 3 && lower.All(char.IsAsciiLetterLower) && CompositionDetector.IsCommonEnglishWord(lower) && _detector.Romaji.AnalyzeFragment(lower).Partial.Length > 0);
             for (var i = 0; i < segment.Raw.Length; i++)
             {
                 mask.Add(word);
@@ -1203,7 +1203,7 @@ public sealed class CompositionText
     /// <summary>
     /// 読めない文字 (位置 first) が英単語の一部か。
     /// 先頭から打った英単語 (google|de、kotlin|ni、ok|no) と、同梱の辞書・固有名詞にある 5 文字以上の英単語 (…github|ni) は直さない。
-    /// スペルチェッカーだけが知っている語は、先頭からの 5 文字以上のときだけ見る
+    /// english-words.txt だけにある語は、先頭からの 5 文字以上のときだけ見る
     /// (日本語のローマ字の途中にも、shims や him のような英単語が偶然現れる)。
     /// </summary>
     private bool ContainsEnglishWord(string letters, int first)

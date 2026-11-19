@@ -23,7 +23,7 @@ internal static partial class SessionFacadeTests
                 using var runtime = new MeltypeRuntime(directory);
                 foreach (var ending in new[] { "\n", " \n" })
                 {
-                    var session = runtime.CreateSession(new CompositionTests.FakeConverter());
+                    var session = new TestSession(runtime.SessionParts(new CompositionTests.FakeConverter(), null, _ => null), () => runtime.Settings.Current);
                     Assert.Equal("AGENTS.md", Type(session, "agents.md")[^1].View?.Text, "登録した表記でファイル名を表示する");
                     var committed = string.Concat(Type(session, ending).SelectMany(r => r.Commits).Select(e => e.Text));
                     Assert.Equal(ending.StartsWith(' ') ? "AGENTS.md " : "AGENTS.md", committed, "表示したファイル名を確定する");

@@ -11,37 +11,13 @@ namespace Meltype.Tests;
 internal static partial class SessionFacadeTests
 {
     [Test]
-    public static void Fork_DefaultSession_EnablesPredictionsOnlyForSupportedHostsAndSettings()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), "meltype-predictions-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
-        try
-        {
-            foreach (var enabled in new[] { true, false })
-            foreach (var supported in new[] { true, false })
-            {
-                File.WriteAllText(Path.Combine(directory, "config.json"), enabled ? "{\"PredictiveCandidates\":true}" : "{\"PredictiveCandidates\":false}");
-                using var runtime = new MeltypeRuntime(directory);
-                var session = runtime.CreateSession(new CompositionTests.FakeConverter(),
-                    supportsPredictions: supported);
-                var typing = Type(session, "dec")[^1];
-                Assert.Equal(enabled && supported, typing.View?.Predictions is { Count: > 0 }, "ホストの表示対応と設定の両方が有効なときだけ補完する");
-                var plain = runtime.CreateSession(new CompositionTests.FakeConverter(), supportsPredictions: false);
-                var expected = Type(plain, "dec\n")[^1].Commits.Single().Text;
-                Assert.Equal(expected, Type(session, "\n")[^1].Commits.Single().Text, "Tabで選ばずにEnterを押しても補完しない");
-            }
-        }
-        finally { Directory.Delete(directory, recursive: true); }
-    }
-
-    [Test]
     public static void Fork_EnglishPredictions_StartAtThreeLettersWithoutChangingTypedText()
     {
         foreach (var before in new[] { "", "I made " })
         foreach (var raw in new[] { "dec", "Dec", "DEC", "thr" })
         {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { Predictor = new Predictor(null, null, null) }, () => new Settings { PredictiveCandidates = true });
+            var session = new TestSession(() => new Settings { PredictiveCandidates = true },
+                services: new CompositionServices { Predictor = new Predictor(null, null, null) });
             Assert.True(Type(session, raw[..2], before)[^1].View?.Predictions is null, "2文字では補完しない");
             var typed = Type(session, raw[2..], before)[^1];
             var baseline = Type(Create(), raw, before)[^1];
@@ -65,8 +41,8 @@ internal static partial class SessionFacadeTests
     [Test]
     public static void Fork_EnglishPredictions_RefreshAndRespectSettings()
     {
-        var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-            new CompositionServices { Predictor = new Predictor(null, null, null) }, () => new Settings { PredictiveCandidates = true });
+        var session = new TestSession(() => new Settings { PredictiveCandidates = true },
+            services: new CompositionServices { Predictor = new Predictor(null, null, null) });
         var typed = Type(session, "dec")[^1].View;
         session.HandleKey(VirtualKeys.Tab, null, false, false, false, false);
         var escaped = session.HandleKey(VirtualKeys.Escape, null, false, false, false, false);
@@ -78,11 +54,12 @@ internal static partial class SessionFacadeTests
         var removed = Type(session, "\b\b\b\b")[^1];
         Assert.True(removed.View?.Predictions is null, "1文字に戻ると候補を閉じる");
 
-        var disabled = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-            new CompositionServices { Predictor = new Predictor(null, null, null) }, () => new Settings { PredictiveCandidates = false });
+        var disabled = new TestSession(() => new Settings { PredictiveCandidates = false },
+            services: new CompositionServices { Predictor = new Predictor(null, null, null) });
         Assert.True(Type(disabled, "dec")[^1].View?.Predictions is null, "設定OFFなら補完しない");
-        var direct = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-            new CompositionServices { Predictor = new Predictor(null, null, null) }, () => new Settings { PredictiveCandidates = true }) { Direct = true };
+        var direct = new TestSession(() => new Settings { PredictiveCandidates = true },
+            services: new CompositionServices { Predictor = new Predictor(null, null, null) });
+        direct.Direct = true;
         Assert.True(Type(direct, "dec").All(r => !r.Consumed && r.View is null), "直接入力はアプリへ渡す");
     }
 
@@ -101,9 +78,8 @@ internal static partial class SessionFacadeTests
         })
         {
             var detector = CompositionDetector.CreateDefault();
-            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
-            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
-                new CompositionServices {  }, () => new Settings { LiveConversion = live });
+            var session = new TestSession(() => new Settings { LiveConversion = live },
+                services: new CompositionServices { }, detector: detector);
             Assert.Equal(expected, Type(session, input)[^1].View?.Text,
                 $"入力中: {input}, live={live}");
             Assert.Equal(expected, string.Concat(Type(session, "\n").SelectMany(r => r.Commits).Select(e => e.Text)),
@@ -122,12 +98,11 @@ internal static partial class SessionFacadeTests
         })
         {
             var detector = CompositionDetector.CreateDefault();
-            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
             var memory = new LanguageMemory(null);
             if (learned) memory.Remember(input, true, explicitChoice: true);
             detector.Memory = memory;
-            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { Languages = memory }, () => new Settings { LiveConversion = live });
+            var session = new TestSession(() => new Settings { LiveConversion = live },
+                services: new CompositionServices { Languages = memory }, detector: detector);
             Type(session, before);
             Assert.Equal(input, Type(session, input)[^1].View?.Text,
                 $"英語の根拠がある語: {input}, before={before}, learned={learned}, live={live}");
@@ -152,14 +127,13 @@ internal static partial class SessionFacadeTests
         })
         {
             var detector = CompositionDetector.CreateDefault();
-            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
             var memory = new LanguageMemory(null);
             memory.Remember("toto", true, explicitChoice);
             memory.Remember("sushi", true, explicitChoice);
             memory.Remember("sushi", true, explicitChoice);
             detector.Memory = memory;
-            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { Languages = memory }, () => new Settings { LiveConversion = live });
+            var session = new TestSession(() => new Settings { LiveConversion = live },
+                services: new CompositionServices { Languages = memory }, detector: detector);
             Assert.Equal(expected, Type(session, input, before)[^1].View?.Text,
                 $"入力中: {input}, before={before}, live={live}, explicit={explicitChoice}");
             Assert.Equal(expected, string.Concat(Type(session, "\n", before).SelectMany(r => r.Commits).Select(e => e.Text)),
@@ -187,13 +161,12 @@ internal static partial class SessionFacadeTests
         })
         {
             var detector = CompositionDetector.CreateDefault();
-            detector.SpellChecker = Detection.BuiltInWordChecker.Shared;
             var memory = new LanguageMemory(null);
             foreach (var word in new[] { "toto", "line", "google", "github", "python", "amazon", "feature", "xqtool", "main" })
                 memory.Remember(word, true, explicitChoice: true);
             detector.Memory = memory;
-            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { Languages = memory }, () => new Settings { LiveConversion = live });
+            var session = new TestSession(() => new Settings { LiveConversion = live },
+                services: new CompositionServices { Languages = memory }, detector: detector);
             Assert.Equal(expected, Type(session, input, before)[^1].View?.Text,
                 $"入力中: {input}, before={before}, live={live}");
             Assert.Equal(expected, string.Concat(Type(session, "\n", before).SelectMany(r => r.Commits).Select(e => e.Text)),
@@ -213,8 +186,8 @@ internal static partial class SessionFacadeTests
             var memory = new LanguageMemory(null);
             if (learned is { } english) memory.Remember(raw, english, explicitChoice: true);
             detector.Memory = memory;
-            var session = new MeltypeSession(detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { Languages = memory }, () => new Settings { LiveConversion = live });
+            var session = new TestSession(() => new Settings { LiveConversion = live },
+                services: new CompositionServices { Languages = memory }, detector: detector);
             Type(session, prefix);
             Assert.Equal(kana, Type(session, raw)[^1].View?.Text,
                 $"英字確定後の助詞: {raw}, learned={learned}, live={live}, prefix={prefix.TrimEnd()}");
@@ -230,8 +203,8 @@ internal static partial class SessionFacadeTests
         foreach (var prefix in new[] { "", "kyouha" })
         foreach (var convert in new[] { false, true })
         {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { MoreCandidates = _ => ["ーーー", "－－－", "—"] }, () => new Settings { LiveConversion = live });
+            var session = new TestSession(() => new Settings { LiveConversion = live },
+                services: new CompositionServices { MoreCandidates = _ => ["ーーー", "－－－", "—"] });
             var typed = Type(session, prefix + marker)[^1];
             Assert.True(typed.View?.Text.EndsWith(marker) == true, "入力中から半角を表示する");
             if (convert)
@@ -255,8 +228,8 @@ internal static partial class SessionFacadeTests
         foreach (var separate in new[] { false, true })
         foreach (var shift in new[] { false, true })
         {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { AutomaticEnglishSpacing = () => true }, () => new Settings { LiveConversion = live, SeparateKeyRoles = separate, SpaceAroundEnglish = true });
+            var session = new TestSession(() => new Settings { LiveConversion = live, SeparateKeyRoles = separate, SpaceAroundEnglish = true },
+                services: new CompositionServices { });
             Type(session, marker);
             var space = session.HandleKey(VirtualKeys.Space, null, shift, false, false, false);
             Assert.True(space.Consumed, "Space を半角空白の確定に使う");
@@ -278,8 +251,8 @@ internal static partial class SessionFacadeTests
         foreach (var live in new[] { false, true })
         foreach (var raw in new[] { "~/", "~/docs", "z-/" })
         {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionServices {  }, () => new Settings { LiveConversion = live });
+            var session = new TestSession(() => new Settings { LiveConversion = live },
+                services: new CompositionServices { });
             var results = Type(session, raw);
             var text = string.Concat(results.SelectMany(r => r.Commits).Select(c => c.Text)) + results[^1].View?.Text;
             Assert.True(text.StartsWith("~/"), $"{raw}, live={live}: {text}");
@@ -296,8 +269,8 @@ internal static partial class SessionFacadeTests
         foreach (var separate in new[] { false, true })
         foreach (var prefix in new[] { "", "kyouha" })
         {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { AutomaticEnglishSpacing = () => true, MoreCandidates = reading => reading == symbol.ToString() ? [((char)(symbol + 0xFEE0)).ToString(), "”"] : [] }, () => new Settings { SigilWordsDirect = false, LiveConversion = live, SeparateKeyRoles = separate, SpaceAroundEnglish = true });
+            var session = new TestSession(() => new Settings { SigilWordsDirect = false, LiveConversion = live, SeparateKeyRoles = separate, SpaceAroundEnglish = true },
+                services: new CompositionServices { MoreCandidates = reading => reading == symbol.ToString() ? [((char)(symbol + 0xFEE0)).ToString(), "”"] : [] });
             Type(session, prefix);
             var result = Type(session, symbol.ToString())[0];
             var expectedPrefix = prefix.Length == 0 ? "" : symbol == '_' ? prefix : live ? "今日は" : "きょうは";
@@ -332,8 +305,8 @@ internal static partial class SessionFacadeTests
         foreach (var live in new[] { false, true })
         foreach (var sigil in new[] { false, true })
         {
-            var session = new MeltypeSession(CompositionTests.Detector, new CompositionTests.FakeConverter(),
-                new CompositionServices { AutomaticEnglishSpacing = () => true }, () => new Settings { SigilWordsDirect = sigil, LiveConversion = live, SpaceAroundEnglish = true });
+            var session = new TestSession(() => new Settings { SigilWordsDirect = sigil, LiveConversion = live, SpaceAroundEnglish = true },
+                services: new CompositionServices { });
             var output = "";
             foreach (var symbol in symbols)
             {

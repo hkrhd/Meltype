@@ -27,7 +27,7 @@ public sealed partial class CompositionController
     /// <summary>今の未確定入力が、自動では変換してはいけない保護区間か (F9/F10 などの明示指定は除く)。</summary>
     private bool IsProtectedInput => !_converting && _text.Mode == DisplayMode.Auto && _text.HasProtectedTail;
 
-    private void Commit(string suffix = "", bool fixEnglish = false, bool preserveText = false)
+    private void Commit(string suffix = "", bool preserveText = false)
     {
         if (IsProtectedInput)
         {
@@ -47,7 +47,7 @@ public sealed partial class CompositionController
         // 設定「Enter は見えているとおりに確定」が OFF なら、背景の結果が間に合っていなくても Budget の間は答えを待つ
         var text = converting ? string.Concat(_clauses.Select(c => c.Text))
             : _budget is { Enabled: true } && !_settings().EnterCommitsAsShown
-                ? _text.Display(final: true, _settings().LiveConversion ? kana => CountsAsLive(kana) ? string.Concat(ConvertJapanese(kana, _converter).Select(c => c.Text)) : kana : null)
+                ? _text.Display(final: true, _settings().LiveConversion ? (kana, afterEnglish) => CountsAsLive(kana) ? string.Concat(ConvertJapaneseSegment(kana, afterEnglish, _converter).Select(c => c.Text)) : kana : null)
                 : CurrentDisplay(final: true);
         // 英語の文脈で英字だけに見えていた入力 (hello mata) は、確定するときに判定し直してかなにしない: 見えているとおりに確定する (issue #127)。
         // 文脈がない単独の語 (mine → みね) は、今までどおり確定時の判定に任せる
@@ -56,18 +56,6 @@ public sealed partial class CompositionController
         {
             text = shown;
             rules.Add("英語の文脈なので見えていた英字のまま (#127)");
-        }
-        // 設定「Enter は見えているとおりに確定」: かな + 語末の n (かんたn) は、確定でライブ変換が漢字にせず、見えていたかなに n を ん にしただけで確定する (issue #677)
-        if (!converting && _settings().EnterCommitsAsShown && _text.Mode == DisplayMode.Auto && _text.Pending == "n" &&
-            CurrentDisplay(final: false) is { Length: > 1 } shownKana && shownKana[^1] == 'n' && shownKana[^2] is >= '\u3041' and <= '\u3096')
-        {
-            text = shownKana[..^1] + "ん";
-            rules.Add("見えていたかなのまま (#677)");
-        }
-        if (fixEnglish && !converting && _text.Mode == DisplayMode.Auto && FixEnglishTypo(text) is var fixedText && fixedText != text)
-        {
-            text = fixedText;
-            rules.Add("英語の打ち間違いを直した");
         }
         var english = converting ? _clauses.All(c => c.IsEnglish) : _text.IsAlphanumericAt(final: true);
         // F6〜F10 で、はっきり英字 / かなを選んで確定した語も、後から確定し直さない。
@@ -184,19 +172,6 @@ public sealed partial class CompositionController
     private string PredictionReading(string prediction, string typed) =>
         _services.Predictor?.Phrases?.ReadingOf(prediction, typed) ?? typed;
 
-    /// <summary>
-    /// 英単語で終わる文字列の最後の語が、よくある打ち間違い (teh、recieve) なら正しい綴りにする (Space で確定するとき)。
-    /// </summary>
-    private string FixEnglishTypo(string text)
-    {
-        if (!_settings().CorrectTypos) return text;
-        var start = text.Length;
-        while (start > 0 && char.IsAsciiLetter(text[start - 1])) start--;
-        if (start == text.Length || _detector.EnglishAutoCorrection(text[start..]) is not { } right) return text;
-        Diagnostics.Log.Decision($"英語の打ち間違いを直しました: {Diagnostics.Log.Text(text[start..])}→{Diagnostics.Log.Text(right)}");
-        return text[..start] + right;
-    }
-
 
     /// <summary>
     /// 直前に確定した語。英語とも日本語とも読める語 (i, sushi) を文脈が分からないまま確定したとき、
@@ -305,7 +280,6 @@ public sealed partial class CompositionController
     {
         _lastImmediateSymbol = null;
         LogCommit(text, rule);
-        var formatEnglish = _services.AutomaticEnglishSpacing() && _text.Mode == DisplayMode.Auto;
         var spaceIntended = _spaceStartedConversion;
         var afterEnglish = _text.PrecedingEnglish == true;
         _spaceStartedConversion = false;
@@ -314,7 +288,6 @@ public sealed partial class CompositionController
         _converting = false;
         _clauses = [];
         if (text.Length == 0) return;
-        if (formatEnglish && !preserveText) text = EnglishPhraseSpacing.Format(text);
         var corrected = CorrectPreviousCommit(raw, english);
         if (!preserveText && (_settings().SpaceAroundEnglish || _settings().SpaceAroundNumbers))
             text = AddSpacesAroundEnglish(text, corrected ?? _precedingText, _followingText, _settings().SpaceAroundEnglish, _settings().SpaceAroundNumbers);
