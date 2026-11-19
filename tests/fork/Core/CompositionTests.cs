@@ -605,4 +605,24 @@ internal static partial class CompositionTests
             Detector.UserDictionary = null;
         }
     }
+
+    [Test]
+    public static void Fork_Hyphen_BeforeEnglishIsHalfWidthOption()
+    {
+        // 英語と判定した語のすぐ前の - は、コマンドのオプション (-r・--force) として半角にする。後ろが日本語なら長音のまま
+        foreach (var live in new[] { false, true })
+        {
+            foreach (var (typed, expected) in new[]
+            {
+                ("-r", "-r"), ("-h", "-h"), ("--force", "--force"), ("-force", "-force"), ("nihongo -r", "日本語-r"),
+                ("mojiretu--force", "もじれつ--force"), ("ko-hi-", "こーひー"), ("ra-men", "らーめん"), ("-ka", "ーか"),
+            })
+            {
+                var k = new Keyboard(live: live);
+                k.Type(typed);
+                k.Type("\n");
+                Assert.Equal(expected, k.Host.Document, $"{typed} (ライブ変換 {live})");
+            }
+        }
+    }
 }

@@ -499,7 +499,36 @@ public sealed class CompositionText
             result = split;
             reasons.Add(() => "設定「かな + w を笑い (ねw・さw) にする」で かな + w に分けた");
         }
+        if (OptionHyphens(result) is { } options)
+        {
+            result = options;
+            reasons.Add(() => "英語の直前の - をコマンドのオプションとして半角に");
+        }
         return result;
+    }
+
+    /// <summary>
+    /// 英語の区間のすぐ前の - (長音 ー) を、英語の区間に移して半角にする (-r・--force: コマンドのオプション)。変えなければ null。
+    /// </summary>
+    private static List<CompositionSegment>? OptionHyphens(IReadOnlyList<CompositionSegment> segments)
+    {
+        List<CompositionSegment>? changed = null;
+        for (var i = segments.Count - 1; i > 0; i--)
+        {
+            var english = segments[i];
+            var before = segments[i - 1];
+            if (!english.IsEnglish || english.IsProtected || english.Raw.Length == 0 || !char.IsAsciiLetter(english.Raw[0]) ||
+                before.IsEnglish || before.IsProtected) continue;
+            var count = 0;
+            while (count < before.Raw.Length && count < before.Kana.Length && before.Raw[^(count + 1)] == '-' && before.Kana[^(count + 1)] == 'ー') count++;
+            if (count == 0) continue;
+            changed ??= [.. segments];
+            var hyphens = new string('-', count);
+            changed[i] = english with { Kana = hyphens + english.Kana, Raw = hyphens + english.Raw };
+            if (count == before.Raw.Length) changed.RemoveAt(i - 1);
+            else changed[i - 1] = before with { Kana = before.Kana[..^count], Raw = before.Raw[..^count] };
+        }
+        return changed;
     }
 
     /// <summary>
