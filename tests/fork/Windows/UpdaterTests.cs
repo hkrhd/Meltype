@@ -2,7 +2,6 @@
 // Copyright (C) 2026 hkrhd
 
 using System.Diagnostics;
-using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -35,13 +34,8 @@ internal static class ForkUpdaterTests
         server.Start();
         try
         {
-            var stage = Path.Combine(root, "stage");
-            Directory.CreateDirectory(stage);
-            File.WriteAllText(Path.Combine(stage, "install.ps1"), "# fixture");
-            var zipPath = Path.Combine(root, "Meltype-1.6.0-hkrhd.2950.gaaa-windows.zip");
-            ZipFile.CreateFromDirectory(stage, zipPath);
-            var zip = File.ReadAllBytes(zipPath);
-            var digest = "sha256:" + Convert.ToHexString(SHA256.HashData(zip)).ToLowerInvariant();
+            var setup = "fixture setup"u8.ToArray();
+            var digest = "sha256:" + Convert.ToHexString(SHA256.HashData(setup)).ToLowerInvariant();
             object Release(string tag, bool draft, params string[] assets) => new
             {
                 tag_name = tag, draft, prerelease = true,
@@ -49,10 +43,10 @@ internal static class ForkUpdaterTests
             };
             var list = JsonSerializer.SerializeToUtf8Bytes(new[]
             {
-                Release("hkrhd-build-3000-3-1", true, "Meltype-1.6.0-hkrhd.3000.gddd-windows.zip"),
+                Release("hkrhd-build-3000-3-1", true, "Meltype-1.6.0-hkrhd.3000.gddd-setup.exe"),
                 Release("hkrhd-build-2960-2-1", false, "Meltype-1.6.0-hkrhd.2960.gccc-mac.zip"),
-                Release("hkrhd-build-2950-1-1", false, "Meltype-1.6.0-hkrhd.2950.gaaa-windows.zip", "Meltype-1.6.0-hkrhd.2950.gaaa-windows-portable.zip"),
-                Release("hkrhd-release-43816268893-1", false, "Meltype-1.6.0-hkrhd.174.g97c-windows.zip"),
+                Release("hkrhd-build-2950-1-1", false, "Meltype-1.6.0-hkrhd.2950.gaaa-setup.exe", "Meltype-1.6.0-hkrhd.2950.gaaa-windows-portable.zip"),
+                Release("hkrhd-release-43816268893-1", false, "Meltype-1.6.0-hkrhd.174.g97c-setup.exe"),
             });
             var serving = Task.Run(() =>
             {
@@ -60,7 +54,7 @@ internal static class ForkUpdaterTests
                 {
                     HttpListenerContext context;
                     try { context = server.GetContext(); } catch (HttpListenerException) { return; }
-                    var body = context.Request.Url!.AbsolutePath == "/releases" ? list : zip;
+                    var body = context.Request.Url!.AbsolutePath == "/releases" ? list : setup;
                     context.Response.OutputStream.Write(body);
                     context.Response.Close();
                 }
@@ -81,7 +75,9 @@ internal static class ForkUpdaterTests
 
             var updates = Path.Combine(root, "update");
             Assert.Equal("ready 1.6.0-hkrhd.2950.gaaa", Run("1.6.0-hkrhd.2909.gzzz", updates), "公開済みで Windows 版のある最新のビルド");
-            Assert.True(File.Exists(Path.Combine(updates, "1.6.0-hkrhd.2950.gaaa", "install.ps1")), "install.ps1 を展開する");
+            var installer = Path.Combine(updates, "Meltype-1.6.0-hkrhd.2950.gaaa-setup.exe");
+            Assert.True(File.Exists(installer), "インストーラーをダウンロードする");
+            Assert.Equal("1.6.0-hkrhd.2950.gaaa\t" + installer, File.ReadAllText(Path.Combine(updates, "ready.txt")), "ready.txt に版とインストーラーの場所");
             Assert.Equal("none", Run("1.6.0-hkrhd.2950.gaaa", Path.Combine(root, "current")), "同じビルドなら更新しない");
             server.Stop();
             serving.Wait(5_000);
