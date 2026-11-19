@@ -39,7 +39,7 @@ def main():
         filenames = [
             'NativeCore.swift', 'InputController.swift', 'KeyMapping.swift', 'MacUserDictionary.swift',
             'ModeShortcuts.swift', 'ModeIndicator.swift', 'ModeServices.swift', 'InputSourceRegistration.swift',
-            'ImportDialogPresentation.swift',
+            'ImportDialogPresentation.swift', 'MacUpdatePrompt.swift', 'MacUpdater.swift',
         ]
         subprocess.run(['xcrun', 'swiftc', '-swift-version', '5',
                         str(repo / 'tools/test-mac-events.swift'),

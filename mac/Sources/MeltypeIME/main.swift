@@ -3,6 +3,7 @@
 
 import Cocoa
 import InputMethodKit
+import UserNotifications
 
 if CommandLine.arguments.contains("--version") {
     let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
@@ -349,6 +350,8 @@ dictionaryWatcher?.start()
 let dictionarySync = NativeCore.shared.dataDirectory.map { MacUserDictionarySync(directory: $0) }
 dictionarySync?.start()
 NativeCore.shared.startBackgroundConversion()
+let updatePrompt = MacUpdatePrompt.shared
+UNUserNotificationCenter.current().delegate = updatePrompt
 let updater = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String).flatMap(Int.init).map { build in
     let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     let config = NativeCore.shared.dataDirectory.map { URL(fileURLWithPath: $0).appendingPathComponent("config.json") }
@@ -357,8 +360,9 @@ let updater = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? S
         guard let config, let data = try? Data(contentsOf: config),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return true }
         return object["AutoUpdate"] as? Bool ?? true
-    })
+    }, onReady: updatePrompt.notifyReady)
 }
+updatePrompt.updater = updater
 updater?.start()
 // 終了するときに llama-server を止める (ログアウトなどの終了と、SIGTERM。強制終了で残ったものは、次に起動したときに止める)
 NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: nil) { _ in

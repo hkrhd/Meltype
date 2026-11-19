@@ -50,7 +50,7 @@ gh run watch -R hkrhd/Meltype "$(gh run list -R hkrhd/Meltype --workflow windows
 
 合格後は作業ブランチを削除します。`fork_by_hkrhd` への push で配布され、利用者の Mac・Windows は自動更新で入れ替わります。
 
-手元の Mac でビルドする場合、対象は Apple Silicon・macOS 13.3 以降。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。 Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
+手元の Mac でビルドする場合、対象は Apple Silicon・macOS 13.3 以降。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
 漢字変換は upstream と同じ Mozc の変換ヘルパーと Zenzai（llama-server・zenz-v3.2-small）で、Zenzai はビルドスクリプトが取得します。
 Mozc の変換ヘルパーは `native/mozc/build-mozc-helper.sh`（Bazelisk が必要、初回30〜40分）で `native/mozc/bin/mac/` に作るか、`native/mozc/` が同じ upstream リリースの Mac 版 ZIP の `Meltype.app/Contents/Resources/mozc/` から置きます。
 
@@ -80,7 +80,7 @@ Mac の漢字変換は upstream に合わせて azooKey から Mozc＋Zenzai（l
 同条件の一般文44件では、旧 azooKey 版と新エンジンの正解数は同じでした。かなだけの読みに英字を足した Zenzai の答え（`ふぉーまった → forMATTA`）は Mozc の候補で作れる場合だけ使います。
 upstream 単体でフォークの Core テストを評価し、前回と同じ5件合格でした。統合後は Core 946件・Swift 43件と実エンジンの入力検証が合格しています。
 
-[Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.6.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認し、10分間入力がないときに入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
+[Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.6.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認して新しい版を準備し、macOS の通知で知らせます。勝手には入れ替えず、通知のクリックか入力メニューの「Meltype ビルド N に更新して再起動」で入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 

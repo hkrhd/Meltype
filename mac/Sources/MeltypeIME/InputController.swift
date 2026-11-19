@@ -213,7 +213,17 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         configItem.target = self
         menu.addItem(withTitle: "Meltype のデータフォルダを開く (設定・ユーザー辞書)", action: #selector(openDataFolder(_:)), keyEquivalent: "")
         menu.addItem(withTitle: "不具合の報告・提案… (Mac 版はプレビュー版です)", action: #selector(openReport(_:)), keyEquivalent: "")
+        if let build = MacUpdatePrompt.shared.updater?.readyBuild {
+            menu.addItem(.separator())
+            let updateItem = menu.addItem(withTitle: MacUpdatePrompt.menuTitle(build: build), action: #selector(installUpdate(_:)), keyEquivalent: "")
+            updateItem.target = self
+        }
         return menu
+    }
+
+    @objc private func installUpdate(_ sender: Any?) {
+        commitComposition(client())
+        DispatchQueue.main.async { MacUpdatePrompt.shared.installUpdate() }
     }
 
     @objc private func selectJapanese(_ sender: Any?) { send("JapaneseModeSelected", client: client()) }

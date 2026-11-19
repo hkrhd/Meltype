@@ -45,7 +45,7 @@ final class UpdaterTests: XCTestCase {
         try "2950\n".write(to: directory.appendingPathComponent("attempted"), atomically: true, encoding: .utf8)
         let releases = root.appendingPathComponent("releases.json")
         try json([release("hkrhd-build-2950-2-1")]).write(to: releases)
-        let updater = MacUpdater(releases: releases, directory: directory, currentBuild: 2909, idleSeconds: { 3600 })
+        let updater = MacUpdater(releases: releases, directory: directory, currentBuild: 2909)
         XCTAssertEqual(updater.checkNow(), .upToDate)
         XCTAssertEqual(MacUpdater.newest(in: try json([release("hkrhd-build-2950-2-1"), release("hkrhd-build-2970-4-1")]), after: 2950)?.build, 2970)
     }
@@ -68,35 +68,51 @@ final class UpdaterTests: XCTestCase {
         return (zip, hash)
     }
 
-    private func check(idle: TimeInterval, wrongHash: Bool = false) throws -> (MacUpdater.Outcome, Bool) {
-        let marker = root.appendingPathComponent("installed")
+    private var marker: URL { root.appendingPathComponent("installed") }
+    private var installed: Bool { FileManager.default.fileExists(atPath: marker.path) }
+
+    /// ビルド 2950 の ZIP を公開した状態の更新処理と、onReady で知らされたビルド。
+    private func updater(wrongHash: Bool = false) throws -> (MacUpdater, () -> [Int]) {
         let (zip, hash) = try package(build: 2950, marker: marker)
         let releases = root.appendingPathComponent("releases.json")
         try json([release("hkrhd-build-2950-2-1", sha256: wrongHash ? String(repeating: "0", count: 64) : hash, zip: zip)]).write(to: releases)
-        let updater = MacUpdater(releases: releases, directory: root.appendingPathComponent("update"), currentBuild: 2909, idleSeconds: { idle })
-        let outcome = updater.checkNow()
-        let deadline = Date().addingTimeInterval(5)
-        while !FileManager.default.fileExists(atPath: marker.path), Date() < deadline, case .launched = outcome {
-            Thread.sleep(forTimeInterval: 0.05)
-        }
-        return (outcome, FileManager.default.fileExists(atPath: marker.path))
+        var notified: [Int] = []
+        let updater = MacUpdater(releases: releases, directory: root.appendingPathComponent("update"), currentBuild: 2909,
+                                 onReady: { notified.append($0) })
+        return (updater, { notified })
     }
 
-    func testVerifiedPackageInstallsWhenIdle() throws {
-        let (outcome, installed) = try check(idle: 3600)
-        XCTAssertEqual(outcome, .launched(2950))
-        XCTAssertTrue(installed)
-    }
-
-    func testHashMismatchDoesNotInstall() throws {
-        let (outcome, installed) = try check(idle: 3600, wrongHash: true)
-        guard case .failed = outcome else { return XCTFail("\(outcome)") }
+    func testVerifiedPackageIsOnlyPreparedAndNotified() throws {
+        let (updater, notified) = try updater()
+        XCTAssertEqual(updater.checkNow(), .ready(2950))
+        XCTAssertEqual(notified(), [2950])
+        XCTAssertEqual(updater.readyBuild, 2950)
+        Thread.sleep(forTimeInterval: 0.5)
         XCTAssertFalse(installed)
     }
 
-    func testRecentInputDefersInstallation() throws {
-        let (outcome, installed) = try check(idle: 5)
-        XCTAssertEqual(outcome, .waiting(2950))
+    func testChosenUpdateInstalls() throws {
+        let (updater, _) = try updater()
+        XCTAssertEqual(updater.checkNow(), .ready(2950))
+        XCTAssertEqual(updater.install(), .launched(2950))
+        let deadline = Date().addingTimeInterval(5)
+        while !installed, Date() < deadline { Thread.sleep(forTimeInterval: 0.05) }
+        XCTAssertTrue(installed)
+        XCTAssertNil(updater.readyBuild)
+    }
+
+    func testSameBuildIsNotNotifiedTwice() throws {
+        let (updater, notified) = try updater()
+        XCTAssertEqual(updater.checkNow(), .ready(2950))
+        XCTAssertEqual(updater.checkNow(), .ready(2950))
+        XCTAssertEqual(notified(), [2950])
+    }
+
+    func testHashMismatchIsNotPrepared() throws {
+        let (updater, notified) = try updater(wrongHash: true)
+        guard case .failed = updater.checkNow() else { return XCTFail() }
+        XCTAssertEqual(notified(), [])
+        XCTAssertNil(updater.readyBuild)
         XCTAssertFalse(installed)
     }
 }

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 hkrhd
 
-import CoreGraphics
 import CryptoKit
 import Darwin
 import Foundation
 
-/// このフォークの Releases から新しい Mac 版を取得し、入力のない間に同梱の install.sh で入れ替える。
-/// 入れ替え・失敗時の復旧は install.sh に任せ、試したビルドは成否にかかわらず再試行しない。
+/// このフォークの Releases から新しい Mac 版を取得して準備し、利用者が通知か入力メニューで選んだときに
+/// 同梱の install.sh で入れ替えて再起動する。入れ替え・失敗時の復旧は install.sh に任せ、試したビルドは成否にかかわらず再試行しない。
 final class MacUpdater {
     struct Release: Equatable {
         let build: Int
@@ -17,7 +16,7 @@ final class MacUpdater {
 
     enum Outcome: Equatable {
         case upToDate
-        case waiting(Int)
+        case ready(Int)
         case launched(Int)
         case failed(String)
     }
@@ -28,61 +27,35 @@ final class MacUpdater {
     private let directory: URL
     private let currentBuild: Int
     private let enabled: () -> Bool
-    private let idleSeconds: () -> TimeInterval
-    private let requiredIdle: TimeInterval
+    private let onReady: (Int) -> Void
     private let queue = DispatchQueue(label: "Meltype.update", qos: .utility)
     private var checkTimer: DispatchSourceTimer?
-    private var idleTimer: DispatchSourceTimer?
+    // 入力メニュー (メインスレッド) からも読むので、ダウンロード中の queue ではなくロックで守る。
+    private let lock = NSLock()
     private var prepared: (release: Release, installer: URL)?
 
     init(releases: URL = MacUpdater.releasesURL, directory: URL, currentBuild: Int,
-         enabled: @escaping () -> Bool = { true },
-         idleSeconds: @escaping () -> TimeInterval = MacUpdater.systemIdleSeconds,
-         requiredIdle: TimeInterval = 600) {
+         enabled: @escaping () -> Bool = { true }, onReady: @escaping (Int) -> Void = { _ in }) {
         self.releases = releases
         self.directory = directory
         self.currentBuild = currentBuild
         self.enabled = enabled
-        self.idleSeconds = idleSeconds
-        self.requiredIdle = requiredIdle
+        self.onReady = onReady
     }
 
-    static func systemIdleSeconds() -> TimeInterval {
-        CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: UInt32.max)!)
-    }
+    /// 準備済みで、更新して再起動できるビルド。
+    var readyBuild: Int? { lock.withLock { prepared?.release.build } }
 
     /// 起動直後の負荷を避け、以降は数時間ごとにまとめて確認する。
     func start() {
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(wallDeadline: .now() + 600, repeating: 6 * 3600, leeway: .seconds(1800))
         timer.setEventHandler { [weak self] in
-            guard let self, self.idleTimer == nil, self.enabled() else { return }
-            let outcome = self.checkNow()
-            if case .failed(let reason) = outcome { NSLog("Meltype: 更新できませんでした: %@", reason) }
-            if case .waiting = outcome { self.watchIdle() }
+            guard let self, self.enabled() else { return }
+            if case .failed(let reason) = self.checkNow() { NSLog("Meltype: 更新を準備できませんでした: %@", reason) }
         }
         timer.resume()
         checkTimer = timer
-    }
-
-    private func watchIdle() {
-        let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(wallDeadline: .now() + 300, repeating: 300, leeway: .seconds(60))
-        timer.setEventHandler { [weak self] in
-            guard let self else { return }
-            guard self.enabled() else { self.stopIdleWatch(); return }
-            let outcome = self.launchIfIdle()
-            if case .waiting = outcome { return }
-            if case .failed(let reason) = outcome { NSLog("Meltype: 更新できませんでした: %@", reason) }
-            self.stopIdleWatch()
-        }
-        timer.resume()
-        idleTimer = timer
-    }
-
-    private func stopIdleWatch() {
-        idleTimer?.cancel()
-        idleTimer = nil
     }
 
     /// 公開済みで Mac の ZIP があるリリースのうち、ビルド番号が after より大きい最新のもの。
@@ -113,27 +86,32 @@ final class MacUpdater {
         (try? String(contentsOf: attemptedFile, encoding: .utf8)).flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) } ?? 0
     }
 
-    /// 新しい版を取得・検証して展開し、入力がなければ install.sh を起動する。
+    /// 新しい版を取得・検証して展開する。新しく準備できたビルドは onReady で知らせる。
     func checkNow() -> Outcome {
         let data: Data
         do { data = try fetch(releases) } catch { return .failed("リリース一覧: \(error.localizedDescription)") }
         guard let release = Self.newest(in: data, after: max(currentBuild, attemptedBuild)) else {
+            lock.withLock { prepared = nil }
             removeWork(except: nil)
             return .upToDate
         }
+        if readyBuild == release.build { return .ready(release.build) }
+        lock.withLock { prepared = nil }
         removeWork(except: release.build)
-        do {
-            prepared = (release, try prepare(release))
-        } catch {
-            return .failed("\(release.build): \(error.localizedDescription)")
-        }
-        return launchIfIdle()
+        let installer: URL
+        do { installer = try prepare(release) } catch { return .failed("\(release.build): \(error.localizedDescription)") }
+        lock.withLock { prepared = (release, installer) }
+        onReady(release.build)
+        return .ready(release.build)
     }
 
-    func launchIfIdle() -> Outcome {
-        guard let (release, installer) = prepared else { return .upToDate }
-        guard idleSeconds() >= requiredIdle else { return .waiting(release.build) }
-        prepared = nil
+    /// 準備済みの版の install.sh を起動する。install.sh が入れ替えて Meltype を再起動する。
+    func install() -> Outcome {
+        let taken = lock.withLock { () -> (release: Release, installer: URL)? in
+            defer { prepared = nil }
+            return prepared
+        }
+        guard let (release, installer) = taken else { return .upToDate }
         do {
             // 起動前に記録し、入れ替えに失敗した版を繰り返し試さない。
             try "\(release.build)\n".write(to: attemptedFile, atomically: true, encoding: .utf8)
