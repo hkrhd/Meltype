@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 hrmcngs
 
-# テストと実エンジンの検証に成功したビルドだけをインストールする。
+# Run from any directory:
+#   bash "$HOME/Documents/github/other/Meltype/mac/update.sh"
+# Show help without starting the input method:
+#   bash "$HOME/Documents/github/other/Meltype/mac/update.sh" --help
+# This updates and starts Meltype. Avoid running while investigating crashes.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -19,16 +23,9 @@ esac
 [[ $# -le 1 ]] || { echo "Too many arguments" >&2; exit 1; }
 [[ "$(uname)" == Darwin ]] || { echo "This updater requires macOS." >&2; exit 1; }
 
-export MELTYPE_VERSION="${MELTYPE_VERSION:-$(bash "$here/fork-version.sh")}"
-export MELTYPE_BUILD_NUMBER="${MELTYPE_BUILD_NUMBER:-$(git -C "$here/.." rev-list --count HEAD)}"
-bash "$here/build-cli.sh" --test --build
-bash "$here/../tests/fork/mac/check-inputs.sh" "$here/build/Meltype.app"
-bash "$here/../tests/fork/mac/check-dictionary-reload.sh" "$here/build/Meltype.app"
-temporary=$(mktemp -d)
-trap 'rm -rf "$temporary"' EXIT
-MELTYPE_DATA_DIR="$temporary" "$here/build/Meltype.app/Contents/MacOS/Meltype" --check-inputs "$here/Resources/InputChecks.tsv"
-bash "$here/install-app.sh" "$here/build/Meltype.app" "$app"
-# 登録・起動と失敗時の復旧は upstream のインストーラーで完結させる。
+# --check-inputs runs in a separate process and exits before creating IMKServer.
+# File replacement restores the old session itself if it fails.
+bash "$here/build-cli.sh" --test --install
+"$app/Contents/MacOS/Meltype" --check-inputs "$here/Resources/InputChecks.tsv"
 swift "$here/select-input-source.swift"
-"$app/Contents/MacOS/Meltype" --version
 echo "Meltype update and input checks completed."

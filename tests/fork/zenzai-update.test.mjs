@@ -96,7 +96,7 @@ test('新系列の small / Q5_K_M を Draft PR で通知し、変更は候補文
   assert.equal(pr.draft, true);
   assert.match(pr.title, /v3\.2/);
   assert.match(pr.body, /v3\.1[\s\S]*→[\s\S]*v3\.2/);
-  for (const value of [NewChecksum, api.metadata.sha, 'apache-2.0', 'bash mac/update.sh', '実機へインストールして動作確認']) {
+  for (const value of [NewChecksum, api.metadata.sha, 'apache-2.0', 'CI の検証でテストに合格']) {
     assert.ok(pr.body.includes(value));
   }
   assert.ok(pr.body.includes('native/zenzai/zenzai.env'));

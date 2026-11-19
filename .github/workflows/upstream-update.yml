@@ -102,7 +102,7 @@ jobs:
             echo "- [通知時点の upstream 差分](https://github.com/$REPO/compare/$fork_sha...$main_sha)"
             cat <<'BODY'
 
-          統合方針は [AGENTS.md](https://github.com/hkrhd/Meltype/blob/fork_by_hkrhd/AGENTS.md)、検証・実機適用の手順は [README.md](https://github.com/hkrhd/Meltype/blob/fork_by_hkrhd/README.md#ビルドと実機適用) に従ってください。
+          統合方針は [AGENTS.md](https://github.com/hkrhd/Meltype/blob/fork_by_hkrhd/AGENTS.md)、検証の手順は [README.md](https://github.com/hkrhd/Meltype/blob/fork_by_hkrhd/README.md#ビルドと検証) に従ってください。
 
           - [x] AI を使った（使った部分: この取り込み依頼文の作成）
           BODY

@@ -28,8 +28,7 @@ function report(current, candidate) {
 - SHA-256: \`${candidate.checksum}\`
 - [ライセンス・モデルカード](${source}/blob/${candidate.revision}/README.md): \`${candidate.license}\`
 
-ライセンスと同梱の llama-server との互換性を確認し、\`native/zenzai/zenzai.env\` を更新してください。
-\`bash mac/update.sh\` で実機へインストールして動作確認し、変換品質・性能の結果を報告してください。
+\`native/zenzai/zenzai.env\` を更新して採用し、CI の検証でテストに合格することを確認してください。
 `;
 }
 

@@ -38,18 +38,28 @@
 - テキスト置換もユーザー辞書へ自動同期して即時反映する。macOS 側を正として、Meltype 側の独自登録も置き換える。
 - 画面移動後の候補表示、矢印キー、辞書取込画面を修正する。
 
-## ビルドと実機適用
+## ビルドと検証
 
-Mac は Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
+変更の検証は GitHub Actions で行うため、作業する OS は問いません（Ubuntu でも可）。作業ブランチを push し、配布なしで `windows` を手動実行して Windows・Mac の全検証（Core・Swift のテスト、実エンジンの入力検証、辞書の再読込、NativeAOT 境界）に合格したら `fork_by_hkrhd` を進めます。
+
+```sh
+git push origin HEAD:refs/heads/verify/<作業名>
+gh workflow run windows -R hkrhd/Meltype --ref verify/<作業名>
+gh run watch -R hkrhd/Meltype "$(gh run list -R hkrhd/Meltype --workflow windows --branch verify/<作業名> --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
+```
+
+合格後は作業ブランチを削除します。`fork_by_hkrhd` への push で配布され、利用者の Mac・Windows は自動更新で入れ替わります。
+
+手元の Mac でビルドする場合、対象は Apple Silicon・macOS 13.3 以降。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。 Apple Silicon・macOS 13.3 以降が対象。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
 漢字変換は upstream と同じ Mozc の変換ヘルパーと Zenzai（llama-server・zenz-v3.2-small）で、Zenzai はビルドスクリプトが取得します。
 Mozc の変換ヘルパーは `native/mozc/build-mozc-helper.sh`（Bazelisk が必要、初回30〜40分）で `native/mozc/bin/mac/` に作るか、`native/mozc/` が同じ upstream リリースの Mac 版 ZIP の `Meltype.app/Contents/Resources/mozc/` から置きます。
 
 ```sh
 bash mac/build-cli.sh --test --build   # Core・Swift のテストとビルド
-bash mac/update.sh                    # 入力検証・実機適用・入力ソース選択まで実行
+bash tests/fork/mac/check-inputs.sh   # 実エンジンの入力検証（一時的な辞書・設定・学習データ）
 ```
 
-入力検証は一時的な辞書・設定・学習データで実行します。Xcode の場所を変える場合は `DEVELOPER_DIR` を指定します。
+Xcode の場所を変える場合は `DEVELOPER_DIR` を指定します。
 
 ```sh
 dotnet run --project src/Meltype.Core.Tests
@@ -61,8 +71,7 @@ python3 tools/mcfly-terms.py --min-count 3  # 英語辞書に足す語をシェ�
 
 McFly の集計結果は自動で辞書に追加されません。簡易解析のため、個人情報や不要な語が混ざっていないか公開・登録前に確認してください。
 
-版番号は `mac/fork-version.sh` が upstream のタグとコミットから生成します。実機適用はコミット前なので `.dirty` が付きます。
-必要なら `MELTYPE_VERSION=... bash mac/update.sh` で指定できます。upstream のバージョンファイルは変更しません。
+配布の版番号は `mac/fork-version.sh` が upstream のタグとコミットから生成します。upstream のバージョンファイルは変更しません。
 
 ## 更新と配布
 

@@ -71,8 +71,9 @@ on:
       - 'tests/fork/windows-checks.test.mjs'
   workflow_dispatch:
     inputs:
+      # OFF なら任意のブランチで Windows・Mac の全検証だけを行う (upstream の取り込みなど push 前の検証用)。
       package:
-        description: 'Windows・Mac の配布物を作成・公開する'
+        description: 'Windows・Mac の配布物を作成・公開する (fork_by_hkrhd のみ)'
         type: boolean
         default: false
 
@@ -326,7 +327,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Windows 配布物をアップロードできませんでした。旧版は保持します。' }
 
   mac:
-    needs: release
+    needs: [test, release]
+    # 配布時と、配布しない手動実行の検証で動かす。
+    if: >-
+      !cancelled() && needs.test.result == 'success'
+      && (needs.release.result == 'success'
+          || (needs.release.result == 'skipped' && github.event_name == 'workflow_dispatch' && !inputs.package))
     # 利用者の Mac は最新の macOS にするので、版を固定せず GitHub の最新の Mac で作る
     runs-on: macos-latest
     # Mozc のビルドは初回 30〜40 分かかる (2 回目からは Bazel のキャッシュを使う)
@@ -346,7 +352,9 @@ jobs:
       - name: Check build architecture
         run: test "$(uname -m)" = arm64
       # upstream の mac.yml と同じ手順で Mozc の変換ヘルパーをビルドする。
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      # 検証用ブランチのキャッシュは無料枠を圧迫するので、保存は配布時だけにする。
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        id: mozc-cache
         with:
           path: |
             ~/bazel-cache
@@ -364,7 +372,15 @@ jobs:
           chmod +x "$HOME/tools/bazelisk"
       - name: Build Mozc helper
         run: BAZEL="$HOME/tools/bazelisk" native/mozc/build-mozc-helper.sh "$HOME/mozc" "$HOME/bazel-cache"
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        if: needs.release.result == 'success' && steps.mozc-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/bazel-cache
+            ~/mozc/src/third_party_cache
+          key: ${{ steps.mozc-cache.outputs.cache-primary-key }}
       - name: Signing certificate
+        if: needs.release.result == 'success'
         env:
           MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
@@ -391,6 +407,7 @@ jobs:
       - name: Input checks with the real converter
         run: |
           bash tests/fork/mac/check-inputs.sh
+          bash tests/fork/mac/check-dictionary-reload.sh mac/build/Meltype.app
           temporary="$(mktemp -d)"
           trap 'rm -rf "$temporary"' EXIT
           MELTYPE_DATA_DIR="$temporary" mac/build/Meltype.app/Contents/MacOS/Meltype --check-inputs mac/Resources/InputChecks.tsv
@@ -400,7 +417,7 @@ jobs:
           python3 tools/test-mac-boundaries.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib
           python3 tools/test-mac-events.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib
       - name: Notarize
-        if: env.MELTYPE_MAC_IDENTITY != ''
+        if: needs.release.result == 'success' && env.MELTYPE_MAC_IDENTITY != ''
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
@@ -410,6 +427,7 @@ jobs:
           xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --wait
           xcrun stapler staple mac/build/Meltype.app
       - name: Package and upload Mac app
+        if: needs.release.result == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

@@ -9,5 +9,4 @@ revision=$(git rev-parse --short=12 HEAD)
 version=${base#v}
 if [[ "$version" == *-* ]]; then version="$version.hkrhd.$count.g$revision";
 else version="$version-hkrhd.$count.g$revision"; fi
-if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then version="$version.dirty"; fi
 printf '%s\n' "$version"
