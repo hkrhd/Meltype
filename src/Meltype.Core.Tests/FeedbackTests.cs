@@ -891,7 +891,7 @@ internal static class LanguageLearningTests
             {
                 var k = new CompositionTests.Keyboard(live: live,
                     moreCandidates: reading => reading == "ばーじょん" ? ["バージョン", "Mozc-test"] : []);
-                var expected = Composition.Utility.VersionConversion.Candidate(k.Settings);
+                var expected = k.VersionCandidate;
                 k.Type(typed + " ");
                 var view = k.Host.View!;
                 Assert.True(view.Converting, typed + ": 変換中");
@@ -914,7 +914,7 @@ internal static class LanguageLearningTests
         {
             var k = new CompositionTests.Keyboard(live: true,
                 moreCandidates: reading => reading == "ばーじょん" ? ["バージョン", "Mozc-test"] : []);
-            var version = Composition.Utility.VersionConversion.Candidate(k.Settings);
+            var version = k.VersionCandidate;
             k.Type(typed + " ");
             var candidates = k.Host.View!.Candidates.ToList();
             Assert.True(candidates.IndexOf("バージョン") is >= 0 and var katakana && katakana < candidates.IndexOf(version), typed + ": " + string.Join(" ", candidates));
@@ -929,7 +929,7 @@ internal static class LanguageLearningTests
         foreach (var typed in new[] { "version", "ba-jonappu", "ba-" })
         {
             var k = new CompositionTests.Keyboard();
-            var expected = Composition.Utility.VersionConversion.Candidate(k.Settings);
+            var expected = k.VersionCandidate;
             k.Type(typed + " ");
             Assert.True(k.Host.View?.Candidates.Contains(expected) != true, typed + ": ほかの読みには版を出さない");
         }
@@ -977,7 +977,7 @@ internal static class LanguageLearningTests
             var standalone = new CompositionTests.Keyboard(history: history, converter: new VersionConverter());
             standalone.Type("ba-jonn ");
             Assert.Equal("バージョン", standalone.Host.View!.Text, old);
-            Assert.True(standalone.Host.View.Candidates.Contains(Composition.Utility.VersionConversion.Candidate(standalone.Settings)), "現在の版は引き続き選べる");
+            Assert.True(standalone.Host.View.Candidates.Contains(standalone.VersionCandidate), "現在の版は引き続き選べる");
         }
     }
 
@@ -988,7 +988,7 @@ internal static class LanguageLearningTests
         var phrases = new PhraseHistory(null);
         var keyboard = new CompositionTests.Keyboard(history: history, converter: new VersionConverter(), predictor: new Predictor(phrases, null, history));
         keyboard.Type("ba-jonn ");
-        var version = Composition.Utility.VersionConversion.Candidate(keyboard.Settings);
+        var version = keyboard.VersionCandidate;
         var index = keyboard.Host.View!.Candidates.ToList().IndexOf(version);
         Assert.True(index > 0, "現在の版は通常の候補より後ろにある");
         keyboard.SelectCandidate(index);

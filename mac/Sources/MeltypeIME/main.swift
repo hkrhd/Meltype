@@ -30,9 +30,6 @@ if CommandLine.arguments.contains("--register-input-source") {
     exit(0)
 }
 
-/// 変換の候補の一覧 (すべての入力欄で共有する)。
-var candidatesWindow: IMKCandidates?
-
 func runIsolatedChecks(inputPath: String?, candidatePath: String? = nil, predictions: Bool = false) -> Int32 {
     let files = FileManager.default
     if ProcessInfo.processInfo.environment["MELTYPE_DATA_DIR"] != nil {
@@ -330,7 +327,6 @@ guard let bundleIdentifier = Bundle.main.bundleIdentifier,
     NSLog("Meltype: IMKServer を起動できませんでした (Meltype.app から起動してください)")
     exit(1)
 }
-candidatesWindow = IMKCandidates(server: server, panelType: kIMKSingleColumnScrollingCandidatePanel)
 NSRegisterServicesProvider(ModeServices.shared, ModeServices.portName)
 let dictionaryWatcher = NativeCore.shared.dataDirectory.map {
     MacDictionaryWatcher(directory: $0, reload: { NativeCore.shared.reloadDictionaries() })

@@ -76,12 +76,10 @@ McFly の集計結果は自動で辞書に追加されません。簡易解析�
 
 ## 更新と配布
 
-2026-11-20 に upstream の 1.6.0 系列（`a2f69308`、前回から484コミット）を統合しました。upstream が変換ボックスの状態と処理を分けた（`CompositionState`・`ImeSession`）ので、フォークの変更もその形に移しました。
-Mac の漢字変換は upstream に合わせて azooKey から Mozc＋Zenzai（llama-server）に移し、azooKey・Metal ランタイムの自前ビルド・推論上限の比較・変換ベンチマークは廃止しました。
-同条件の一般文44件では、旧 azooKey 版と新エンジンの正解数は同じでした。かなだけの読みに英字を足した Zenzai の答え（`ふぉーまった → forMATTA`）は Mozc の候補で作れる場合だけ使います。
-upstream 単体ではフォークの Core テスト40件のうち6件が合格でした。統合後は Core 969件・Swift 49件と Windows の検証が合格しています。
+2026-11-21 に upstream の 1.7.0（`b661f03d`、前回から40コミット）を統合しました。upstream が Mac の候補の一覧と入力案内を 1 つのパネル（`CompositionPanel`）にまとめたので、フォークの辞書の再読込と更新メニューは新しい `InputController` に移しました。「ばーじょん」の候補には Zenzai の設定・Linux のフロント・別ビルドの Meltype IME が加わっています。
+upstream 単体ではフォークのテストをコンパイルできませんでした（`CompositionDetector.UserDictionary`・`MeltypeRuntime.ReloadDictionaries`・`ZenzaiConverterTests.FakeServer` の可視性）。upstream 単体の合否は測れず、フォークの実装はすべて残しています。統合後は Core 971件・Swift 52件と Windows の検証が合格しています。
 
-[Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.6.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認して新しい版を準備し、macOS の通知で知らせます。勝手には入れ替えず、通知のクリックか入力メニューの「Meltype ビルド N に更新して再起動」で入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
+[Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.7.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認して新しい版を準備し、macOS の通知で知らせます。勝手には入れ替えず、通知のクリックか入力メニューの「Meltype ビルド N に更新して再起動」で入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
