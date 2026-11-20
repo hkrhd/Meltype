@@ -85,20 +85,35 @@ upstream 単体ではフォークの Core テスト40件のうち6件が合格�
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
-upstream の Actions は GitHub 側でも無効化しています。フォークの `windows` は `fork-windows.yml` に分離し、追従用 `main` への push で upstream の検証・配布を起動させません。
-
-- `upstream-update`: 2日に1回、日本時間21:17に `main` を同期し、更新依頼の Draft PR を作成します。
-- `zenzai-update`: 1日1回、日本時間12:17に small / Q5_K_M の更新を Draft PR で通知します。取り込み・モデル差し替え・自動マージはしません。
-- `windows`: push・PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を1つのジョブで実行します。`fork_by_hkrhd` への push（Mac の変更も含む）と、手動実行で `package` を有効にした場合に Windows・Mac の配布物を作成します。
+upstream の Actions は GitHub 側でも無効化しています。フォークの Actions は `fork-windows.yml` の `windows` だけです。push・PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を実行し、`fork_by_hkrhd` への push（Mac の変更も含む）と、手動実行で `package` を有効にした場合に Windows・Mac の配布物を作成します。
+upstream・Zenzai の更新はユーザーのホスト（sys）が2時間おきに確認し、OpenCode に下の手順での取り込みを依頼します。
 
 ```sh
 gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 検証のみ
 gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd -f package=true  # 配布
-GITHUB_REPOSITORY=hkrhd/Meltype node .github/bot/zenzai-update.mjs --dry-run
 ```
 
 Windows の通常版 ZIP・ポータブル版 ZIP・インストーラーと Mac の ZIP がそろうとプレリリースを公開し、失敗時は下書きに残します。
 署名の設定がない場合、Mac は ad-hoc 署名、Windows は未署名です。配布物は Releases に保存します。
 開発ルールは [AGENTS.md](AGENTS.md) に集約し、旧 `docs/` の説明・画像は削除しました。
+配布物は Releases に保存し、Actions artifact は使いません。失敗した配布は下書きに残し、過去の公開リリース・タグは削除しません。
+Actions のキャッシュは無料枠10 GB内に収め、予算 `$0` と `Stop usage when budget limit is reached` を維持します。
+
+## upstream と Zenzai の取り込み
+
+upstream の最新の `main` を取り込み、フォークの全テストに合格した状態で `fork_by_hkrhd` を進めます。upstream が同じ問題を直したフォークの修正は捨て、upstream のやり方に寄せます。判断に迷う点は [AGENTS.md の「ユーザーへの確認」](AGENTS.md#ユーザーへの確認)に従います。
+
+1. `jj git fetch --remote upstream --remote origin` で取得します。未取り込みは `jj log -r 'fork_by_hkrhd@origin..main@upstream'`。
+2. **upstream 単体の検証**: `main@upstream` を親に、フォークのテストと CI（`tests/fork/`・`mac/Tests/ForkMacTests/`・`.github/workflows/fork-windows.yml`・`.github/bot/windows-checks.mjs` と、それらを読み込む `src/Meltype.Core.Tests/Meltype.Core.Tests.csproj`・`mac/Package.swift` の該当行）だけを `fork_by_hkrhd` から持ち込んだコミットを作ります。`verify/upstream-<短縮ハッシュ>` に push して `windows` を手動実行し、フォークのテストごとの合否を記録します。ビルドできなければ理由を記録して進みます。
+3. **マージ**: `jj new fork_by_hkrhd main@upstream` で2親のマージコミットを作り、競合を解きます。squash で履歴を圧縮しません。
+   - 手順2で合格したテストに対応するフォークの実装は破棄し、テストは残します。
+   - 不合格のテストに対応するフォークの実装は、upstream の新しい構造に移します（前回は `MeltypeSession` の処理を `ImeSession` へ移しました）。
+   - 要件が矛盾すればフォークを優先します。upstream で増えた Actions は `.github/disabled-workflows/` へ移します。
+4. **検証**: マージコミットを作業ブランチに push し直して `windows` を手動実行し、全検証に合格するまで Actions のログから原因を特定して直します。無関係な箇所を推測で変えません。
+5. この README の「更新と配布」に、取り込んだ upstream のコミットとコミット数、手順2の合否の数、統合後のテスト件数、主な移植内容を書きます（前回分は置き換え）。マージコミットの説明にも upstream の主な変更とフォーク側の対応を箇条書きします。
+6. `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。push で走る `windows` の成功と、Release に Windows 3個・Mac 1個の配布物がそろったことを `gh run watch` などで確かめます。走らなければ上の配布の手動実行を使います。最後に作業ブランチを削除します。
+7. 成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除します。現行モデル・増分ビルドキャッシュ・取得済み依存・最新アプリ・検証結果、共有のシステムキャッシュとユーザーの学習データは残します。
+
+Zenzai は Hugging Face の `Miwa-Keita/zenz-v<版>-small-gguf` の `ggml-model-Q5_K_M.gguf` だけを対象にします（xsmall・別量子化形式は対象外）。モデルカードのライセンスが従来と同等か確かめ、`native/zenzai/zenzai.env` の `ZENZ_COMMIT`・`ZENZ_SHA256`・`ZENZ_NAME` を更新し、`windows` の実エンジンの入力検証で精度が下がらないことを確かめます。下がれば採用せず結果を報告します。upstream の取り込みと同時なら同じマージで扱います。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。

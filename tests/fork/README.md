@@ -7,8 +7,6 @@
   実行結果はメソッド名の `Fork_` で識別できます。
 - `mac/check-inputs.sh`: 一時辞書・設定を使った実エンジンの回帰テスト。
   `--check-predictions` で英字3文字からの補完、Tab／Shift+Tab・Esc・Enter、クリック用のC ABIによる確定も検証します。
-- `zenzai-update.test.mjs`: 外部 API を再現し、新系列・重み更新の通知、重複抑制、障害時の停止を検証。
-  `node --test tests/fork/zenzai-update.test.mjs` で実行し、GitHub には書き込みません。
 - `mac/Tests/ForkMacTests/DictionarySyncTests.swift` (リポジトリ直下からのパス): 一時 SQLite DB を使い、自動同期、WAL・DB 入れ替えの監視、スリープ時の再読込を検証。
 - `mac/Tests/ForkMacTests/UpdaterTests.swift`: 偽の Releases 一覧と ZIP で、更新する版の選択、失敗した版の再試行抑止、ハッシュ検証、入力中の待機、`install.sh` の起動を検証。
 - `Windows/UpdaterTests.cs`: ビルド番号による新旧の比較と、手元のサーバーで再現した Releases からの `update.ps1` の取得・展開を検証（Windows のみ）。

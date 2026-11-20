@@ -1,24 +1,17 @@
 # このフォークの開発
 
-- upstream の `AGENTS.md` はこの内容で上書きする。運用手順は [README.md](README.md#ビルドと検証) に集約し、`docs/` は復活させない。
-- `main` は `upstream/main` の追従用、独自変更とデフォルトブランチは `fork_by_hkrhd`。
-- **作業ブランチでの `windows` の手動実行（配布なし）で Windows・Mac の全検証に合格してから、`fork_by_hkrhd` をそのコミットに進めて push する。** 手順は [README.md](README.md#ビルドと検証)。ドキュメントだけの変更は不要。jj の作業内容の自動保存はコミット確定と区別する。
-- 追加テストは `tests/fork/` と `mac/Tests/ForkMacTests/` に置き、ユーザーが求める振る舞い・E2E を検証する。追加・変更するテスト項目は、入力と期待値の表でユーザーに見せ、承認を得てから実装する。
-- 辞書個別対応は最終手段とする。記号は種類が少ないので可。
-- 成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除する。現行モデル・増分ビルドキャッシュ・取得済み依存・最新アプリ・検証結果は保持し、共有のシステムキャッシュとユーザーの学習データは削除しない。
+- upstream の `AGENTS.md` はこの内容で上書きする。手順は README.md に集約し、`docs/` は復活させない。
+- 独自変更とデフォルトブランチは `fork_by_hkrhd`。upstream は `main@upstream` を直接使う。
+- **作業ブランチで `windows` を手動実行（配布なし）し Windows・Mac の全検証に合格してから `fork_by_hkrhd` を進めて push する**（[ビルドと検証](README.md#ビルドと検証)）。ドキュメントだけの変更は不要。
+- upstream・Zenzai の取り込みは [README.md の手順](README.md#upstream-と-zenzai-の取り込み)に従う。
+- 追加テストは `tests/fork/`・`mac/Tests/ForkMacTests/` に置き、ユーザーが求める振る舞い・E2E を検証する。辞書個別対応は最終手段（記号は可）。
+- upstream の CI・bot は `.github/disabled-workflows/` へ移す。フォークの Actions は `windows` だけ。
 
-## upstream の取り込み
+## ユーザーへの確認
 
-1. 最新の `upstream/main` を取得. まず純粋なupstreamのコードでどの程度フォークのテストに合格するか見る。
-2. 合格になった項目を修正するフォークの内容は破棄。テストはそのまま残す。不合格の内容を修正する内容を取り込んだfork_by_hkrhd と `main` を親に持つマージコミットを作成し全てのテストに合格を確認する。squashで履歴圧縮しない。first principal thinkingで. フォークとupstreamで矛盾する要件ならフォークを優先する。
-3. README.md を更新し、全検証の合格後に push する。
+次の場合は止めて確認し、回答まで進めない（無人実行では question ツール）。
 
-## Actions とモデル更新
-
-- upstream の Actions は無効化する。新しい upstream の CI・bot は登録前に `.github/disabled-workflows/` へ移す。
-- このフォークの `upstream-update`・`zenzai-update`・`windows` を維持する。CI/CD を新設・変更したら一度手動実行して成功を確認する。
-- upstream 同期は書き込み可能な SSH デプロイキーを使う。公開鍵は Deploy keys、秘密鍵は `upstream-sync` Environment の `UPSTREAM_SYNC_SSH_KEY` に置き、`fork_by_hkrhd` からだけ利用可能にする。PR 作成には `GITHUB_TOKEN` を使う。キーの廃止・交換時は両方更新する。
-- Zenzai 更新通知は `.github/ZENZAI-UPDATE.md` の候補記録だけを変更する。同じ配布先・重みは再通知せず、説明文だけの変更・xsmall・別量子化形式は対象外。API 障害・必須情報の欠落は失敗として扱う。
-- モデル更新では互換性・ライセンスを確認し、実エンジンの入力検証で精度が下がらないことを確かめる。
-- 配布物は Releases に保存し、Actions artifact は使わない。失敗した配布は下書きに残し、過去の公開リリース・タグは削除しない。
-- Actions のキャッシュは無料枠10 GB内に収め、予算 `$0` と `Stop usage when budget limit is reached` を維持する。
+- テストの追加・変更・削除。「入力・変更前後の期待値・理由」の表に、期待値を実装に合わせて緩めていないか、フォークの振る舞いを消していないか、不要になった根拠（upstream のコミット）の点検結果を添える。
+- フォークと upstream の要件が矛盾し、影響が大きいとき。
+- 同じ問題で2回続けて失敗したとき。試したこと・失敗の要点・Actions の URL・次の案を添える。
+- 履歴の書き換え、force push、Release・タグの削除。
