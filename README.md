@@ -76,8 +76,8 @@ McFly の集計結果は自動で辞書に追加されません。簡易解析�
 
 ## 更新と配布
 
-2026-11-21 に upstream の `363c540e`（前回の `b661f03d` から61コミット）を統合しました。upstream が Core のフォルダーと namespace を星型（`Ime` → `Composition` → `Detection`・`Learning`・`Engine`・`Dictionary` → `Libraries`）に再編し、変換エンジンの interface を 1 つの `ConversionRequest` にまとめて文脈を出来事ごとに決めるようにしたので、フォークの検出器・辞書の区切り・読み全体の学習は移動先のファイルへ移しました。設定「変換を始めたら最後の文節を選ぶ」（既定 OFF は先頭）と、Windows の更新後にリリースノートを自動で出すかの設定が加わっています。
-upstream 単体ではフォークの Core テスト37件のうち6件が合格しました（`ForkApi/` の3件を除く）。統合後は Core 976件・Swift 52件と Windows の検証が合格しています。
+2026-11-21 に upstream の `6f259931`（前回の `363c540e` から10コミット）を統合しました。upstream は Core から使っていない `AppPaths` のパス・`ProtectedSpanScanner.TryTail`・`CurrencyConversion.Names` を消し、bot と Core の検証で `/repro`・`/ca` の前に `/learn` で学習させられるようにしました（`--learn` は Mozc に覚えさせず、学習を待つ処理も消しています）。Core の構造は変わらなかったので、フォークの実装を移す必要はありませんでした。
+upstream 単体ではフォークの Core テスト37件のうち6件が合格しました（`ForkApi/` の3件を除く）。合格した6件の実装は前回の取り込みと今回の upstream の変更で upstream の実装に置き換わっており、外す変更はありませんでした。「なん＋英字」の実装（`c8193ea9`）だけは upstream に無い「何」の候補に要るので残しています。統合後は Core 978件・Swift 52件と Windows の検証が合格しています。
 
 [Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.7.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認して新しい版を準備し、macOS の通知で知らせます。勝手には入れ替えず、通知のクリックか入力メニューの「Meltype ビルド N に更新して再起動」で入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
