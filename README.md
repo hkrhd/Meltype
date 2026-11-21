@@ -77,7 +77,7 @@ McFly の集計結果は自動で辞書に追加されません。簡易解析�
 ## 更新と配布
 
 2026-11-21 に upstream の 1.7.0（`b661f03d`、前回から40コミット）を統合しました。upstream が Mac の候補の一覧と入力案内を 1 つのパネル（`CompositionPanel`）にまとめたので、フォークの辞書の再読込と更新メニューは新しい `InputController` に移しました。「ばーじょん」の候補には Zenzai の設定・Linux のフロント・別ビルドの Meltype IME が加わっています。
-upstream 単体ではフォークのテストをコンパイルできませんでした（`CompositionDetector.UserDictionary`・`MeltypeRuntime.ReloadDictionaries`・`ZenzaiConverterTests.FakeServer` の可視性）。upstream 単体の合否は測れず、フォークの実装はすべて残しています。統合後は Core 971件・Swift 52件と Windows の検証が合格しています。
+upstream 単体ではフォークの Core テスト37件のうち6件が合格しました（`ForkApi/` の3件を除く）。統合後は Core 971件・Swift 52件と Windows の検証が合格しています。
 
 [Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.7.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認して新しい版を準備し、macOS の通知で知らせます。勝手には入れ替えず、通知のクリックか入力メニューの「Meltype ビルド N に更新して再起動」で入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
@@ -102,7 +102,7 @@ Actions のキャッシュは無料枠10 GB内に収め、予算 `$0` と `Stop 
 upstream の最新の `main` を取り込み、フォークの全テストに合格した状態で `fork_by_hkrhd` を進めます。upstream が同じ問題を直したフォークの修正は捨て、upstream のやり方に寄せます。判断に迷う点は [AGENTS.md の「ユーザーへの確認」](AGENTS.md#ユーザーへの確認)に従います。
 
 1. `jj git fetch --remote upstream --remote origin` で取得します。未取り込みは `jj log -r 'fork_by_hkrhd@origin..main@upstream'`。
-2. **upstream 単体の検証**: `main@upstream` を親に、フォークのテストと CI（`tests/fork/`・`mac/Tests/ForkMacTests/`・`.github/workflows/fork-windows.yml`・`.github/bot/windows-checks.mjs` と、それらを読み込む `src/Meltype.Core.Tests/Meltype.Core.Tests.csproj`・`mac/Package.swift` の該当行）だけを `fork_by_hkrhd` から持ち込んだコミットを作ります。`verify/upstream-<短縮ハッシュ>` に push して `windows` を手動実行し、フォークのテストごとの合否を記録します。ビルドできなければ理由を記録して進みます。
+2. **upstream 単体の検証**: `tests/fork/upstream-check.sh` で、`main@upstream` に作業コピーのフォークの Core テスト（`tests/fork/Core/ForkApi/` を除く）を載せて実行し、テストごとの合否を記録します（.NET 10 SDK を使い、Actions は使いません）。コンパイルできないテストはフォークにしかない API を使っているので `ForkApi/` へ移します（期待値は変えません）。
 3. **マージ**: `jj new fork_by_hkrhd main@upstream` で2親のマージコミットを作り、競合を解きます。squash で履歴を圧縮しません。
    - 手順2で合格したテストに対応するフォークの実装は破棄し、テストは残します。
    - 不合格のテストに対応するフォークの実装は、upstream の新しい構造に移します（前回は `MeltypeSession` の処理を `ImeSession` へ移しました）。

@@ -5,6 +5,8 @@
 - `Core/`: 句点の入力、ユーザー辞書による単語の分断防止、記号の半角入力。
   `Meltype.Core.Tests.csproj` から同じアセンブリに取り込み、既存の入力用ヘルパーを共有します。
   実行結果はメソッド名の `Fork_` で識別できます。
+  フォークにしかない API（辞書の再読込・検出器のユーザー辞書・Zenzai の偽サーバー）を使うテストは `Core/ForkApi/` に置き、
+  `upstream-check.sh` が upstream 単体で実行するときに除きます。
 - `mac/check-inputs.sh`: 一時辞書・設定を使った実エンジンの回帰テスト。
   `--check-predictions` で英字3文字からの補完、Tab／Shift+Tab・Esc・Enter、クリック用のC ABIによる確定も検証します。
 - `mac/Tests/ForkMacTests/DictionarySyncTests.swift` (リポジトリ直下からのパス): 一時 SQLite DB を使い、自動同期、WAL・DB 入れ替えの監視、スリープ時の再読込を検証。
