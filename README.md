@@ -49,7 +49,7 @@ gh workflow run windows -R hkrhd/Meltype --ref verify/<作業名>
 gh run watch -R hkrhd/Meltype --interval 60 "$(gh run list -R hkrhd/Meltype --workflow windows --branch verify/<作業名> --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-合格後は作業ブランチを削除します。`fork_by_hkrhd` への push で配布され、利用者の Mac・Windows は自動更新で入れ替わります。
+合格後は作業ブランチを削除します。`fork_by_hkrhd` への push では配布しません。配布は下の「更新と配布」の手動実行で行い、利用者の Mac・Windows は自動更新で入れ替わります。
 
 手元の Mac でビルドする場合、対象は Apple Silicon・macOS 13.3 以降。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
 漢字変換は upstream と同じ Mozc の変換ヘルパーと Zenzai（llama-server・zenz-v3.2-small）で、Zenzai はビルドスクリプトが取得します。
@@ -83,8 +83,8 @@ upstream 単体ではフォークの Core テスト37件のうち6件が合格�
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
-upstream の Actions は GitHub 側でも無効化しています。フォークの Actions は `fork-windows.yml` の `windows` だけです。push・PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を実行し、`fork_by_hkrhd` への push（Mac の変更も含む）と、手動実行で `package` を有効にした場合に Windows・Mac の配布物を作成します。
-upstream の更新はユーザーのホスト（sys）が2時間おきに確認し、OpenCode に下の手順での取り込みを依頼します。
+upstream の Actions は GitHub 側でも無効化しています。フォークの Actions は `fork-windows.yml` の `windows` だけです。PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を実行し、手動実行で `package` を有効にした場合だけ Windows・Mac の配布物を作成します。
+upstream の更新はユーザーのホスト（sys）が2時間おきに確認し、OpenCode に下の手順での取り込みを依頼します。配布は upstream のリリースに合わせ、取り込んだ範囲に前回の配布にない upstream のリリースタグ（`v*`）があるときだけ、sys が `fork_by_hkrhd` で配布を手動実行します。フォーク独自の変更を配布したいときも手動実行します。
 
 ```sh
 gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 検証のみ
@@ -110,7 +110,7 @@ upstream の最新の `main` を取り込み、フォークの全テストに合
    - 合格したテストごとに、そのテストを足したフォークのコミットの実装側の変更をマージコミットから外し、Core テストを実行します。全テストに合格すれば外したままにします（upstream が同じ問題を解決済み）。不合格なら戻し、手順5で残した理由を書きます。
 4. **検証**: マージコミットを作業ブランチに push し直して `windows` を手動実行し、全検証に合格するまで Actions のログから原因を特定して直します。無関係な箇所を推測で変えません。`gh run watch` には `--interval 60` を付けます（GitHub API の上限 5,000回/時はアカウントの全利用で共有します）。
 5. この README の「更新と配布」に、取り込んだ upstream のコミットとコミット数、手順3の合否の数と外した・残した実装、統合後のテスト件数、主な移植内容を書きます（前回分は置き換え）。マージコミットの説明にも upstream の主な変更とフォーク側の対応を箇条書きします。
-6. `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。push で走る `windows` の成功と、Release に Windows 3個・Mac 1個の配布物がそろったことを `gh run watch` などで確かめます。走らなければ上の配布の手動実行を使います。最後に作業ブランチを削除します。
+6. `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。最後に作業ブランチを削除します。配布は sys の定期実行が upstream のリリースに合わせて行うので、取り込みの作業では実行しません。
 7. 成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除します。現行モデル・増分ビルドキャッシュ・取得済み依存・最新アプリ・検証結果、共有のシステムキャッシュとユーザーの学習データは残します。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。

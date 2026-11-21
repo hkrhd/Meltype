@@ -57,7 +57,7 @@ test('変更した対象の検証だけを選び、手動実行ではすべて�
       const before = git('rev-parse', 'HEAD');
       put(file);
       git('add', '.'); git('commit', '-qm', 'change');
-      assert.deepEqual(select('push', { before }), expected, file);
+      assert.deepEqual(select('pull_request', { pull_request: { base: { sha: before } } }), expected, file);
     }
     // PR の base に対する変更も検出し、関係するファイルの削除・移動でも検証を残す。
     const before = git('rev-parse', 'HEAD');
@@ -65,8 +65,7 @@ test('変更した対象の検証だけを選び、手動実行ではすべて�
     rmSync(join(repo, 'packaging/Meltype.iss'));
     git('add', '-A'); git('commit', '-qm', 'move and delete');
     assert.deepEqual(select('pull_request', { pull_request: { base: { sha: before } } }), ['dotnet', 'installer']);
-    assert.deepEqual(select('push', { before: '0'.repeat(40) }), all);
-    assert.throws(() => select('push', { before: 'invalid' }));
+    assert.throws(() => select('pull_request', { pull_request: { base: { sha: 'invalid' } } }));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

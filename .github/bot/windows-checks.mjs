@@ -9,16 +9,11 @@ const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
 if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
   for (const name of Object.keys(checks)) checks[name] = true;
 } else {
-  const base = process.env.GITHUB_EVENT_NAME === 'pull_request' ? event.pull_request.base.sha : event.before;
+  // PR は checkout が作るマージ結果と base を比較する。リネームは旧名・新名の両方で判定する。
+  const base = event.pull_request.base.sha;
   if (!/^[0-9a-f]{40}$/.test(base ?? '')) throw new Error('比較元のコミット SHA が不正です。');
-  let files;
-  if (/^0{40}$/.test(base)) {
-    files = execFileSync('git', ['ls-tree', '-r', '--name-only', '-z', 'HEAD'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  } else {
-    execFileSync('git', ['fetch', '--no-tags', '--depth=1', 'origin', base], { stdio: 'inherit' });
-    // PR は checkout が作るマージ結果と base を比較する。リネームは旧名・新名の両方で判定する。
-    files = execFileSync('git', ['diff', '--name-only', '--no-renames', '-z', base, 'HEAD'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  }
+  execFileSync('git', ['fetch', '--no-tags', '--depth=1', 'origin', base], { stdio: 'inherit' });
+  const files = execFileSync('git', ['diff', '--name-only', '--no-renames', '-z', base, 'HEAD'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   for (const file of files.split('\0').filter(Boolean)) {
     if (/^\.github\/(workflows\/fork-windows\.yml|bot\/windows-checks\.mjs)$/.test(file)
         || file === 'tests/fork/windows-checks.test.mjs') {

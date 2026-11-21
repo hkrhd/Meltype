@@ -1,42 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 hkrhd
-# upstream の build.yml を元に、Windows の検証と Windows・Mac の最新配布物の保存を行う。
+# upstream の build.yml を元に、Windows の検証と Windows・Mac の配布物の保存を行う。
+# 配布は upstream のリリースを取り込んだときなどに手動実行で行い、fork_by_hkrhd への push では走らせない。
 name: windows
 
 on:
-  push:
-    branches: [fork_by_hkrhd]
-    paths:
-      - 'src/Meltype.Core/**'
-      - 'src/Meltype.Core.Tests/**'
-      - 'src/Meltype.Core.CApi/**'
-      - 'src/Meltype.Windows/**'
-      - 'src/Meltype.Windows.Tests/**'
-      - 'src/Directory.Build.*'
-      - 'native/tip/**'
-      - 'native/mozc/**'
-      - 'dictionaries/**'
-      - 'tests/fork/Core/**'
-      - 'tests/fork/Windows/**'
-      - 'Meltype.sln'
-      - 'Build-Package.ps1'
-      - 'Install-Meltype.ps1'
-      - 'nuget.config'
-      - 'global.json'
-      - 'Directory.Build.*'
-      - 'Directory.Packages.*'
-      - 'packaging/**'
-      - 'LICENSE'
-      - 'THIRD-PARTY-NOTICES.md'
-      - 'tools/Scan-WindowsPackage.ps1'
-      - 'tools/Test-WindowsPackageScan.ps1'
-      - 'tools/Test-SetupIme.ps1'
-      - '.github/workflows/fork-windows.yml'
-      - '.github/bot/windows-checks.mjs'
-      - 'tests/fork/windows-checks.test.mjs'
-      # Mac 版も push で配布し、自動更新の配信元にする。
-      - 'mac/**'
-      - 'tests/fork/mac/**'
   pull_request:
     branches: [fork_by_hkrhd]
     paths:
@@ -69,7 +37,7 @@ on:
       - 'tests/fork/windows-checks.test.mjs'
   workflow_dispatch:
     inputs:
-      # OFF なら任意のブランチで Windows・Mac の全検証だけを行う (upstream の取り込みなど push 前の検証用)。
+      # OFF なら任意のブランチで Windows・Mac の全検証だけを行う (upstream の取り込みなど fork_by_hkrhd を進める前の検証用)。
       package:
         description: 'Windows・Mac の配布物を作成・公開する (fork_by_hkrhd のみ)'
         type: boolean
@@ -79,7 +47,7 @@ permissions:
   contents: read
 
 concurrency:
-  # 配布中の実行は中断せず、続く push は最新の1件だけ待たせる。
+  # 配布中の実行は中断せず、続く手動実行は最新の1件だけ待たせる。
   group: windows-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -158,7 +126,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "IME 同梱のインストーラーを Inno Setup で通せませんでした (exit code $LASTEXITCODE)。" }
 
   release:
-    if: github.ref == 'refs/heads/fork_by_hkrhd' && (github.event_name == 'push' || inputs.package)
+    if: github.ref == 'refs/heads/fork_by_hkrhd' && inputs.package
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 10
