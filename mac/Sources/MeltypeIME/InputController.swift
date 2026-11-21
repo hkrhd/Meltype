@@ -6,7 +6,6 @@
 import Carbon.HIToolbox
 import Cocoa
 import InputMethodKit
-import UniformTypeIdentifiers
 
 /// 入力欄 (クライアント) ごとの IME。Input Method Kit から読んだ事実 (キー・キャレットの前後の文字) を本体 (libMeltypeNative.dylib の ImeHost) に渡し、
 /// 返ってきた指示 (確定する文字・変換中の表示・候補・入力モードの表示) を入力欄に反映する。入力モードは本体が決めるので、ここでは持たない。
@@ -39,7 +38,8 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     nonisolated(unsafe) private static var host = NativeCore.shared.createHost()
     nonisolated(unsafe) private static var dictionaryReloadPending = false
 
-    /// 送るのは同じプロセスの importUserDictionary だけなので、ほかのプロセスから届く分散通知では受けない
+    /// 辞書を読み直したら (MacDictionaryWatcher → NativeCore.reloadDictionaries)、入力欄の本体を作り直して反映する。
+    /// 送るのは同じプロセスだけなので、ほかのプロセスから届く分散通知では受けない
     nonisolated(unsafe) private static let dictionaryObserver = NotificationCenter.default.addObserver(
         forName: Notification.Name("MeltypeUserDictionaryChanged"), object: nil, queue: .main
     ) { _ in
@@ -185,20 +185,13 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     // ---- メニュー (メニューバーの入力メニュー) ----
 
+    /// 入力メニュー。操作は自動更新の適用だけにし、辞書の置き場所と自動反映の説明を出す。
     override func menu() -> NSMenu! {
         let menu = NSMenu()
-        for (mode, action) in [(MacInputMode.japanese, #selector(selectJapanese(_:))), (MacInputMode.direct, #selector(selectDirect(_:)))] {
-            let item = menu.addItem(withTitle: mode.title, action: action, keyEquivalent: "")
-            item.target = self
-            item.state = (mode == .japanese) == japanese ? .on : .off
+        for line in [Self.dictionaryReloadNote, Self.dictionariesLocationNote] {
+            let item = menu.addItem(withTitle: line, action: nil, keyEquivalent: "")
+            item.isEnabled = false
         }
-        menu.addItem(.separator())
-        let importItem = menu.addItem(withTitle: "macOSのユーザー辞書を取り込む…", action: #selector(importUserDictionary(_:)), keyEquivalent: "")
-        importItem.target = self
-        let configItem = menu.addItem(withTitle: "Meltype の設定ファイル (config.json) を開く…", action: #selector(openConfigFile(_:)), keyEquivalent: "")
-        configItem.target = self
-        menu.addItem(withTitle: "Meltype のデータフォルダを開く (設定・ユーザー辞書)", action: #selector(openDataFolder(_:)), keyEquivalent: "")
-        menu.addItem(withTitle: "不具合の報告・提案… (Mac 版はプレビュー版です)", action: #selector(openReport(_:)), keyEquivalent: "")
         if let build = MacUpdatePrompt.shared.updater?.readyBuild {
             menu.addItem(.separator())
             let updateItem = menu.addItem(withTitle: MacUpdatePrompt.menuTitle(build: build), action: #selector(installUpdate(_:)), keyEquivalent: "")
@@ -207,13 +200,22 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         return menu
     }
 
+    private static let dictionaryReloadNote = "辞書を変更すると、入力中でないときに自動で反映されます（再起動は不要）"
+
+    /// 辞書を置くフォルダー (データフォルダーの dictionaries/)。ホームだけ ~ に短縮して出す。
+    private static var dictionariesLocationNote: String {
+        guard let path = NativeCore.shared.dataDirectory.map({
+            URL(fileURLWithPath: $0, isDirectory: true).appendingPathComponent("dictionaries").path
+        }) else { return "macOSのユーザー辞書と dictionaries 以下のファイル（english.txt など）" }
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let shown = path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
+        return "macOSのユーザー辞書と \(shown) 以下のファイル（english.txt など）"
+    }
+
     @objc private func installUpdate(_ sender: Any?) {
         commitComposition(client())
         DispatchQueue.main.async { MacUpdatePrompt.shared.installUpdate() }
     }
-
-    @objc private func selectJapanese(_ sender: Any?) { send("JapaneseModeSelected", client: client()) }
-    @objc private func selectDirect(_ sender: Any?) { send("AlphanumericModeSelected", client: client()) }
 
     func selectModeFromService(_ action: ModeShortcutAction) -> Bool {
         guard let client = client() else { return false }
@@ -232,65 +234,6 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
         var rectangle = NSRect.zero
         _ = client.attributes(forCharacterIndex: index, lineHeightRectangle: &rectangle)
         return ModeIndicator.validCaret(rectangle) ? rectangle : nil
-    }
-
-    @objc private func importUserDictionary(_ sender: Any?) {
-        commitComposition(client())
-        // 入力メニューの処理を抜けてから、操作できる画面として表示する。
-        DispatchQueue.main.async {
-            do {
-                try ImportDialogPresentation.run {
-                    Self.importUserDictionaryFile()
-                }
-            } catch {
-                NSLog("Meltype: %@", error.localizedDescription)
-            }
-        }
-    }
-
-    private static func importUserDictionaryFile() {
-        let panel = NSOpenPanel()
-        // 取り込めるのは、macOS の「ユーザ辞書」から書き出した plist だけ。
-        // ~/Library/KeyboardServices の TextReplacements.db は Apple 内部の形式なので読まない。
-        panel.message = MacUserDictionary.exportGuide
-        panel.directoryURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
-        panel.allowedContentTypes = [.propertyList]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        guard panel.runModal() == .OK, let source = panel.url,
-              let directory = NativeCore.shared.dataDirectory else { return }
-        let alert = NSAlert()
-        do {
-            let result = try MacUserDictionary.importFile(source, directory: directory)
-            alert.messageText = "ユーザー辞書に\(result.added)語を追加しました"
-            alert.informativeText = "無効な項目・登録済みの項目を\(result.skipped)語飛ばしました。"
-            NotificationCenter.default.post(name: Notification.Name("MeltypeUserDictionaryChanged"), object: nil)
-        } catch {
-            alert.messageText = "ユーザー辞書を取り込めませんでした"
-            alert.informativeText = error.localizedDescription + "\n\n" + MacUserDictionary.exportGuide
-        }
-        alert.runModal()
-    }
-
-    @objc private func openReport(_ sender: Any?) {
-        guard let url = NativeCore.shared.reportUrl else { return }
-        NSWorkspace.shared.open(url)
-    }
-
-    /// 設定ファイル (Windows 版と共通の config.json) を、無ければ空の設定で作ってから、既定のエディターで開く (issue #508)。
-    /// 空の設定にも、本体が隣に書く config.schema.json を指定しておく (エディターで項目の補完・説明が出る)。
-    @objc private func openConfigFile(_ sender: Any?) {
-        guard let directory = NativeCore.shared.dataDirectory else { return }
-        let url = URL(fileURLWithPath: directory, isDirectory: true).appendingPathComponent("config.json")
-        if !FileManager.default.fileExists(atPath: url.path) {
-            try? "{\n  \"$schema\": \"./config.schema.json\"\n}\n".write(to: url, atomically: true, encoding: .utf8)
-        }
-        NSWorkspace.shared.open(url)
-    }
-
-    @objc private func openDataFolder(_ sender: Any?) {
-        guard let directory = NativeCore.shared.dataDirectory else { return }
-        NSWorkspace.shared.open(URL(fileURLWithPath: directory, isDirectory: true))
     }
 
     // ---- 指示を入力欄に反映する ----
