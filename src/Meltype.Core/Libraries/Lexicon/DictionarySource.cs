@@ -6,11 +6,24 @@ namespace Meltype.Libraries.Lexicon;
 /// <summary>組み込み辞書 (dictionaries/*.txt を埋め込んだもの) とユーザー辞書を読む。</summary>
 public static class DictionarySource
 {
+    /// <summary>組み込み辞書 name の本文。フォークで足した同名の辞書 (dictionaries/fork/) があれば後ろに続ける。</summary>
     public static string ReadEmbedded(string name)
     {
-        var assembly = typeof(DictionarySource).Assembly;
-        using var stream = assembly.GetManifestResourceStream($"Meltype.dictionaries.{name}")
-            ?? throw new InvalidOperationException($"組み込み辞書 {name} が見つかりません。");
+        var upstream = ReadResource($"Meltype.dictionaries.{name}");
+        var fork = ReadResource($"Meltype.dictionaries.fork.{name}");
+        return (upstream, fork) switch
+        {
+            (null, null) => throw new InvalidOperationException($"組み込み辞書 {name} が見つかりません。"),
+            (_, null) => upstream,
+            (null, _) => fork,
+            _ => upstream + "\n" + fork,
+        };
+    }
+
+    private static string? ReadResource(string resource)
+    {
+        using var stream = typeof(DictionarySource).Assembly.GetManifestResourceStream(resource);
+        if (stream is null) return null;
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }

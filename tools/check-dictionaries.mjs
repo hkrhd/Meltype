@@ -278,14 +278,15 @@ function isMain() {
 
 if (isMain()) {
   const files = process.argv.slice(2).length > 0
-    ? process.argv.slice(2).map(f => path.basename(f)).filter(f => f.endsWith('.txt'))
-    : fs.readdirSync(root).filter(f => f.endsWith('.txt'));
+    ? process.argv.slice(2).map(f => path.relative(root, path.resolve(f))).filter(f => f.endsWith('.txt'))
+    // fork/ はフォークで足した辞書。同じ名前の辞書の決まりで確かめる
+    : ['', 'fork'].flatMap(dir => fs.existsSync(path.join(root, dir)) ? fs.readdirSync(path.join(root, dir)).filter(f => f.endsWith('.txt')).map(f => path.join(dir, f)) : []);
   let errors = 0, warnings = 0;
   const report = [];
   for (const file of files) {
     const full = path.join(root, file);
     if (!fs.existsSync(full)) continue; // 消した辞書
-    const result = checkDictionary(file, fs.readFileSync(full, 'utf8'));
+    const result = checkDictionary(path.basename(file), fs.readFileSync(full, 'utf8'));
     const where = p => `file=dictionaries/${file}${p.line ? `,line=${p.line}` : ''}`;
     for (const p of result.errors) report.push(`::error ${where(p)}::${p.message}`);
     for (const p of result.warnings) report.push(`::warning ${where(p)}::${p.message}`);

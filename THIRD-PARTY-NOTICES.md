@@ -58,9 +58,9 @@ Meltype のソースコード (このリポジトリ) には、次のものを�
 
 日本語と英語の区切りを決めるときに、日本語の語として読むのに使います。JMdict のよく使う語の印が無い語の、ひらがなで 5 文字以上の読みと活用の種類を `tools/make-readings.mjs` で取り出して作りました。著作権・ライセンスは英訳の候補と同じ (EDRDG、CC BY-SA 4.0) で、この派生データも CC BY-SA 4.0 です。
 
-### カタカナで書く語の読みの一覧 (dictionaries/katakana.txt)
+### カタカナで書く語の読みの一覧 (dictionaries/katakana.txt・dictionaries/fork/katakana.txt)
 
-日英の区切りで、よく使う語の読みに無いカタカナ語 (ホスティング) を日本語の語として読むのに使います。JMdict のカタカナだけの読みを `tools/make-katakana.mjs` で取り出して作りました。著作権・ライセンスは英訳の候補と同じ (EDRDG、CC BY-SA 4.0) で、この派生データも CC BY-SA 4.0 です。
+日英の区切りで、よく使う語の読みに無いカタカナ語 (ホスティング) を日本語の語として読むのに使います。JMdict のカタカナだけの読みを `tools/make-katakana.mjs`（フォークの 3 音の語は `tools/fork/make-katakana.mjs`）で取り出して作りました。著作権・ライセンスは英訳の候補と同じ (EDRDG、CC BY-SA 4.0) で、この派生データも CC BY-SA 4.0 です。
 
 ### 英字で書く語の候補 (dictionaries/loanwords.txt)
 

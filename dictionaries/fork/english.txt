@@ -1,0 +1,6 @@
+# Meltype フォーク: 英語辞書 (dictionaries/english.txt の後ろに続けて読む)
+
+# --- フォーク: シェル・開発ツールの語 ---
+cp exec fd gh ghq jj jq killall ln ls rg rm rsync rclone rustup uv xattr launchctl caffeinate dinit dinitctl
+nvim zellij submodule untrack dotfiles cheatsheet codex opencode infisical rainfrog inkstitch dlx dlp yt
+tailscale obsidian immich exif img tui raspi

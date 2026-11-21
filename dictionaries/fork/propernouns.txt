@@ -1,0 +1,2 @@
+# Meltype フォーク: 英語の固有名詞 (dictionaries/propernouns.txt の後ろに続けて読む)
+README
