@@ -44,13 +44,15 @@
 
 変更の検証は GitHub Actions で行うため、作業する OS は問いません（Ubuntu でも可）。作業ブランチを push し、配布なしで `windows` を手動実行して Windows・Mac の全検証（Core・Swift のテスト、実エンジンの入力検証、辞書の再読込、NativeAOT 境界）に合格したら `fork_by_hkrhd` を進めます。
 
+作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは止まらないので、push の前に最新の `fork_by_hkrhd` へ rebase します。3日を超えて残ると Matrix に知らせが届きます。
+
 ```sh
-git push origin HEAD:refs/heads/verify/<作業名>
-gh workflow run windows -R hkrhd/Meltype --ref verify/<作業名>
-gh run watch -R hkrhd/Meltype --interval 60 "$(gh run list -R hkrhd/Meltype --workflow windows --branch verify/<作業名> --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
+git push origin HEAD:refs/heads/request/<作業名>
+gh workflow run windows -R hkrhd/Meltype --ref request/<作業名>
+gh run watch -R hkrhd/Meltype --interval 60 "$(gh run list -R hkrhd/Meltype --workflow windows --branch request/<作業名> --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-合格後は作業ブランチを削除します。`fork_by_hkrhd` への push では配布しません。ユーザーの要望で変えたときは、push 後に下の「更新と配布」の配布を手動実行し、Release に Windows 3個・Mac 1個がそろったことを確かめます。利用者の Mac・Windows は自動更新で入れ替わります。
+合格後は `verify/` の作業ブランチを削除します（`request/` は配布の後）。`fork_by_hkrhd` への push では配布しません。ユーザーの要望で変えたときは、push 後に下の「更新と配布」の配布を手動実行し、Release に Windows 3個・Mac 1個がそろったことを確かめます。利用者の Mac・Windows は自動更新で入れ替わります。
 
 手元の Mac でビルドする場合、対象は Apple Silicon・macOS 13.3 以降。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
 漢字変換は upstream と同じ Mozc の変換ヘルパーと Zenzai（llama-server・zenz-v3.2-small）で、Zenzai はビルドスクリプトが取得します。
@@ -109,7 +111,7 @@ upstream の最新の `main` を取り込み、フォークの全テストに合
    - 手元で動かすのは Core のテスト（`dotnet run --project src/Meltype.Core.Tests -c Release`）までです。Windows・Mac のビルドとテストは手順4の Actions に任せます。
 3. **upstream 単体の検証**: `tests/fork/upstream-check.sh` で、`main@upstream` に作業コピーのフォークの Core テスト（`tests/fork/Core/ForkApi/` を除く）を載せて実行し、テストごとの合否を記録します。コンパイルできないテストはフォークにしかない API を使っているので `ForkApi/` へ移します（期待値は変えません）。
    - 合格したテストごとに、そのテストを足したフォークのコミットの実装側の変更をマージコミットから外し、Core テストを実行します。全テストに合格すれば外したままにします（upstream が同じ問題を解決済み）。不合格なら戻し、手順5で残した理由を書きます。
-4. **検証**: マージコミットを作業ブランチに push し直して `windows` を手動実行し、全検証に合格するまで Actions のログから原因を特定して直します。無関係な箇所を推測で変えません。`gh run watch` には `--interval 60` を付けます（GitHub API の上限 5,000回/時はアカウントの全利用で共有します）。
+4. **検証**: マージコミットを作業ブランチ `verify/<作業名>` に push し直して `windows` を手動実行し、全検証に合格するまで Actions のログから原因を特定して直します。無関係な箇所を推測で変えません。`gh run watch` には `--interval 60` を付けます（GitHub API の上限 5,000回/時はアカウントの全利用で共有します）。
 5. この README の「更新と配布」に、取り込んだ upstream のコミットとコミット数、手順3の合否の数と外した・残した実装、統合後のテスト件数、主な移植内容を書きます（前回分は置き換え）。マージコミットの説明にも upstream の主な変更とフォーク側の対応を箇条書きします。
 6. `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。最後に作業ブランチを削除します。配布は sys の定期実行が upstream のリリースに合わせて行うので、取り込みの作業では実行しません。
 7. 成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除します。現行モデル・増分ビルドキャッシュ・取得済み依存・最新アプリ・検証結果、共有のシステムキャッシュとユーザーの学習データは残します。
