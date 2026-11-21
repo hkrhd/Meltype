@@ -44,7 +44,7 @@
 
 変更の検証は GitHub Actions で行うため、作業する OS は問いません（Ubuntu でも可）。作業ブランチを push し、配布なしで `windows` を手動実行して Windows・Mac の全検証（Core・Swift のテスト、実エンジンの入力検証、辞書の再読込、NativeAOT 境界）に合格したら `fork_by_hkrhd` を進めます。
 
-作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは止まらないので、push の前に最新の `fork_by_hkrhd` へ rebase します。3日を超えて残ると Matrix に知らせが届きます。
+作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは `fork_by_hkrhd` への push の前で待つので、要望は取り込みの完了を待たずに進めます。`fork_by_hkrhd` へ push する前に `jj git fetch` し、`fork_by_hkrhd@origin` が進んでいれば（先に取り込みが入ったなど）その上へ rebase して検証し直します。sys では取り込み中の作業コピーを使わず、`jj workspace add` で別の作業コピーを作ります。3日を超えて残ると Matrix に知らせが届きます。
 
 ```sh
 git push origin HEAD:refs/heads/request/<作業名>
@@ -113,7 +113,7 @@ upstream の最新の `main` を取り込み、フォークの全テストに合
    - 合格したテストごとに、そのテストを足したフォークのコミットの実装側の変更をマージコミットから外し、Core テストを実行します。全テストに合格すれば外したままにします（upstream が同じ問題を解決済み）。不合格なら戻し、手順5で残した理由を書きます。
 4. **検証**: マージコミットを作業ブランチ `verify/<作業名>` に push し直して `windows` を手動実行し、全検証に合格するまで Actions のログから原因を特定して直します。無関係な箇所を推測で変えません。`gh run watch` には `--interval 60` を付けます（GitHub API の上限 5,000回/時はアカウントの全利用で共有します）。
 5. この README の「更新と配布」に、取り込んだ upstream のコミットとコミット数、手順3の合否の数と外した・残した実装、統合後のテスト件数、主な移植内容を書きます（前回分は置き換え）。マージコミットの説明にも upstream の主な変更とフォーク側の対応を箇条書きします。
-6. `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。最後に作業ブランチを削除します。配布は sys の定期実行が upstream のリリースに合わせて行うので、取り込みの作業では実行しません。
+6. origin に `request/` のブランチがあれば、push せずにそのことを報告して終えます（要望の作業が優先で、終わると sys の定期実行がこの会話に続きを頼みます）。`fork_by_hkrhd@origin` がマージコミットの親より進んでいれば、`jj rebase -s <マージコミット> -d fork_by_hkrhd@origin -d main@upstream` で載せ直し、手順4からやり直します。どちらでもなければ `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。最後に作業ブランチを削除します。配布は sys の定期実行が upstream のリリースに合わせて行うので、取り込みの作業では実行しません。
 7. 成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除します。現行モデル・増分ビルドキャッシュ・取得済み依存・最新アプリ・検証結果、共有のシステムキャッシュとユーザーの学習データは残します。
 
 ライセンス：[GPL-3.0-or-later](LICENSE)。
