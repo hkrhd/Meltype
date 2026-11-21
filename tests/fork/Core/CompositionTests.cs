@@ -3,7 +3,11 @@
 
 using Meltype.Composition;
 using Meltype.Config;
+using Meltype.Detection;
+using Meltype.Dictionary;
+using Meltype.Engine;
 using Meltype.Input;
+using Meltype.Learning;
 
 namespace Meltype.Tests;
 
@@ -333,8 +337,8 @@ internal static partial class CompositionTests
 
     private sealed class KansenConverter : IKanjiConverter
     {
-        public string? Convert(string hiragana) => ConvertClauses(hiragana) is { } clauses ? string.Concat(clauses.Select(c => c.Text)) : null;
-        public IReadOnlyList<ConversionClause>? ConvertClauses(string hiragana, string? context = null) => hiragana switch
+        public IReadOnlyList<ConversionClause>? Convert(ConversionRequest request) => Clauses(request.Hiragana);
+        private static IReadOnlyList<ConversionClause>? Clauses(string hiragana) => hiragana switch
         {
             "かんきせん" => [new("かんき", "換気"), new("せん", "扇")],
             "かんき" => [new("かんき", "換気")],

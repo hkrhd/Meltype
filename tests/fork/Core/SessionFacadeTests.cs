@@ -3,7 +3,9 @@
 
 using Meltype.Composition;
 using Meltype.Config;
+using Meltype.Detection;
 using Meltype.Input;
+using Meltype.Learning;
 
 namespace Meltype.Tests;
 
@@ -204,7 +206,7 @@ internal static partial class SessionFacadeTests
         foreach (var convert in new[] { false, true })
         {
             var session = new TestSession(() => new Settings { LiveConversion = live },
-                services: new CompositionServices { MoreCandidates = _ => ["ーーー", "－－－", "—"] });
+                services: new CompositionServices { MoreCandidates = (_, _) => ["ーーー", "－－－", "—"] });
             var typed = Type(session, prefix + marker)[^1];
             Assert.True(typed.View?.Text.EndsWith(marker) == true, "入力中から半角を表示する");
             if (convert)
@@ -270,7 +272,7 @@ internal static partial class SessionFacadeTests
         foreach (var prefix in new[] { "", "kyouha" })
         {
             var session = new TestSession(() => new Settings { SigilWordsDirect = false, LiveConversion = live, SeparateKeyRoles = separate, SpaceAroundEnglish = true },
-                services: new CompositionServices { MoreCandidates = reading => reading == symbol.ToString() ? [((char)(symbol + 0xFEE0)).ToString(), "”"] : [] });
+                services: new CompositionServices { MoreCandidates = (reading, _) => reading == symbol.ToString() ? [((char)(symbol + 0xFEE0)).ToString(), "”"] : [] });
             Type(session, prefix);
             var result = Type(session, symbol.ToString())[0];
             var expectedPrefix = prefix.Length == 0 ? "" : symbol == '_' ? prefix : live ? "今日は" : "きょうは";

@@ -3,10 +3,8 @@
 
 using System.Globalization;
 using System.Text;
-using Meltype.Composition.Utility;
 using Meltype.Config;
-using Meltype.Detection;
-using Meltype.Input;
+using static Meltype.Libraries.Chars.TextChars;
 
 namespace Meltype.Composition;
 
@@ -25,28 +23,27 @@ internal static partial class CompositionController
         state.Text.FullWidthParentheses = env.Settings.FullWidthParentheses;
         state.Text.SquareBrackets = env.Settings.SquareBrackets;
         state.Text.LaughterAfterKana = env.Settings.LaughterAfterKana;
+    }
+
+    /// <summary>
+    /// 入力欄の文脈 (<see cref="TextEnv.Context"/>)。フロントが渡したキャレットの前後の文字 (この出来事で確定した文字を入れたもの) から決める。
+    /// 自分が確定した直後と、キャレットの前が読めないときは、自分の確定の記録 (最後に確定した語) を使う。
+    /// </summary>
+    internal static TextContext ContextOf(CompositionState state, CompositionEnv env)
+    {
+        var after = CompositionOutput.After(env);
         // 自分が確定した直後は、アプリ側のテキストがまだ更新されていないかもしれないので自分の記録を信じる。
         var recentOwnCommit = env.NowMs - state.LastCommitTime < OwnCommitTrustMs;
-        state.PrecedingText = state.LastCommitEnglish is null ? null : state.LastCommitText;
-        state.FollowingText = null;
-        state.Text.PrecedingEnglish = state.LastCommitEnglish;
         state.Text.PrecedingCharacter = state.LastImmediateSymbol;
-        state.Text.PrecedingEnglishSentence = state.LastCommitEnglish == true && IsEnglishSentence(state.LastCommitText);
-        state.Text.PrecedingEnglishName = state.LastCommitEnglish == true && IsEnglishNameContext(state.LastCommitText);
         // フロントが渡したキャレットの前の文字 (このキーで確定した文字を入れたもの)。読めなければ null で、キャレットの位置は確かめない (今までどおり直す)。
-        // 確定し直してよいか (直前に確定した語が今のキャレットの位置にあるか) の判断にも使う。
-        var before = CompositionOutput.Before(state.Out, env);
-        state.CaretBefore = before;
-        if (!recentOwnCommit && before is not null)
+        if (!recentOwnCommit && CompositionOutput.Before(state.Out, env) is { } before)
         {
-            state.PrecedingText = before;
             state.Text.PrecedingCharacter = before.Length > 0 ? before[^1] : null;
-            if (LanguageOf(before) is { } english) state.Text.PrecedingEnglish = english;
-            state.Text.PrecedingEnglishSentence = IsEnglishSentence(before);
-            state.Text.PrecedingEnglishName = IsEnglishNameContext(before);
+            return new TextContext(before, LanguageOf(before) ?? state.LastCommitEnglish, IsEnglishSentence(before), IsEnglishNameContext(before), after, LanguageOfStart(after));
         }
-        state.FollowingText = state.Out.After;
-        state.Text.FollowingEnglish = LanguageOfStart(state.Out.After);
+        var english = state.LastCommitEnglish;
+        return new TextContext(english is null ? null : state.LastCommitText, english,
+            english == true && IsEnglishSentence(state.LastCommitText), english == true && IsEnglishNameContext(state.LastCommitText), after, LanguageOfStart(after));
     }
 
     /// <summary>
@@ -85,65 +82,10 @@ internal static partial class CompositionController
             words[^2].ToLowerInvariant() is "name" or "surname" or "nickname";
     }
 
-    /// <summary>確定済みの文字列の最後の (空白以外の) 文字が英数字なら英語、かな・漢字・全角記号なら日本語。</summary>
-    internal static bool? LanguageOf(string? text)
-    {
-        if (string.IsNullOrEmpty(text)) return null;
-        for (var i = text.Length - 1; i >= 0; i--)
-        {
-            if (Classify(text[i]) is { } english) return english;
-            if (text[i] >= 0x80 && !char.IsWhiteSpace(text[i]) && text[i] != '　') return null;
-        }
-        return null;
-    }
-
-    /// <summary>キャレットの後ろの文字列の最初の (空白以外の) 文字で判断する。</summary>
-    internal static bool? LanguageOfStart(string? text)
-    {
-        if (string.IsNullOrEmpty(text)) return null;
-        foreach (var c in text)
-        {
-            if (c is '\r' or '\n') return null; // 次の行は別の文
-            if (Classify(c) is { } english) return english;
-            if (c >= 0x80 && !char.IsWhiteSpace(c) && c != '　') return null;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// 英数字なら英語 (true)、かな・漢字・全角文字・日本語の文で使う記号 (○ ※ ★ 「」 など U+2000 以降) なら日本語 (false)、
-    /// 空白や英文の記号なら判断しない (null)。
-    /// </summary>
-    private static bool? Classify(char c)
-    {
-        if (char.IsAsciiLetterOrDigit(c)) return true;
-        if (c >= '\u2000' && !char.IsWhiteSpace(c) && c != '\u3000') return false;
-        return null;
-    }
-
-    /// <summary>変換エンジンに渡す文脈: キャレットの前の確定済みの文字のうち、同じ文の日本語の部分 (最大 10 文字)。</summary>
-    private static string? ConversionContext(CompositionState state)
-    {
-        var text = state.PrecedingText;
-        if (string.IsNullOrEmpty(text) || LanguageOf(text) != false) return null;
-        var start = text.AsSpan().LastIndexOfAny(SentenceEndSearch);
-        text = text[(start + 1)..].Trim();
-        return text.Length == 0 ? null : text.Length > 10 ? text[^10..] : text;
-    }
-
-    /// <summary>広い文脈 (文をまたいで最大 100 文字の、日本語の文章)。使える変換エンジン (Zenzai) に渡す。英文のときは null。</summary>
-    private static string? WideContext(CompositionState state)
-    {
-        var text = state.PrecedingText?.Replace("\r", "").Replace("\n", "").Trim();
-        return string.IsNullOrEmpty(text) || LanguageOf(text) != false ? null : text.Length > 100 ? text[^100..] : text;
-    }
-
-    private static readonly System.Buffers.SearchValues<char> SentenceEndSearch = System.Buffers.SearchValues.Create("。．！？\n\r");
-
     private static string TextBeforePeriod(CompositionState state, CompositionEnv env)
     {
         if (IsConverting(state)) return string.Concat(state.Clauses.Select(c => c.Text));
         if (!CompositionText.IsEmpty(state.Text)) return CurrentDisplay(state, env, final: true);
-        return state.CaretBefore ?? "";
+        return CompositionOutput.Before(state.Out, env) ?? "";
     }
 }
