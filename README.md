@@ -49,7 +49,7 @@ gh workflow run windows -R hkrhd/Meltype --ref verify/<作業名>
 gh run watch -R hkrhd/Meltype --interval 60 "$(gh run list -R hkrhd/Meltype --workflow windows --branch verify/<作業名> --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-合格後は作業ブランチを削除します。`fork_by_hkrhd` への push では配布しません。配布は下の「更新と配布」の手動実行で行い、利用者の Mac・Windows は自動更新で入れ替わります。
+合格後は作業ブランチを削除します。`fork_by_hkrhd` への push では配布しません。ユーザーの要望で変えたときは、push 後に下の「更新と配布」の配布を手動実行し、Release に Windows 3個・Mac 1個がそろったことを確かめます。利用者の Mac・Windows は自動更新で入れ替わります。
 
 手元の Mac でビルドする場合、対象は Apple Silicon・macOS 13.3 以降。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
 漢字変換は upstream と同じ Mozc の変換ヘルパーと Zenzai（llama-server・zenz-v3.2-small）で、Zenzai はビルドスクリプトが取得します。
@@ -84,7 +84,7 @@ Windows 版は upstream と同じく次のサインイン時に入れ替えま�
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
 upstream の Actions は GitHub 側でも無効化しています。フォークの Actions は `fork-windows.yml` の `windows` だけです。PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を実行し、手動実行で `package` を有効にした場合だけ Windows・Mac の配布物を作成します。
-upstream の更新はユーザーのホスト（sys）が2時間おきに確認し、OpenCode に下の手順での取り込みを依頼します。配布は upstream のリリースに合わせ、取り込んだ範囲に前回の配布にない upstream のリリースタグ（`v*`）があるときだけ、sys が `fork_by_hkrhd` で配布を手動実行します。フォーク独自の変更を配布したいときも手動実行します。
+upstream の更新はユーザーのホスト（sys）が2時間おきに確認し、OpenCode に下の手順での取り込みを依頼します。配布するのは、ユーザーの要望による変更を `fork_by_hkrhd` に反映したときと、upstream の新しいリリースを取り込んだときです。後者は、取り込んだ範囲に前回の配布にない upstream のリリースタグ（`v*`）があれば sys が配布を手動実行します。
 
 ```sh
 gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 検証のみ

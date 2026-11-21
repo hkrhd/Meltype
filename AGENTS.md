@@ -2,7 +2,7 @@
 
 - upstream の `AGENTS.md` はこの内容で上書きする。手順は README.md に集約し、`docs/` は復活させない。
 - 独自変更とデフォルトブランチは `fork_by_hkrhd`。upstream は `main@upstream` を直接使う。
-- **作業ブランチで `windows` を手動実行（配布なし）し Windows・Mac の全検証に合格してから `fork_by_hkrhd` を進めて push する**（[ビルドと検証](README.md#ビルドと検証)）。ドキュメントだけの変更は不要。
+- **作業ブランチで `windows` を手動実行（配布なし）し Windows・Mac の全検証に合格してから `fork_by_hkrhd` を進めて push する**（[ビルドと検証](README.md#ビルドと検証)）。ドキュメントだけの変更は不要。ユーザーの要望による変更は push 後に配布も手動実行する。
 - upstream の取り込みは [README.md の手順](README.md#upstream-の取り込み)に従う。Zenzai の重みは upstream の更新に任せる。
 - 追加テストは `tests/fork/`・`mac/Tests/ForkMacTests/` に置き、ユーザーが求める振る舞い・E2E を検証する。フォークにしかない API を使う Core テストは `tests/fork/Core/ForkApi/` に置く。辞書個別対応は最終手段（記号は可）。
 - upstream の CI・bot は `.github/disabled-workflows/` へ移す。フォークの Actions は `windows` だけ。
