@@ -44,7 +44,7 @@
 
 変更の検証は GitHub Actions で行うため、作業する OS は問いません（Ubuntu でも可）。作業ブランチを push し、配布なしで `windows` を手動実行して Windows・Mac の全検証（Core・Swift のテスト、実エンジンの入力検証、辞書の再読込、NativeAOT 境界）に合格したら `fork_by_hkrhd` を進めます。
 
-作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは `fork_by_hkrhd` への push の前で待つので、要望は取り込みの完了を待たずに進めます。`fork_by_hkrhd` へ push する前に `jj git fetch` し、`fork_by_hkrhd@origin` が進んでいれば（先に取り込みが入ったなど）その上へ rebase して検証し直します。sys では取り込み中の作業コピーを使わず、`jj workspace add` で別の作業コピーを作ります。3日を超えて残ると Matrix に知らせが届きます。
+作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは `fork_by_hkrhd` への push の前で待つので、要望は取り込みの完了を待たずに進めます。`fork_by_hkrhd` へ push する前に `jj git fetch` し、`fork_by_hkrhd@origin` が進んでいれば（先に取り込みが入ったなど）その上へ rebase して検証し直します。
 
 ```sh
 git push origin HEAD:refs/heads/request/<作業名>
@@ -103,6 +103,8 @@ Actions のキャッシュは無料枠10 GB内に収め、予算 `$0` と `Stop 
 ## upstream の取り込み
 
 upstream の最新の `main` を取り込み、フォークの全テストに合格した状態で `fork_by_hkrhd` を進めます。upstream が同じ問題を直したフォークの修正は捨て、upstream のやり方に寄せます。判断に迷う点は [AGENTS.md の「ユーザーへの確認」](AGENTS.md#ユーザーへの確認)に従います。
+
+sys の定期実行では、この手順を `jj workspace add` で作った作業用ワークスペース（会話の作業ディレクトリ）で行います。本体の作業コピーは読み取り専用として扱い、編集・コミット・push はしません。作業用ワークスペースは取り込みの完了時に削除し、停止で中断したときは再開に使うため残します。
 
 1. `jj git fetch --remote upstream --remote origin` で取得します。未取り込みは `jj log -r 'fork_by_hkrhd@origin..main@upstream'`。
 2. **マージ**: `jj new fork_by_hkrhd main@upstream` で2親のマージコミットを作り、競合を解きます。squash で履歴を圧縮しません。
