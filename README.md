@@ -10,7 +10,7 @@
 - 日英の区切り判定、最後の文節からの予測、あいさつの補完、括弧・8桁の日付の候補を追加。
 - かなのまま残った部分は学習で自動上書きしない。単独入力の学習と候補の選び直しは維持する。
 - 短い登録語で終助詞の先頭だけを切り出さず、読み全体の学習を分割より優先する（`けい → 径` があっても、一度選んだ `keisann → 計算` を維持）。直前に日本語があっても、Space・Enterの前から学習した表記で表示する。
-- 日数・回数を英字にしない（`1niti1kai → 1日1回`）。`2kani` などには「日に」の候補も出す。
+- 日数・回数を英字にしない（`1niti1kai → 1日1回`）。`2kani` などには「日に」の候補も出す。2〜10に続く「か」は日数（`2ka → 2日`）、1〜20の読みに続く「だい」は台数（`itidai → 1台`、`nijuudai → 20台`）にする。
 - 独立した「なん」の直後が英字なら「何」を優先する（`nancm → 何cm`、`nanmm → 何mm`）。単位を個別登録せず扱い、「なん」も候補に残す。
 
 ### 英語入力
@@ -53,6 +53,14 @@ gh run watch -R hkrhd/Meltype --interval 60 "$(gh run list -R hkrhd/Meltype --wo
 ```
 
 合格後は `verify/` の作業ブランチを削除します（`request/` は配布の後）。`fork_by_hkrhd` への push では配布しません。ユーザーの要望で変えたときは、push 後に下の「更新と配布」の配布を手動実行し、Release に Windows 3個・Mac 1個がそろったことを確かめます。利用者の Mac・Windows は自動更新で入れ替わります。
+
+Linux の手元では、CI の Core テストと Mac の実エンジンの入力検証（`tests/fork/mac/check-inputs.sh`・`mac/Resources/InputChecks.tsv`）を `tests/fork/local-check.sh` で流せます。実エンジンは Mac 版と同じ版の Mozc と Zenzai で、Mac アプリの代わりに `tests/fork/LocalChecks` が同じ確認をします。初回は Mozc の変換ヘルパー（Bazelisk・clang、1時間ほど）と llama-server（cmake）をビルドします。Windows・Swift 固有の検証と、CPU の差で Zenzai の答えが変わる箇所は CI で確かめます。CI だけが落ちたら、それらのホスト起因かを確かめ、手元で再現できる差なら `local-check.sh` を CI に合わせます。
+
+```sh
+tests/fork/local-check.sh --core Fork_   # Core テストの一部（名前に一致するもの）
+tests/fork/local-check.sh --inputs <TSV>  # 「打ったキー<Tab>確定した結果」の一覧を実エンジンで
+tests/fork/local-check.sh                 # push 前の一式
+```
 
 手元の Mac でビルドする場合、対象は Apple Silicon・macOS 13.3 以降。.NET 10 SDK（10.0.403 以降）と Xcode が必要です。
 漢字変換は upstream と同じ Mozc の変換ヘルパーと Zenzai（llama-server・zenz-v3.2-small）で、Zenzai はビルドスクリプトが取得します。

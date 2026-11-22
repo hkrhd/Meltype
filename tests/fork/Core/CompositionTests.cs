@@ -186,6 +186,60 @@ internal static partial class CompositionTests
     }
 
     [Test]
+    public static void Fork_Machines_NumberAndDaiBecomesHalfWidthCount()
+    {
+        // 変換エンジンは 数 | 代 に分けるか (に代・三代)、1 つの語にする (重大・廿代)。どちらも 1〜20 は N台 (半角) にする
+        string[] romaji = ["iti", "ni", "san", "yon", "go", "roku", "nana", "hati", "kyuu", "juu",
+            "juuiti", "juuni", "juusan", "juuyon", "juugo", "juuroku", "juunana", "juuhati", "juukyuu", "nijuu"];
+        string[] kana = ["いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう", "じゅう",
+            "じゅういち", "じゅうに", "じゅうさん", "じゅうよん", "じゅうご", "じゅうろく", "じゅうなな", "じゅうはち", "じゅうきゅう", "にじゅう"];
+        var clauses = new Dictionary<string, ConversionClause[]>();
+        for (var i = 0; i < kana.Length; i++)
+            clauses[kana[i] + "だい"] = i % 2 == 0 ? [new(kana[i], "位置"), new("だい", "代")] : [new(kana[i] + "だい", "重大")];
+        var converter = new SplitConverter(clauses);
+        foreach (var live in new[] { false, true })
+        for (var i = 0; i < romaji.Length; i++)
+        {
+            var expected = $"{i + 1}台";
+            var k = new Keyboard(live: live, converter: converter);
+            k.Type(romaji[i] + "dai ");
+            Assert.Equal(expected, k.Showing, $"{romaji[i]}dai: live={live}");
+            k.Type("\n");
+            Assert.Equal(expected, k.Host.Document, $"表示どおり確定する: {romaji[i]}dai");
+            if (!live) continue;
+            var typed = new Keyboard(live: true, converter: converter);
+            typed.Type(romaji[i] + "dai\n");
+            Assert.Equal(expected, typed.Host.Document, $"ライブ変換を Enter で確定する: {romaji[i]}dai");
+        }
+    }
+
+    [Test]
+    public static void Fork_DaysOfMonth_NumberAndKaBecomesDay()
+    {
+        // 変換エンジンが数字と「か」を 1 つの文節にしても、別の文節にしても、2〜10 の「か」は日数にする (2ka → 2日)
+        var clauses = new Dictionary<string, ConversionClause[]>();
+        for (var n = 2; n <= 10; n++)
+            clauses[$"{n}か"] = n % 2 == 0 ? [new($"{n}か", $"{n}課")] : [new($"{n}", $"{n}"), new("か", "課")];
+        var converter = new SplitConverter(clauses);
+        foreach (var live in new[] { false, true })
+        for (var n = 2; n <= 10; n++)
+        {
+            var k = new Keyboard(live: live, converter: converter);
+            k.Type($"{n}ka ");
+            Assert.Equal($"{n}日", k.Showing, $"{n}ka: live={live}");
+            k.Type("\n");
+            Assert.Equal($"{n}日", k.Host.Document, $"表示どおり確定する: {n}ka");
+            if (!live) continue;
+            // ライブ変換では、数字と かな 1 拍 (か) に分かれても日数を見せ、Enter でそのまま確定する
+            var typed = new Keyboard(live: true, converter: converter);
+            typed.Type($"{n}ka");
+            Assert.Equal($"{n}日", typed.Showing, $"{n}ka: ライブ変換の表示");
+            typed.Type("\n");
+            Assert.Equal($"{n}日", typed.Host.Document, $"Enter で確定する: {n}ka");
+        }
+    }
+
+    [Test]
     public static void Fork_ReadableEnglishWord_SpaceCommitsTheWholeWord()
     {
         foreach (var live in new[] { false, true })

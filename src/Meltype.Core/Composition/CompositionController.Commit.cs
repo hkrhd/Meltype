@@ -46,7 +46,7 @@ internal static partial class CompositionController
         // 設定「Enter は見えているとおりに確定」が OFF なら、背景の結果が間に合っていなくても env.Deadline までは答えを待つ
         var text = converting ? string.Concat(state.Clauses.Select(c => c.Text))
             : env.LateResults && !env.Settings.EnterCommitsAsShown
-                ? CompositionText.Display(state.Text, env, final: true, env.Settings.LiveConversion ? (kana, afterEnglish, shown) => CountsAsLive(kana) ? string.Concat(ConvertJapaneseSegment(state, env, kana, afterEnglish, SegmentBefore(env, shown), zenzai: true).Select(c => c.Text)) : kana : null)
+                ? CompositionText.Display(state.Text, env, final: true, env.Settings.LiveConversion ? (kana, afterEnglish, shown) => CountsAsLive(kana) || IsDayAfterNumber(kana, SegmentBefore(env, shown)) ? string.Concat(ConvertJapaneseSegment(state, env, kana, afterEnglish, SegmentBefore(env, shown), zenzai: true).Select(c => c.Text)) : kana : null)
                 : CurrentDisplay(state, env, final: true);
         // 英語の文脈で英字だけに見えていた入力 (hello mata) は、確定するときに判定し直してかなにしない: 見えているとおりに確定する (issue #127)。
         // 文脈がない単独の語 (mine → みね) は、今までどおり確定時の判定に任せる

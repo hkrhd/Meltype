@@ -674,6 +674,7 @@ internal static partial class CompositionController
             parts = [new ConversionClause(kana, string.Concat(parts.Select(p => p.Text)))];
         }
         parts = JoinSmallKana(env, parts, before, zenzai);
+        parts = JoinMachineCount(parts);
         var clauses = parts.Select(p =>
         {
             var text = NormalizeHalfWidth(p.Text, p.Reading);
@@ -706,6 +707,8 @@ internal static partial class CompositionController
                     && kana != reading;
                 if (!keepKana) preferred ??= learned;
             }
+            // 数字の後ろの「か」だけの文節は、助詞にせず日数にする (3 + か → 3日)
+            preferred ??= DayOfMonth(clauses, i, before) ?? MachineCount(reading);
             // 変換エンジンは、文節が「から」だけだと記号 (～) にしてしまう。記号だけの変換結果は、ひらがなの後ろに回す。
             preferred ??= IsSymbolOnly(clauses[i].Text) && clauses[i].Reading.All(KanaChars.IsHiragana) ? clauses[i].Reading : null;
             // 英単語に挟まれて助詞だけの文節になると、変換エンジンは漢字にしてしまう (github + に + push → 二)。助詞はかなのまま。
@@ -827,6 +830,69 @@ internal static partial class CompositionController
     private static bool IsKana(char c) => c is (>= 'ぁ' and <= 'ゖ') or (>= 'ァ' and <= 'ヺ') or 'ー';
 
     private static bool IsSymbolOnly(string text) => text.Length > 0 && !text.Any(char.IsLetterOrDigit);
+
+    /// <summary>
+    /// 2〜10 に続く「か」だけの文節は日数 (2か → 2日、ふつか〜とおか)。変換エンジンは 課・か にする。
+    /// 数字が前の文節や、かなの前の英数字 (before の終わり) に分かれた場合も扱う。1 は ついたち で、11 以上は にち と読むので対象外。
+    /// </summary>
+    private static string? DayOfMonth(IReadOnlyList<Clause> clauses, int i, string before)
+    {
+        var reading = clauses[i].Reading;
+        if (!reading.EndsWith('か')) return null;
+        var digits = reading[..^1];
+        if (!digits.All(char.IsAsciiDigit)) return null;
+        var number = digits.Length > 0 ? digits : i > 0 ? clauses[i - 1].Reading : TrailingDigits(before);
+        return IsDayNumber(number) ? digits + "日" : null;
+    }
+
+    /// <summary>数字の後ろの「か」(2ka の 2か・か)。1 拍でもライブ変換して日数にする。</summary>
+    private static bool IsDayAfterNumber(string kana, string before) =>
+        kana.EndsWith('か') && kana[..^1].All(char.IsAsciiDigit) && IsDayNumber(kana.Length > 1 ? kana[..^1] : TrailingDigits(before));
+
+    /// <summary>1〜20 の読み (台を数える読み)。</summary>
+    private static readonly Dictionary<string, int> CountReadings = BuildCountReadings();
+
+    private static Dictionary<string, int> BuildCountReadings()
+    {
+        string[] units = ["いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+        var readings = new Dictionary<string, int>(StringComparer.Ordinal) { ["じゅう"] = 10, ["にじゅう"] = 20 };
+        for (var i = 0; i < units.Length; i++)
+        {
+            readings[units[i]] = i + 1;
+            readings["じゅう" + units[i]] = i + 11;
+        }
+        return readings;
+    }
+
+    /// <summary>1〜20 の読みに「だい」だけが続く文節は、台数にする (にだい → 2台)。変換エンジンは 代・重大・廿代 にする。</summary>
+    private static string? MachineCount(string reading) =>
+        reading.EndsWith("だい", StringComparison.Ordinal) && CountReadings.TryGetValue(reading[..^2], out var n) ? $"{n}台" : null;
+
+    /// <summary>
+    /// 変換エンジンが 数 と だい を分けた文節 (に | 代、じゅう | いち | だい) を、台数の 1 つの文節にする (<see cref="MachineCount"/>)。
+    /// </summary>
+    private static IReadOnlyList<ConversionClause> JoinMachineCount(IReadOnlyList<ConversionClause> parts)
+    {
+        var joined = new List<ConversionClause>();
+        for (var i = 0; i < parts.Count; i++)
+        {
+            var end = i + 1;
+            var reading = parts[i].Reading;
+            while (end < parts.Count && MachineCount(reading) is null && reading.Length < "じゅうきゅうだい".Length) reading += parts[end++].Reading;
+            if (end > i + 1 && MachineCount(reading) is not null)
+            {
+                joined.Add(new ConversionClause(reading, string.Concat(parts.Skip(i).Take(end - i).Select(p => p.Text))));
+                i = end - 1;
+            }
+            else joined.Add(parts[i]);
+        }
+        return joined;
+    }
+
+    private static bool IsDayNumber(string number) =>
+        number is [>= '1' and <= '9', ..] && number.All(char.IsAsciiDigit) && int.TryParse(number, out var n) && n is >= 2 and <= 10;
+
+    private static string TrailingDigits(string text) => text[(text.Length - text.Reverse().TakeWhile(char.IsAsciiDigit).Count())..];
 
     private static void Prefer(Clause clause, string text)
     {
@@ -1114,7 +1180,7 @@ internal static partial class CompositionController
     private static string LiveConvert(CompositionState state, CompositionEnv env, string kana, bool afterEnglish, string before)
     {
         // 記号 (～ ! ? …) は数えない。かなが短いうちに記号を足しただけで、的外れな漢字にしない (な～～～ が 名～～～ になっていた: issue #505)
-        if (!(kana == "なん" && HasQuestionBeforeEnglish(state, env)) && !CountsAsLive(kana)) return kana;
+        if (!(kana == "なん" && HasQuestionBeforeEnglish(state, env)) && !CountsAsLive(kana) && !IsDayAfterNumber(kana, before)) return kana;
         return string.Concat(LiveClauses(state, env, kana, afterEnglish, before).Select(c => c.Text));
     }
 
