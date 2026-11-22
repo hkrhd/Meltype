@@ -79,8 +79,8 @@ McFly の集計結果は自動で辞書に追加されません。簡易解析�
 
 ## 更新と配布
 
-Nov 22 2026 に upstream の `d5c8e4d8`（前回の `53fa7851` から7コミット）を統合しました。upstream は Android の署名付きプレビュー APK を手動で公開するワークフローを足し、署名の経路を一本化して更新用の版を Git から作るようにしました。Homebrew cask を 1.7.1 にし、リリース手順の文書も更新しています。新しい Android のワークフローは `.github/disabled-workflows/` へ移しました。
-upstream 単体ではフォークの Core テスト37件のうち6件が合格しました（`ForkApi/` の3件を除く）。今回の upstream は Core の実装を変えていないため、合格した6件の実装は前回の取り込みまでの判断のままで、今回外す変更はありませんでした。「なん＋英字」の実装（`c8193ea9`）は upstream に無い「何」の候補に要るので残しています。統合後は Core 981件・Swift 52件と Windows の検証が合格しています。
+Nov 22 2026 に upstream の `ddb25c63`（前回の `d5c8e4d8` から30コミット）を統合しました。upstream は英語と判定した語の変換の候補にカタカナ表記を出し、カタカナ表記の辞書を足しました。自己診断と学習した語の一覧を Core へ移して `MeltypeRuntime` の API を整理し、Android の Application ID を `app.meltype.keyboard` にそろえて QA の計測テストと開発初期の文書を消しています。web のタイピングの Backspace と打鍵の組み立て、設定のカスタム色も直しました。upstream が消した Android QA のワークフローは `.github/disabled-workflows/` の控えだけ残しています。
+upstream 単体ではフォークの Core テスト37件のうち6件が合格しました（`ForkApi/` の3件を除く）。合格した6件の実装は前回までの取り込みで upstream の実装に置き換わっており、今回外す変更はありませんでした。「なん＋英字」の実装（`c8193ea9`）は upstream に無い「何」の候補に要るので残しています。統合後は Core 984件・Swift 52件と Windows の検証が合格しています。
 
 [Releases](https://github.com/hkrhd/Meltype/releases) から自動更新し、版の数字（`1.7.0-hkrhd.<ビルド番号>.g…`）のビルド番号で新旧を比べます。Mac 版は6時間ごとに確認して新しい版を準備し、macOS の通知で知らせます。勝手には入れ替えず、通知のクリックか入力メニューの「Meltype ビルド N に更新して再起動」で入れ替えます（失敗した版は再試行しない）。記録は `~/Library/Caches/io.github.yksr-melt.inputmethod.Meltype/update/install.log`、停止は `config.json` の `AutoUpdate: false`。
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
