@@ -53,7 +53,6 @@ case "${1:-}" in
         inputs "$2"
         ;;
     "")
-        node --test "$root/tests/fork/windows-checks.test.mjs"
         dotnet run --project "$root/src/Meltype.Core.Tests" -c Release
         prepare_engine
         # check-inputs.sh には、Mac アプリの代わりに同じ --check-* を受け付けるランナーを渡す

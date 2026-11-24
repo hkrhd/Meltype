@@ -6,8 +6,20 @@
 git push origin HEAD:refs/heads/request/<作業名>
 ```
 
-1. `tests/fork/local-check.sh` の `--inputs`・`--core` で再現させてから直します（[検証](../tests/fork/README.md)）。
+1. `tests/fork/local-check.sh` の `--inputs`・`--core` で再現させてから直します。
 2. push の前に `jj git fetch` し、`fork_by_hkrhd@origin` が進んでいれば（先に取り込みが入ったなど）その上へ rebase して検証し直します。
 3. `tests/fork/local-check.sh` の一式に合格したら `fork_by_hkrhd` を進めて push します（文書だけの変更なら検証は不要）。
 4. 要望の変更なら、push 後に[配布](release.md)を手動実行し、Release に Windows 3個・Mac 1個がそろったことを確かめます。
 5. `verify/` は `fork_by_hkrhd` を進めたら、`request/` は配布の後か要望をやめたときに削除します。
+
+## 検証
+
+```sh
+tests/fork/local-check.sh --core Fork_   # Core テストの一部（名前に一致するもの）
+tests/fork/local-check.sh --inputs <TSV>  # 「打ったキー<Tab>確定した結果」の一覧を実エンジンで
+tests/fork/local-check.sh                 # push 前の一式
+dotnet run --project src/Meltype.Core.Tests -- --repro kyouhagoogle enter  # 1つの入力を追う
+node tools/check-dictionaries.mjs        # 辞書を変更したとき
+```
+
+実エンジンは Mac 版と同じ版の Mozc と Zenzai で、Mac アプリの代わりに `tests/fork/LocalChecks/` が同じ確認をします。初回は Mozc の変換ヘルパー（1時間ほど）と llama-server をビルドします。`native/mozc/` と `native/zenzai/zenzai.env` が同じなら、別の作業コピーの `native/mozc/bin/linux/`・`native/zenzai/bin/`・`native/zenzai/cache/*.gguf` をコピーして使えます。Windows・Swift 固有の検証は配布の実行で行います。
