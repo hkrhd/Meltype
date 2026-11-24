@@ -1,59 +1,25 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 hkrhd
 # upstream の build.yml を元に、Windows の検証と Windows・Mac の配布物の保存を行う。
-# 配布は upstream のリリースを取り込んだときなどに手動実行で行い、fork_by_hkrhd への push では走らせない。
+# 配布は upstream のリリースを取り込んだときと、要望の変更を fork_by_hkrhd に入れたときだけ手動実行する。
+# Actions の無料枠を超えないよう、PR・push や配布しない検証では走らせない。
 name: windows
 
 on:
-  pull_request:
-    branches: [fork_by_hkrhd]
-    paths:
-      - 'src/Meltype.Core/**'
-      - 'src/Meltype.Core.Tests/**'
-      - 'src/Meltype.Core.CApi/**'
-      - 'src/Meltype.Windows/**'
-      - 'src/Meltype.Windows.Tests/**'
-      - 'src/Directory.Build.*'
-      - 'native/tip/**'
-      - 'native/mozc/**'
-      - 'dictionaries/**'
-      - 'tests/fork/Core/**'
-      - 'tests/fork/Windows/**'
-      - 'Meltype.sln'
-      - 'Build-Package.ps1'
-      - 'Install-Meltype.ps1'
-      - 'nuget.config'
-      - 'global.json'
-      - 'Directory.Build.*'
-      - 'Directory.Packages.*'
-      - 'packaging/**'
-      - 'LICENSE'
-      - 'THIRD-PARTY-NOTICES.md'
-      - 'tools/Scan-WindowsPackage.ps1'
-      - 'tools/Test-WindowsPackageScan.ps1'
-      - 'tools/Test-SetupIme.ps1'
-      - '.github/workflows/fork-windows.yml'
-      - '.github/bot/windows-checks.mjs'
-      - 'tests/fork/windows-checks.test.mjs'
   workflow_dispatch:
-    inputs:
-      # OFF なら任意のブランチで Windows・Mac の全検証だけを行う (upstream の取り込みなど fork_by_hkrhd を進める前の検証用)。
-      package:
-        description: 'Windows・Mac の配布物を作成・公開する (fork_by_hkrhd のみ)'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
 
 concurrency:
   # 配布中の実行は中断せず、続く手動実行は最新の1件だけ待たせる。
-  group: windows-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: windows
+  cancel-in-progress: false
 
 jobs:
   test:
     name: Windows validation
+    if: github.ref == 'refs/heads/fork_by_hkrhd'
     runs-on: windows-latest
     # 外部コマンドの失敗で即座に停止する。Mac の bash には適用しない。
     defaults:
@@ -126,7 +92,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "IME 同梱のインストーラーを Inno Setup で通せませんでした (exit code $LASTEXITCODE)。" }
 
   release:
-    if: github.ref == 'refs/heads/fork_by_hkrhd' && inputs.package
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -293,12 +258,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Windows 配布物をアップロードできませんでした。旧版は保持します。' }
 
   mac:
-    needs: [test, release]
-    # 配布時と、配布しない手動実行の検証で動かす。
-    if: >-
-      !cancelled() && needs.test.result == 'success'
-      && (needs.release.result == 'success'
-          || (needs.release.result == 'skipped' && github.event_name == 'workflow_dispatch' && !inputs.package))
+    needs: release
     # 利用者の Mac は最新の macOS にするので、版を固定せず GitHub の最新の Mac で作る
     runs-on: macos-latest
     # Mozc のビルドは初回 30〜40 分かかる (2 回目からは Bazel のキャッシュを使う)
@@ -317,9 +277,15 @@ jobs:
           dotnet-version: 10.0.x
       - name: Check build architecture
         run: test "$(uname -m)" = arm64
-      # upstream の mac.yml と同じ手順で Mozc の変換ヘルパーをビルドする。
-      # MOZC_COMMIT を変えた検証ブランチの再実行でも再ビルドしないよう、検証時も保存する (1件 120 MiB ほど)。
+      # Mac は課金係数が大きいので、ビルドした Mozc の変換ヘルパーを保存し、同じ版なら Mozc の取得もビルドも省く。
       - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        id: mozc-helper
+        with:
+          path: native/mozc/bin/mac
+          key: mozc-helper-macos-arm64-${{ hashFiles('native/mozc/MOZC_COMMIT', 'native/mozc/*.cc', 'native/mozc/BUILD.fragment', 'native/mozc/build-mozc-helper.sh', 'native/mozc/bazel-downloader.cfg') }}
+      # 無ければ upstream の mac.yml と同じ手順でビルドする (Bazel のキャッシュも 1件 120 MiB ほど保存する)。
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        if: steps.mozc-helper.outputs.cache-hit != 'true'
         id: mozc-cache
         with:
           path: |
@@ -329,6 +295,7 @@ jobs:
           restore-keys: |
             mozc-macos-arm64-${{ hashFiles('native/mozc/MOZC_COMMIT') }}-
       - name: Bazelisk
+        if: steps.mozc-helper.outputs.cache-hit != 'true'
         run: |
           mkdir -p "$HOME/tools"
           if ! curl -fsSL --retry 3 --connect-timeout 15 --max-time 120 -o "$HOME/tools/bazelisk" https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-darwin-arm64; then
@@ -337,16 +304,21 @@ jobs:
           echo "cee851f726789227d5561004e9904a52be45c3efb56f8b38b6993d6adbaa0409  $HOME/tools/bazelisk" | shasum -a 256 -c -
           chmod +x "$HOME/tools/bazelisk"
       - name: Build Mozc helper
+        if: steps.mozc-helper.outputs.cache-hit != 'true'
         run: BAZEL="$HOME/tools/bazelisk" native/mozc/build-mozc-helper.sh "$HOME/mozc" "$HOME/bazel-cache"
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
-        if: steps.mozc-cache.outputs.cache-hit != 'true'
+        if: steps.mozc-helper.outputs.cache-hit != 'true' && steps.mozc-cache.outputs.cache-hit != 'true'
         with:
           path: |
             ~/bazel-cache
             ~/mozc/src/third_party_cache
           key: ${{ steps.mozc-cache.outputs.cache-primary-key }}
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        if: steps.mozc-helper.outputs.cache-hit != 'true'
+        with:
+          path: native/mozc/bin/mac
+          key: ${{ steps.mozc-helper.outputs.cache-primary-key }}
       - name: Signing certificate
-        if: needs.release.result == 'success'
         env:
           MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
@@ -383,7 +355,7 @@ jobs:
           python3 tools/test-mac-boundaries.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib
           python3 tools/test-mac-events.py mac/build/Meltype.app/Contents/Frameworks/libMeltypeNative.dylib
       - name: Notarize
-        if: needs.release.result == 'success' && env.MELTYPE_MAC_IDENTITY != ''
+        if: env.MELTYPE_MAC_IDENTITY != ''
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
@@ -393,7 +365,6 @@ jobs:
           xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --wait
           xcrun stapler staple mac/build/Meltype.app
       - name: Package and upload Mac app
-        if: needs.release.result == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

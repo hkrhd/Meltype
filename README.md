@@ -42,7 +42,7 @@
 
 ## ビルドと検証
 
-変更の検証は Linux の手元の `tests/fork/local-check.sh` の一式（Core テスト・ワークフローのテスト・実エンジンの入力検証）で行い、合格したら `fork_by_hkrhd` を進めます。GitHub Actions は使用量が多い（Mac は課金係数10倍）ので、回すのは配布（`-f package=true`）のときだけです。配布の実行が Windows・Mac の全検証（Swift のテスト、辞書の再読込、NativeAOT 境界など）と配布物の作成を兼ね、落ちたときは配布されません。
+変更の検証は Linux の手元の `tests/fork/local-check.sh` の一式（Core テスト・ワークフローのテスト・実エンジンの入力検証）で行い、合格したら `fork_by_hkrhd` を進めます。GitHub Actions は無料枠が小さく（Mac は課金係数10倍）、超えると止められるので、回すのは配布のときだけです（ワークフローは `fork_by_hkrhd` の手動実行でしか動きません）。配布の実行が Windows・Mac の全検証（Swift のテスト、辞書の再読込、NativeAOT 境界など）と配布物の作成を兼ね、落ちたときは配布されません。
 
 作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは `fork_by_hkrhd` への push の前で待つので、要望は取り込みの完了を待たずに進めます。`fork_by_hkrhd` へ push する前に `jj git fetch` し、`fork_by_hkrhd@origin` が進んでいれば（先に取り込みが入ったなど）その上へ rebase して検証し直します。
 
@@ -92,24 +92,24 @@ upstream 単体ではフォークの Core テスト39件のうち6件が合格�
 Windows 版は upstream と同じく次のサインイン時に入れ替えます。「プレリリース版も自動で更新する」を OFF にすると止まります（フォークの配布はすべてプレリリース）。
 Mac の ZIP は展開して `Install Meltype.command` を実行します。Homebrew Cask・apt は upstream 版向けです。
 
-upstream の Actions は GitHub 側でも無効化しています。フォークの Actions は `fork-windows.yml` の `windows` だけで、配布のとき（`package` あり）だけ回します。PR では変更に関係する Windows のビルド・テスト・配布スクリプト検証を実行しますが、フォークでは PR を使いません。
+upstream の Actions は GitHub 側でも無効化しています。フォークの Actions は `fork-windows.yml` の `windows` だけです。
 upstream の更新はユーザーのホスト（sys）が2時間おきに確認し、OpenCode に下の手順での取り込みを依頼します。配布するのは、ユーザーの要望による変更を `fork_by_hkrhd` に反映したときと、upstream の新しいリリースを取り込んだときです。後者は、取り込んだ範囲に前回の配布にない upstream のリリースタグ（`v*`）があれば sys が配布を手動実行します。
 
 ```sh
-gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd -f package=true  # 配布（Windows・Mac の全検証も行う）
+gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 配布（Windows・Mac の全検証も行う）
 ```
 
 Windows の通常版 ZIP・ポータブル版 ZIP・インストーラーと Mac の ZIP がそろうとプレリリースを公開し、失敗時は下書きに残します。
 署名の設定がない場合、Mac は ad-hoc 署名、Windows は未署名です。配布物は Releases に保存します。
 開発ルールは [AGENTS.md](AGENTS.md) に集約し、旧 `docs/` の説明・画像は削除しました。
 配布物は Releases に保存し、Actions artifact は使いません。失敗した配布は下書きに残し、過去の公開リリース・タグは削除しません。
-Actions のキャッシュは無料枠10 GBの9割まで使ってよく（Mac の Mozc キャッシュは検証時も保存）、予算 `$0` と `Stop usage when budget limit is reached` を維持します。
+Actions のキャッシュは無料枠10 GBの9割まで使ってよく（7日使わないと消え、次の配布は遅くなります）、予算 `$0` と `Stop usage when budget limit is reached` を維持します。
 
 ## upstream の取り込み
 
 upstream の最新の `main` を取り込み、フォークの全テストに合格した状態で `fork_by_hkrhd` を進めます。upstream が同じ問題を直したフォークの修正は捨て、upstream のやり方に寄せます。判断に迷う点は [AGENTS.md の「ユーザーへの確認」](AGENTS.md#ユーザーへの確認)に従います。
 
-sys の定期実行では、この手順を `jj workspace add` で作った作業用ワークスペース（会話の作業ディレクトリ）で行います。本体の作業コピーは読み取り専用として扱い、編集・コミット・push はしません。作業用ワークスペースは取り込みの完了時に削除し、停止で中断したときは再開に使うため残します。
+sys の定期実行では、この手順を `jj workspace add` で作った作業用ワークスペース（会話の作業ディレクトリ）で行います。本体の作業コピーは読み取り専用として扱い、編集・コミット・push・`jj edit` での切り替えはしません。最後に Linux の検証結果（ログのパス）、push した `fork_by_hkrhd` のコミット、手順3の合否の要約を報告します。作業用ワークスペースは取り込みの完了時に削除し、停止で中断したときは再開に使うため残します。
 
 1. `jj git fetch --remote upstream --remote origin` で取得します。未取り込みは `jj log -r 'fork_by_hkrhd@origin..main@upstream'`。
 2. **マージ**: `jj new fork_by_hkrhd main@upstream` で2親のマージコミットを作り、競合を解きます。squash で履歴を圧縮しません。
@@ -118,7 +118,7 @@ sys の定期実行では、この手順を `jj workspace add` で作った作�
    - 競合を解く間は Core のテスト（`dotnet run --project src/Meltype.Core.Tests -c Release`）で確かめます。
 3. **upstream 単体の検証**: `tests/fork/upstream-check.sh` で、`main@upstream` に作業コピーのフォークの Core テスト（`tests/fork/Core/ForkApi/` を除く）を載せて実行し、テストごとの合否を記録します。コンパイルできないテストはフォークにしかない API を使っているので `ForkApi/` へ移します（期待値は変えません）。
    - 合格したテストごとに、そのテストを足したフォークのコミットの実装側の変更をマージコミットから外し、Core テストを実行します。全テストに合格すれば外したままにします（upstream が同じ問題を解決済み）。不合格なら戻し、手順5で残した理由を書きます。
-4. **検証**: `tests/fork/local-check.sh` の一式に合格するまで原因を特定して直します。無関係な箇所を推測で変えません。Windows・Mac のビルドと検証は配布の実行だけで行うので、取り込みでは `windows` を回しません。
+4. **検証**: `tests/fork/local-check.sh` の一式に合格するまで原因を特定して直します。無関係な箇所を推測で変えません。Windows・Mac のビルドと検証は配布の実行だけで行うので、取り込みでは `windows` を回しません。sys の定期実行から頼まれたときは、合格したら依頼文の合格記録ファイルに「検証した `fork_by_hkrhd` のコミットID ログのパス」を1行で書きます（定期実行の完了確認に使います）。
 5. この README の「更新と配布」に、取り込んだ upstream のコミットとコミット数、手順3の合否の数と外した・残した実装、統合後のテスト件数、主な移植内容を書きます（前回分は置き換え）。マージコミットの説明にも upstream の主な変更とフォーク側の対応を箇条書きします。
 6. origin に `request/` のブランチがあれば、push せずにそのことを報告して終えます（要望の作業が優先で、終わると sys の定期実行がこの会話に続きを頼みます）。`fork_by_hkrhd@origin` がマージコミットの親より進んでいれば、`jj rebase -s <マージコミット> -d fork_by_hkrhd@origin -d main@upstream` で載せ直し、手順4からやり直します。どちらでもなければ `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。最後に作業ブランチを削除します。配布は sys の定期実行が upstream のリリースに合わせて行うので、取り込みの作業では実行しません。
 7. 成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除します。現行モデル・増分ビルドキャッシュ・取得済み依存・最新アプリ・検証結果、共有のシステムキャッシュとユーザーの学習データは残します。
