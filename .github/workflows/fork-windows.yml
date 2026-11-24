@@ -34,6 +34,11 @@ jobs:
       - name: Build
         run: dotnet build Meltype.sln -c Release
 
+      # Core テストは OS に依存しないので Windows ジョブで回し、Mac ジョブの時間 (10 倍課金) を削る。
+      # Mac ジョブでは SKIP_CORE_TESTS=1 で飛ばす。カバレッジは同じ。
+      - name: Test Core
+        run: dotnet run --project src/Meltype.Core.Tests --no-build -c Release
+
       # Mozc-UT の辞書の統合 (native/mozc/merge-ut-dictionary.py)。本物の Mozc も辞書も要らない。
       # 環境変数 MELTYPE_UT_DICTIONARY を指定したときだけ使うものなので、ビルドには影響しない。
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -120,8 +125,10 @@ jobs:
           gh release create "$tag" --target "$GITHUB_SHA" --title "Meltype $version" --notes-file "$RUNNER_TEMP/release.md" --draft --prerelease
 
   # 同じ VM で Mozc と配布物を作り、Actions の成果物保存を使わない。
+  # Windows の配布は Mac とセット (publish が 4 個そろってから公開する)。分岐はしない。
   package:
     needs: release
+    if: needs.release.result == 'success'
     runs-on: windows-2022
     # 外部コマンドの失敗で即座に停止する。Mac の bash には適用しない。
     defaults:
@@ -243,8 +250,10 @@ jobs:
 
   mac:
     needs: release
-    # 利用者の Mac は最新の macOS にするので、版を固定せず GitHub の最新の Mac で作る
-    runs-on: macos-latest
+    # 利用者の Mac は最新の macOS にするので、版を固定せず GitHub の最新の Mac で作る。
+    # GitHub ホステッドの容量不足で取れないときは、リポジトリ変数 MAC_RUNNER_LABEL に
+    # 自前ランナーのラベルを入れて切り替える (空なら macos-latest)。
+    runs-on: ${{ vars.MAC_RUNNER_LABEL || 'macos-latest' }}
     # Mozc のビルドは初回 30〜40 分かかる (2 回目からは Bazel のキャッシュを使う)
     timeout-minutes: 120
     permissions:
@@ -325,6 +334,8 @@ jobs:
           rm "$RUNNER_TEMP/cert.p12"
           echo "MELTYPE_MAC_IDENTITY=$MAC_IDENTITY" >> "$GITHUB_ENV"
       - name: Core and Swift tests and build
+        env:
+          SKIP_CORE_TESTS: 1
         run: bash mac/build-cli.sh --test --build
       - name: Input checks with the real converter
         run: |

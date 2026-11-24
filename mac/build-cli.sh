@@ -105,7 +105,10 @@ ensure_dotnet_path
 
 if [[ $test_core -eq 1 ]]; then
     need dotnet
-    dotnet run --project "$root/src/Meltype.Core.Tests"
+    # CI では Core テストを Windows ジョブで回すので、Mac では飛ばす (SKIP_CORE_TESTS=1。手元では今までどおり流す)。
+    if [[ "${SKIP_CORE_TESTS:-0}" != 1 ]]; then
+        dotnet run --project "$root/src/Meltype.Core.Tests"
+    fi
     # XCTest は単体の Command Line Tools に含まれない。インストール済みの
     # Xcode をこのプロセスだけで選択し、システム全体の xcode-select は変更しない。
     if [[ -z "${DEVELOPER_DIR:-}" && "$(xcode-select -p)" == */CommandLineTools ]]; then

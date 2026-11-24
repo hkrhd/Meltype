@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 hkrhd
+# windows の mac ジョブが GitHub 側の容量不足で cancelled になったら、
+# 時間を置いて mac だけ自動で再実行する (自前ランナーを使わない自動回復)。
+# 本物のテスト失敗は再試行しない。打ち止めは run_attempt で数える (最大3回まで自動再試行)。
+# 配布の実行でだけ使う。実行自体は ubuntu の数十分だけ。
+
+name: mac-capacity-retry
+
+on:
+  workflow_run:
+    workflows: [windows]
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  retry:
+    # fork_by_hkrhd の手動実行だけを見る (windows はそれしかトリガーが無い)。
+    # run_attempt は 1 始まり。1・2・3 回目の完了時に動いて、最大で attempt 4 まで作る。
+    if: >-
+      github.event.workflow_run.event == 'workflow_dispatch'
+      && github.event.workflow_run.conclusion == 'failure'
+      && github.event.workflow_run.run_attempt <= 3
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+    steps:
+      - name: Rerun mac only when it was cancelled by capacity shortage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mac="$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs?per_page=30" \
+            --jq '[.jobs[] | select(.name == "mac")] | first')"
+          [ "$(jq -r .conclusion <<<"$mac")" = cancelled ] || { echo 'mac は cancelled ではないので何もしない'; exit 0; }
+          job="$(jq -r .id <<<"$mac")"
+          if ! gh api "repos/$GH_REPO/check-runs/$job/annotations" --jq '.[].message' | grep -q 'capacity constraints'; then
+            echo '容量不足ではないので再試行しない (ログを見て直す)'
+            exit 0
+          fi
+          # 試すたびに長く待つ (初回 30 分、2 回目 60 分、3 回目 120 分)。容量の波が収まるのを待つ。
+          # 待機は ubuntu 1 倍課金。cancelled の mac 自体は課金 0 のまま。
+          if [ "$RUN_ATTEMPT" -eq 1 ]; then minutes=30; elif [ "$RUN_ATTEMPT" -eq 2 ]; then minutes=60; else minutes=120; fi
+          echo "容量不足のため ${minutes} 分待って mac だけ再実行する"
+          sleep "$((minutes * 60))"
+          gh run rerun -R "$GH_REPO" "$RUN_ID" --job "$job"

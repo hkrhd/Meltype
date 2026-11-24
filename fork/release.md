@@ -12,6 +12,8 @@ gh workflow run fork-windows.yml --repo hkrhd/Meltype --ref fork_by_hkrhd  # 配
 - 配布物は Releases に保存し、Actions artifact は使いません。過去の公開リリース・タグは削除しません。署名の設定がなければ Mac は ad-hoc 署名、Windows は未署名です。
 - 版番号は `mac/fork-version.sh` が upstream のタグとコミットから作ります。upstream のバージョンファイルは変えません。
 - upstream の Actions は `.github/disabled-workflows/` へ移し、GitHub 側でも無効化します。フォークの Actions は `fork-windows.yml` の `windows` だけです。
+- Mac ジョブが GitHub 側の容量不足で cancelled になることがあります（注釈に capacity constraints と出ます。ホスト起因で、Windows が緑ならコードの問題ではありません）。番犬（`mac-capacity-retry`）が 30 分・60 分・120 分と待って Mac だけ最大3回まで自動で再実行します。打ち止め後や急ぐときは手で Mac だけ再実行します。繰り返すようなら自前ランナーを用意し、リポジトリ変数 `MAC_RUNNER_LABEL` にラベルを入れて切り替えます（空なら `macos-latest`）。
+- Core テストは OS に依存しないので Windows ジョブで回し、Mac ジョブでは飛ばしています（Mac は課金係数10倍）。
 
 ## 利用者の更新
 

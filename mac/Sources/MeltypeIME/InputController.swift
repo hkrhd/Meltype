@@ -188,16 +188,24 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     /// 入力メニュー。操作は自動更新の適用だけにし、辞書の置き場所と自動反映の説明を出す。
     override func menu() -> NSMenu! {
         let menu = NSMenu()
-        for line in [Self.dictionaryReloadNote, Self.dictionariesLocationNote] {
+        let contents = Self.menuContents(updateBuild: MacUpdatePrompt.shared.updater?.readyBuild)
+        for line in contents.notes {
             let item = menu.addItem(withTitle: line, action: nil, keyEquivalent: "")
             item.isEnabled = false
         }
-        if let build = MacUpdatePrompt.shared.updater?.readyBuild {
+        if let title = contents.updateTitle {
             menu.addItem(.separator())
-            let updateItem = menu.addItem(withTitle: MacUpdatePrompt.menuTitle(build: build), action: #selector(installUpdate(_:)), keyEquivalent: "")
+            let updateItem = menu.addItem(withTitle: title, action: #selector(installUpdate(_:)), keyEquivalent: "")
             updateItem.target = self
         }
         return menu
+    }
+
+    /// 入力メニューの中身 (NSMenu 自体はテストで作れないので中身だけ切り出す。Actions の Swift テストで検証する)。
+    /// notes は操作なしの説明だけ、updateTitle は自動更新の適用だけ。ほかの操作は足さない。
+    static func menuContents(updateBuild: Int?) -> (notes: [String], updateTitle: String?) {
+        ([dictionaryReloadNote, dictionariesLocationNote],
+         updateBuild.map { MacUpdatePrompt.menuTitle(build: $0) })
     }
 
     private static let dictionaryReloadNote = "辞書を変更すると、入力中でないときに自動で反映されます（再起動は不要）"

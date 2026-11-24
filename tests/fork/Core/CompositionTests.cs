@@ -330,6 +330,31 @@ internal static partial class CompositionTests
     }
 
     [Test]
+    public static void Fork_LearnedKa_StaysJapaneseInAutoDetection()
+    {
+        var memory = new LanguageMemory(null);
+        memory.Remember("ka", true, explicitChoice: true);
+        Detector.Memory = memory;
+        try
+        {
+            foreach (var live in new[] { false, true })
+            foreach (var before in new[] { "", "Apple ", "I love " })
+            {
+                var k = new Keyboard(live: live, languages: memory);
+                k.Host.PrecedingText = before;
+                k.Type("ka");
+                Assert.Equal("か", k.Showing, $"英語として学習していても か: live={live}, before={before}");
+                k.Type("\n");
+                Assert.Equal("か", k.Host.Document, "確定も か: live=" + live);
+            }
+        }
+        finally
+        {
+            Detector.Memory = null;
+        }
+    }
+
+    [Test]
     public static void Fork_LearnedEnglishEndingInN_KeepsTheFollowingParticle()
     {
         var memory = new LanguageMemory(null);

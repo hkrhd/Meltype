@@ -628,6 +628,9 @@ public sealed partial class CompositionDetector
             var span = text[start..end];
             // 小文字の no は、空白で区切るまで助詞「の」。辞書や学習によらず同じ表示にする。
             if (span == "no" && (end == length || char.IsAsciiLetter(text[end]))) continue;
+            // 学習で英字にした「か」(ka・ca) は、自動判定では日本語を優先する。to などは英語の場合も多いので対象外。
+            // 直接入力モード (manual) と、Shift で打った大文字 (Ka) は対象外。英字にしたいときは 英数 か F10 を使う。
+            if (!manual && IsShortKa(span) && Memory?.Get(span, learning) == true) continue;
             double cost;
             if (span.Contains('\''))
             {
@@ -730,6 +733,10 @@ public sealed partial class CompositionDetector
     /// </summary>
     private static bool Standalone(string text, int start, int end, bool afterEnglish) =>
         (start == 0 ? afterEnglish : !char.IsAsciiLetter(text[start - 1])) && (end == text.Length || !char.IsAsciiLetter(text[end]));
+
+    /// <summary>2 文字のローマ字が「か」(ka・ca) になるか。</summary>
+    private bool IsShortKa(string lower) =>
+        lower.Length == 2 && lower.All(char.IsAsciiLetterLower) && _romaji.ConvertLenient(lower, final: true) == "か";
 
     /// <summary>
     /// 知っている英単語か (同梱の辞書・固有名詞・よく使う英単語の一覧・english-readable.txt・-pedia・ユーザーが英字に直して覚えた語)。
