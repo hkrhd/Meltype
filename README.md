@@ -42,9 +42,9 @@
 
 ## ビルドと検証
 
-変更の検証は GitHub Actions で行うため、作業する OS は問いません（Ubuntu でも可）。作業ブランチを push し、配布なしで `windows` を手動実行して Windows・Mac の全検証（Core・Swift のテスト、実エンジンの入力検証、辞書の再読込、NativeAOT 境界）に合格したら `fork_by_hkrhd` を進めます。
+変更の検証は Linux の手元の `tests/fork/local-check.sh` の一式（Core テスト・ワークフローのテスト・実エンジンの入力検証）で行い、合格したら `fork_by_hkrhd` を進めます。GitHub Actions は使用量が多い（Mac は課金係数10倍）ので、`windows` を手動実行（配布なし）するのは、`src/Meltype.Core.CApi/`・`src/Meltype.Windows*/`・`mac/`・`native/`・`packaging/`・`.github/`・`Build-Package.ps1`・`Install-Meltype.ps1`・ビルド設定（`Directory.Build.*`・`Directory.Packages.*`・`global.json`・`nuget.config`）を変えたときだけです。合格すれば Windows・Mac の全検証（Swift のテスト、辞書の再読込、NativeAOT 境界など）が通ったことになります。Actions が GitHub 側で止められている間は `windows` を待たずに Linux の結果で進め、解除後の配布で確かめます。
 
-作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは `fork_by_hkrhd` への push の前で待つので、要望は取り込みの完了を待たずに進めます。`fork_by_hkrhd` へ push する前に `jj git fetch` し、`fork_by_hkrhd@origin` が進んでいれば（先に取り込みが入ったなど）その上へ rebase して検証し直します。
+`windows` を回すときの作業ブランチは、ユーザーの要望なら `request/<作業名>`、upstream の取り込みなら `verify/<作業名>` です。origin に `request/` のブランチがある間は sys の定期実行が新しい取り込みを始めないので、要望の作業は始めたらすぐ `request/<作業名>` を push し、`fork_by_hkrhd` への反映と配布を終えるか、要望をやめたら削除します。進行中の取り込みは `fork_by_hkrhd` への push の前で待つので、要望は取り込みの完了を待たずに進めます。`fork_by_hkrhd` へ push する前に `jj git fetch` し、`fork_by_hkrhd@origin` が進んでいれば（先に取り込みが入ったなど）その上へ rebase して検証し直します。
 
 ```sh
 git push origin HEAD:refs/heads/request/<作業名>
@@ -52,9 +52,9 @@ gh workflow run windows -R hkrhd/Meltype --ref request/<作業名>
 gh run watch -R hkrhd/Meltype --interval 60 "$(gh run list -R hkrhd/Meltype --workflow windows --branch request/<作業名> --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-合格後は `verify/` の作業ブランチを削除します（`request/` は配布の後）。`fork_by_hkrhd` への push では配布しません。ユーザーの要望で変えたときは、push 後に下の「更新と配布」の配布を手動実行し、Release に Windows 3個・Mac 1個がそろったことを確かめます。利用者の Mac・Windows は自動更新で入れ替わります。
+`fork_by_hkrhd` を進めたら `verify/` の作業ブランチを削除します（`request/` は配布の後）。`fork_by_hkrhd` への push では配布しません。ユーザーの要望で変えたときは、push 後に下の「更新と配布」の配布を手動実行し、Release に Windows 3個・Mac 1個がそろったことを確かめます。利用者の Mac・Windows は自動更新で入れ替わります。
 
-Linux の手元では、CI の Core テストと Mac の実エンジンの入力検証（`tests/fork/mac/check-inputs.sh`・`mac/Resources/InputChecks.tsv`）を `tests/fork/local-check.sh` で流せます。実エンジンは Mac 版と同じ版の Mozc と Zenzai で、Mac アプリの代わりに `tests/fork/LocalChecks` が同じ確認をします。初回は Mozc の変換ヘルパー（Bazelisk・clang、1時間ほど）と llama-server（cmake）をビルドします。Windows・Swift 固有の検証と、CPU の差で Zenzai の答えが変わる箇所は CI で確かめます。CI だけが落ちたら、それらのホスト起因かを確かめ、手元で再現できる差なら `local-check.sh` を CI に合わせます。
+`tests/fork/local-check.sh` は、CI の Core テストと Mac の実エンジンの入力検証（`tests/fork/mac/check-inputs.sh`・`mac/Resources/InputChecks.tsv`）を Linux で流します。実エンジンは Mac 版と同じ版の Mozc と Zenzai で、Mac アプリの代わりに `tests/fork/LocalChecks` が同じ確認をします。初回は Mozc の変換ヘルパー（Bazelisk・clang、1時間ほど）と llama-server（cmake）をビルドします（`native/mozc/` と `native/zenzai/zenzai.env` が同じなら、別の作業コピーの `native/mozc/bin/linux/`・`native/zenzai/bin/`・`native/zenzai/cache/*.gguf` をコピーして使えます）。Windows・Swift 固有の検証と、CPU の差で Zenzai の答えが変わる箇所は CI で確かめます。CI だけが落ちたら、それらのホスト起因かを確かめ、手元で再現できる差なら `local-check.sh` を CI に合わせます。
 
 ```sh
 tests/fork/local-check.sh --core Fork_   # Core テストの一部（名前に一致するもの）
@@ -106,7 +106,7 @@ Windows の通常版 ZIP・ポータブル版 ZIP・インストーラーと Mac
 署名の設定がない場合、Mac は ad-hoc 署名、Windows は未署名です。配布物は Releases に保存します。
 開発ルールは [AGENTS.md](AGENTS.md) に集約し、旧 `docs/` の説明・画像は削除しました。
 配布物は Releases に保存し、Actions artifact は使いません。失敗した配布は下書きに残し、過去の公開リリース・タグは削除しません。
-Actions のキャッシュは無料枠10 GB内に収め、予算 `$0` と `Stop usage when budget limit is reached` を維持します。
+Actions のキャッシュは無料枠10 GBの9割まで使ってよく（Mac の Mozc キャッシュは検証時も保存）、予算 `$0` と `Stop usage when budget limit is reached` を維持します。
 
 ## upstream の取り込み
 
@@ -118,10 +118,10 @@ sys の定期実行では、この手順を `jj workspace add` で作った作�
 2. **マージ**: `jj new fork_by_hkrhd main@upstream` で2親のマージコミットを作り、競合を解きます。squash で履歴を圧縮しません。
    - フォークの実装は upstream の新しい構造に移します（前回は `MeltypeSession` の処理を `ImeSession` へ移しました）。フォークのテストは期待値を変えずに upstream の新しい API・namespace へ呼び出しを合わせます。
    - 要件が矛盾すればフォークを優先します。upstream で増えた Actions は `.github/disabled-workflows/` へ移します。
-   - 手元で動かすのは Core のテスト（`dotnet run --project src/Meltype.Core.Tests -c Release`）までです。Windows・Mac のビルドとテストは手順4の Actions に任せます。
+   - 競合を解く間は Core のテスト（`dotnet run --project src/Meltype.Core.Tests -c Release`）で確かめます。
 3. **upstream 単体の検証**: `tests/fork/upstream-check.sh` で、`main@upstream` に作業コピーのフォークの Core テスト（`tests/fork/Core/ForkApi/` を除く）を載せて実行し、テストごとの合否を記録します。コンパイルできないテストはフォークにしかない API を使っているので `ForkApi/` へ移します（期待値は変えません）。
    - 合格したテストごとに、そのテストを足したフォークのコミットの実装側の変更をマージコミットから外し、Core テストを実行します。全テストに合格すれば外したままにします（upstream が同じ問題を解決済み）。不合格なら戻し、手順5で残した理由を書きます。
-4. **検証**: マージコミットを作業ブランチ `verify/<作業名>` に push し直して `windows` を手動実行し、全検証に合格するまで Actions のログから原因を特定して直します。無関係な箇所を推測で変えません。`gh run watch` には `--interval 60` を付けます（GitHub API の上限 5,000回/時はアカウントの全利用で共有します）。
+4. **検証**: `tests/fork/local-check.sh` の一式に合格するまで原因を特定して直します。無関係な箇所を推測で変えません。upstream 側の変更が[ビルドと検証](#ビルドと検証)の `windows` を回す対象に及ぶときは、マージコミットを作業ブランチ `verify/<作業名>` に push して `windows` も手動実行し、Actions のログから同じように直します。`gh run watch` には `--interval 60` を付けます（GitHub API の上限 5,000回/時はアカウントの全利用で共有します）。
 5. この README の「更新と配布」に、取り込んだ upstream のコミットとコミット数、手順3の合否の数と外した・残した実装、統合後のテスト件数、主な移植内容を書きます（前回分は置き換え）。マージコミットの説明にも upstream の主な変更とフォーク側の対応を箇条書きします。
 6. origin に `request/` のブランチがあれば、push せずにそのことを報告して終えます（要望の作業が優先で、終わると sys の定期実行がこの会話に続きを頼みます）。`fork_by_hkrhd@origin` がマージコミットの親より進んでいれば、`jj rebase -s <マージコミット> -d fork_by_hkrhd@origin -d main@upstream` で載せ直し、手順4からやり直します。どちらでもなければ `jj bookmark set fork_by_hkrhd -r <マージコミット>` と `jj git push --bookmark fork_by_hkrhd` で進めます（force push はしません）。最後に作業ブランチを削除します。配布は sys の定期実行が upstream のリリースに合わせて行うので、取り込みの作業では実行しません。
 7. 成功後は不要な旧モデル・旧ランタイム・一時アプリ・一時学習データを削除します。現行モデル・増分ビルドキャッシュ・取得済み依存・最新アプリ・検証結果、共有のシステムキャッシュとユーザーの学習データは残します。
