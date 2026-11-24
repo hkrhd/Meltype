@@ -1,13 +1,11 @@
 # このフォークの開発
 
-- upstream の `AGENTS.md` はこの内容で上書きする。手順は README.md に集約し、`docs/` は復活させない。
 - 独自変更とデフォルトブランチは `fork_by_hkrhd`。upstream は `main@upstream` を直接使う。
-- 修正は `tests/fork/local-check.sh` の `--inputs`・`--core` で再現させてから直す。
-- **Linux で `tests/fork/local-check.sh` の一式に合格してから `fork_by_hkrhd` を進めて push する**（文書だけなら不要）。Actions は配布のときだけ回す。要望は push 後に配布する。
-- upstream の取り込みは [README.md の手順](README.md#upstream-の取り込み)に従う。Zenzai の重みは upstream に任せる。
-- 組み込み辞書への追加は `dictionaries/fork/` の同名ファイルに置き、upstream の `dictionaries/*.txt` は変えない。
-- 追加テストは `tests/fork/`・`mac/Tests/ForkMacTests/` に置き、ユーザーが求める振る舞い・E2E を検証する。フォークにしかない API を使う Core テストは `tests/fork/Core/ForkApi/`。辞書個別対応は最終手段（記号は可）。
-- upstream の CI・bot は `.github/disabled-workflows/` へ移す。
+- フォークの文書は `fork/`・`tests/fork/` に置き、コードを読めば分かることは書かない。README.md は説明・主な変更・ライセンスだけ。upstream の `docs/` は復活させない。
+- 作業に応じて読む: 要望・修正は [fork/development.md](fork/development.md)、検証は [tests/fork/README.md](tests/fork/README.md)、配布・Actions は [fork/release.md](fork/release.md)、upstream の取り込みは [fork/upstream-intake.md](fork/upstream-intake.md)。
+- **Linux で `tests/fork/local-check.sh` の一式に合格してから `fork_by_hkrhd` を push する**（文書だけなら不要）。Actions は配布のときだけ回す。
+- 組み込み辞書への追加は `dictionaries/fork/` の同名ファイルに置き、upstream の `dictionaries/*.txt` は変えない。Zenzai の重みは upstream に任せる。
+- 追加テストは `tests/fork/`・`mac/Tests/ForkMacTests/` に置き、ユーザーが求める振る舞い・E2E を検証する。辞書個別対応は最終手段（記号は可）。
 
 ## ユーザーへの確認
 
