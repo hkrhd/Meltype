@@ -185,7 +185,7 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
 
     // ---- メニュー (メニューバーの入力メニュー) ----
 
-    /// 入力メニュー。操作は自動更新の適用だけにし、辞書の置き場所と自動反映の説明を出す。
+    /// 入力メニュー。操作は更新の確認と適用だけにし、辞書の置き場所と自動反映の説明を出す。
     override func menu() -> NSMenu! {
         let menu = NSMenu()
         let contents = Self.menuContents(updateBuild: MacUpdatePrompt.shared.updater?.readyBuild)
@@ -198,14 +198,18 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
             let updateItem = menu.addItem(withTitle: title, action: #selector(installUpdate(_:)), keyEquivalent: "")
             updateItem.target = self
         }
+        menu.addItem(.separator())
+        let checkItem = menu.addItem(withTitle: contents.checkTitle, action: #selector(checkForUpdates(_:)), keyEquivalent: "")
+        checkItem.target = self
         return menu
     }
 
     /// 入力メニューの中身 (NSMenu 自体はテストで作れないので中身だけ切り出す。Actions の Swift テストで検証する)。
-    /// notes は操作なしの説明だけ、updateTitle は自動更新の適用だけ。ほかの操作は足さない。
-    static func menuContents(updateBuild: Int?) -> (notes: [String], updateTitle: String?) {
+    /// notes は操作なしの説明だけ、updateTitle は自動更新の適用、checkTitle は今すぐ確認。ほかの操作は足さない。
+    static func menuContents(updateBuild: Int?) -> (notes: [String], updateTitle: String?, checkTitle: String) {
         ([dictionaryReloadNote, dictionariesLocationNote],
-         updateBuild.map { MacUpdatePrompt.menuTitle(build: $0) })
+         updateBuild.map { MacUpdatePrompt.menuTitle(build: $0) },
+         MacUpdatePrompt.checkTitle)
     }
 
     private static let dictionaryReloadNote = "辞書を変更すると、入力中でないときに自動で反映されます（再起動は不要）"
@@ -223,6 +227,10 @@ final class MeltypeInputController: IMKInputController, ModeServiceTarget {
     @objc private func installUpdate(_ sender: Any?) {
         commitComposition(client())
         DispatchQueue.main.async { MacUpdatePrompt.shared.installUpdate() }
+    }
+
+    @objc private func checkForUpdates(_ sender: Any?) {
+        MacUpdatePrompt.shared.checkForUpdates()
     }
 
     func selectModeFromService(_ action: ModeShortcutAction) -> Bool {
